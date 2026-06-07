@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -21,6 +22,14 @@ public class EducationService {
     private final EducationPracticeRepository educationPracticeRepository;
     private final CurrentUserProvider currentUserProvider;
     private final FileService fileService;
+
+    public List<EducationResponse> listByNextStudyDateRange(LocalDate from, LocalDate to) {
+        Long userId = currentUserProvider.getCurrentUserId();
+        return educationRepository.findAllByUserIdAndNextStudyDateBetween(userId, from, to)
+                .stream()
+                .map(EducationMapper::toResponse)
+                .toList();
+    }
 
     // =========================================================================
     // Education CRUD
