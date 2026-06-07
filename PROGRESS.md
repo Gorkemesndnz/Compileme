@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 3 — Su Takibi (backend)
-- **Çalışıyor mu:** Evet (Faz 2 başarıyla tamamlandı, backend derleniyor ve tüm görev-dashboard API testleri başarılı)
-- **Sırada:** Faz 3'ü kur → Su Takibi backend modülü (water_log, bugün toplam/hedef/yüzde, log ekleme + silme).
+- **Aktif faz:** Faz 4 — Fikir Havuzu (backend)
+- **Çalışıyor mu:** Evet (Faz 3 başarıyla tamamlandı, backend derleniyor ve tüm su-dashboard API testleri başarılı)
+- **Sırada:** Faz 4'ü kur → Fikir Havuzu backend modülü (idea CRUD + convert).
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
@@ -23,7 +23,7 @@
 | 0 | İskelet & bağlama | ✅ Tamamlandı |
 | 1 | Ortak altyapı | ✅ Tamamlandı |
 | 2 | Görevler + Dashboard (backend) | ✅ Tamamlandı |
-| 3 | Su takibi (backend) | ⬜ Başlanmadı |
+| 3 | Su takibi (backend) | ✅ Tamamlandı |
 | 4 | Fikir havuzu (backend) | ⬜ Başlanmadı |
 | 5 | Projeler (backend) | ⬜ Başlanmadı |
 | 6 | Dosya (backend) | ⬜ Başlanmadı |
@@ -39,6 +39,27 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 3 — Su Takibi (backend)
+- Ajan: Antigravity
+- Branch / commit: master / Faz 3
+- Durum: Tamamlandı
+- Yapılanlar:
+  - JPA Entity `WaterLog.java` oluşturuldu, V1 veri tabanı şemasıyla birebir eşlendi (güncelleme tarihi bulunmadığından `BaseEntity`'den türetilmedi).
+  - Su kaynakları ve varsayılan ml değerleri için `WaterSource` enum'u tanımlandı.
+  - Tarihe göre listeleme ve `coalesce` destekli SUM (toplam tüketilen ml) sorguları için `WaterLogRepository` yazıldı.
+  - Girdi/çıktı veri modelleri için `WaterLogRequest`, `WaterLogResponse`, `WaterSummaryResponse` DTO'ları ve statik `WaterLogMapper` mapper sınıfı oluşturuldu.
+  - `WaterService` concrete servis sınıfı eklenerek su özet istatistiklerini hesaplama (yüzde hesaplaması tam sayıya yuvarlandı), su tüketimi ekleme (preset kaynakların ml'leri sunucuda çözülür, CUSTOM'da >0 kontrolü yapılır) ve log silme (sahiplik denetimli) işlemleri yazıldı.
+  - REST endpoint'leri `/api/water` (`GET`, `POST`, `DELETE`) `WaterController` ile sunuldu.
+  - `DashboardService` güncellenerek bugünün tüketilen su miktarı `WaterService` üzerinden çekildi ve `DashboardResponse` içerisindeki `todayWaterAmountMl` alanı dolduruldu.
+- Kararlar:
+  - Günlük su hedefi şimdilik `DEFAULT_WATER_GOAL_ML = 3000` ml olarak sabitlendi (Faz 9 settings entegrasyonunda dinamik yapılacak).
+  - Presets (1500ml/500ml/300ml) ml değerleri sunucu tarafında enum'da tutularak istemci veri tutarsızlıkları engellendi.
+- Kabul kriteri:
+  - Proje `mvn compile` ile hatasız derlendi ve Tomcat sorunsuz başladı.
+  - API üzerinden log ekleme (HALF_500, CUSTOM 450ml), özet sorgulama (950ml, %32), dashboard entegrasyonu, log silme (450ml, %15) ve geçersiz custom girdi doğrulama testleri başarıyla gerçekleştirildi.
+- Açık konular / sıradaki:
+  - Faz 4 (Fikir Havuzu backend) modülünün geliştirilmesine geçilecek.
 
 ### 2026-06-07 · Faz 2 — Görevler + Dashboard (backend)
 - Ajan: Antigravity
