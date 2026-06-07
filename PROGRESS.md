@@ -40,20 +40,22 @@
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
 
-### 2026-06-07 · Faz 9 — Backend Test Altyapısı & Düzeltmeler
+### 2026-06-07 · Faz 9 — Backend Test Altyapısı & Hata Yönetimi Düzeltmeleri
 - Ajan: Antigravity
-- Branch / commit: master / ac8afa7 (ve düzeltmeler)
+- Branch / commit: master / 1488509 (ve hata yönetimi geliştirmeleri)
 - Durum: Tamamlandı
 - Yapılanlar:
-  - 9 backend modülünün tüm Service katmanı (Mockito mock'ları ile) ve Controller katmanı (MockMvc ile) testleri JUnit 5 kullanılarak yazıldı.
-  - Spring Boot context yüklenmesi sırasında WeatherService çoklu constructor'ı nedeniyle oluşan `No default constructor found` hatası `@Autowired` eklenerek giderildi.
-  - FileController'ın CREATED (201) yanıtını 200 bekleyen FileControllerTest düzeltildi.
-  - ProjectServiceTest'teki event fırlatma mantığı ayrıştırılarak `create` ve `createFromIdea` testleri iki ayrı metoda bölündü.
-  - Tüm 61 test lokal Maven (`mvn test`) ile hatasız koşturuldu ve `BUILD SUCCESS` alındı.
+  - 9 backend modülünün tüm Service (Mockito) ve Controller (MockMvc) testleri yazıldı.
+  - Spring Boot context yüklenmesi sırasındaki WeatherService çoklu constructor hatası `@Autowired` ile giderildi.
+  - `FileControllerTest` durum kodu 201 Created olarak düzeltildi.
+  - `ProjectServiceTest` event fırlatma mantığı `create` ve `createFromIdea` olarak ayrıldı.
+  - Spring Boot varsayılan `/error` yönlendirmesini ele almak için `CustomErrorController` eklendi. Tarayıcılarda dark-theme şık HTML (404, 503, 500) hata sayfaları, API istemcilerinde structured JSON `ApiError` dönmesi sağlandı.
+  - `GlobalExceptionHandler` sınıfına `DataAccessResourceFailureException` (503), `HttpRequestMethodNotSupportedException` (405) ve state/argument (400) hataları eklendi.
+  - `CustomErrorControllerTest` yazılarak hem HTML hem JSON hata çıktıları test edildi.
 - Kararlar:
   - Testlerin izole çalışabilmesi için veritabanı gerektiren entegrasyon testleri yerine mock katmanı tercih edildi.
 - Kabul kriteri:
-  - `mvn clean test` çıktısında `BUILD SUCCESS` alındı ve tüm 61 test başarıyla geçti.
+  - `mvn clean test` çıktısında `BUILD SUCCESS` alındı ve tüm 63 test başarıyla geçti.
 - Açık konular / sıradaki:
   - Frontend modüllerine (FE-0: Temel & ortak UI altyapısı) geçiş yapılacak.
 
