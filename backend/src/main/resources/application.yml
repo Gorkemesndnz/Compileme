@@ -39,3 +39,5 @@ springdoc:
 app:
   upload:
     dir: ./uploads
+  weather:
+    api-key: ${OPENWEATHER_API_KEY:}
