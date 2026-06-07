@@ -19,10 +19,15 @@
 ---
 
 ## 2. Teknoloji stack'i (KESİN — değiştirme)
-**Backend:** Java 21 · Spring Boot 3.4.5 · Maven · Spring Web · Spring Data JPA + Hibernate · Spring Validation · Lombok · springdoc-openapi (Swagger UI)
-**DB:** PostgreSQL 16 (Docker) · Flyway (migration: `flyway-core` + `flyway-database-postgresql`)
+**Backend:** Java 17 (hedef) · Spring Boot 3.4.5 · Maven · Spring Web · Spring Data JPA + Hibernate · Spring Validation · Lombok · springdoc-openapi (Swagger UI)
+**DB:** PostgreSQL 16 (Docker, **host portu 5433**) · Flyway (migration: `flyway-core` + `flyway-database-postgresql`)
 **Frontend:** React 18 · Vite · TypeScript · Tailwind CSS (shadcn/21st.dev uyumlu) · React Router · TanStack Query · axios · zustand
 **Altyapı:** Docker Compose (postgres + pgadmin)
+
+> **Ortam notları (gerçek kurulum — bunlara uy):**
+> - Hedef derleme sürümü **Java 17** (yerel makinede JDK 18 var; Spring Boot 3.4.5 ile tam uyumlu). Java 21'e yükseltme yapma — yerelde yok.
+> - PostgreSQL Docker **host portu 5433** (yerelde 5432 dolu). `application.yml` JDBC bu porta bağlı. 5432 varsayma.
+> - Bağımlılık eklerken sürüm uyumuna dikkat (örn. lucide-react'ta olmayan ikon adı kullanma — `FolderCode` yok, `Folder` kullan).
 
 ### Bilinçli OLMAYAN kararlar (eklemeyin)
 - **Mikroservis YOK** — modüler monolit (sebep: tek kullanıcı/tek deploy; mikroservisin maliyeti var faydası yok).
@@ -134,20 +139,31 @@ Tam DDL: `backend/src/main/resources/db/migration/V1__init_schema.sql` (tek doğ
 ---
 
 ## 8. Faz planı (sırayla; her fazı TEK ajan baştan sona bitirir)
-- **Faz 0 — Kurulum & iskelet:** repo, docker-compose, Flyway V1+V2, CORS, `GET /api/health`, Swagger; Vite+TS+Tailwind, /api proxy, sidebar+routing, 6 placeholder sayfa, karşılama (splash) animasyonu. **Bitti:** üçü de çalışıyor, anasayfada API bağlantısı yeşil.
-- **Faz 1 — Ortak altyapı:** BaseEntity, GlobalExceptionHandler, frontend api client + query hook convention + ortak UI. (Ops: Spring Modulith ile sınır doğrulama.)
-- **Faz 2 — Görevler + Anasayfa (çekirdek):** task CRUD + complete + move + reorder; dashboard özeti; bugün/yarın listeleri, hızlı ekleme, özet kartları.
-- **Faz 3 — Su takibi:** water_log; bugünkü toplam/hedef/yüzde; halka animasyonu (1.5L/0.5L/300ml/-300/reset).
-- **Faz 4 — Fikir havuzu:** idea CRUD + convert (domain event → project).
-- **Faz 5 — Projeler:** (5a proje+faz, faz görevleri task'a bağlanır) (5b technology+snippet+link+document); proje detay ekranı.
-- **Faz 6 — Dosya:** multipart upload, indir/aç.
-- **Faz 7 — Eğitimler:** education+resource+practice; ilerleme; PDF (Faz 6 kullanılır).
-- **Faz 8 — Takvim:** aggregation; günlük/haftalık/aylık; sürükle-bırak (bucket+date); filtreler; aylık plana ekle.
-- **Faz 9 — Odak modu:** saat/ajanda; weather (OpenWeatherMap); ışık/sıcaklık; focus_session.
-- **Faz 10 — Asistan (ops):** NL → structured task; bulut API veya Ollama (lokal).
-- **Faz 11 — Cila/yayın (ops):** validation, responsive, Dockerize, (yayınlarsa) auth.
 
-> Faz 6 (dosya), Faz 7'den (eğitim) önce gelmeli. Çekirdek değer Faz 2'de.
+> **YAKLAŞIM: BACKEND-FIRST.** Önce tüm backend (API) bitirilir, sonra frontend. Faz 2–10 **yalnızca backend**'dir; bu fazlarda `frontend/`'e dokunulmaz. Her modülün ekranı, backend bittikten sonra "Frontend Fazları" bloğunda gelir.
+> Not: Faz 0 frontend iskeletini (boş kabuk + bağlantı testi) kurdu ve Faz 1 bazı frontend temel parçalarını (sonner, date helpers, useUiStore, `components/ui` primitive'leri) ekledi — bunlar duruyor; üzerine özellik ekranları frontend fazında gelecek.
+
+### Backend fazları
+- **Faz 0 — Kurulum & iskelet:** repo, docker-compose, Flyway V1+V2, CORS, `GET /api/health`, Swagger; frontend iskelet kabuğu + splash. ✅
+- **Faz 1 — Backend ortak altyapı:** domain event altyapısı, `CurrentUserProvider`, Jackson tarih ayarı, `docs/MODULE-TEMPLATE.md`. (Ops: Spring Modulith.) ✅
+- **Faz 2 — Görevler + Dashboard (çekirdek):** task CRUD + complete + move (yarına aktar/drag) + reorder; `GET /api/dashboard` bugünkü görev özeti (TaskService üzerinden).
+- **Faz 3 — Su takibi:** water_log; bugünkü toplam/hedef/yüzde; log + sil.
+- **Faz 4 — Fikir havuzu:** idea CRUD + convert (domain event → project).
+- **Faz 5 — Projeler:** (5a project + project_phase, faz görevleri task'a ID ile bağlanır) (5b technology + snippet + link + document).
+- **Faz 6 — Dosya:** multipart upload, indir/aç.
+- **Faz 7 — Eğitimler:** education + resource + practice; ilerleme; dosya (Faz 6).
+- **Faz 8 — Takvim:** aggregation endpoint (task + education); günlük/haftalık/aylık; kind filtresi.
+- **Faz 9 — Odak / hava:** weather (OpenWeatherMap proxy); focus_session (ekran başı süre); settings.
+- **Faz 10 — Asistan (ops):** NL → structured task; bulut API veya Ollama.
+
+### Frontend fazları (TÜM backend bitince başlar)
+- **FE-0 — Temel & ortak UI:** 21st.dev entegrasyonu, query/mutation hook convention (`src/api/<modul>.ts`), ortak ekran iskeletleri (loading/error/empty), tema.
+- **FE — Anasayfa + Su:** bugün/yarın listeleri, hızlı ekleme, özet kartları, su halkası animasyonu.
+- **FE — Projeler · Eğitimler · Takvim (drag-drop) · Odak modu · Fikir havuzu:** her modülün ekranı.
+- **Cila/yayın (ops):** validation cilası, responsive, Dockerize, (yayınlarsa) auth.
+
+> Backend'de: Faz 6 (dosya), Faz 7'den (eğitim) önce gelmeli. Çekirdek değer Faz 2'de.
+> `docs/PROGRESS.md` faz durum tablosu bu sırayı takip eder.
 
 ---
 

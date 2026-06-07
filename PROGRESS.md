@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 2 — Görevler + Anasayfa (çekirdek)
-- **Çalışıyor mu:** Evet (Faz 1 başarıyla tamamlandı, backend derleniyor, sonner, date helpers, custom hook entegre edildi)
-- **Sırada:** Faz 2'yi kur → task CRUD + complete + move + reorder; bugün/yarın listeleri.
+- **Aktif faz:** Faz 3 — Su Takibi (backend)
+- **Çalışıyor mu:** Evet (Faz 2 başarıyla tamamlandı, backend derleniyor ve tüm görev-dashboard API testleri başarılı)
+- **Sırada:** Faz 3'ü kur → Su Takibi backend modülü (water_log, bugün toplam/hedef/yüzde, log ekleme + silme).
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
@@ -22,15 +22,15 @@
 |-----|------|-------|
 | 0 | İskelet & bağlama | ✅ Tamamlandı |
 | 1 | Ortak altyapı | ✅ Tamamlandı |
-| 2 | Görevler + Anasayfa | ⬜ Başlanmadı |
-| 3 | Su takibi | ⬜ Başlanmadı |
-| 4 | Fikir havuzu | ⬜ Başlanmadı |
-| 5 | Projeler | ⬜ Başlanmadı |
-| 6 | Dosya | ⬜ Başlanmadı |
-| 7 | Eğitimler | ⬜ Başlanmadı |
-| 8 | Takvim | ⬜ Başlanmadı |
-| 9 | Odak modu | ⬜ Başlanmadı |
-| 10 | Asistan (ops) | ⬜ Başlanmadı |
+| 2 | Görevler + Dashboard (backend) | ✅ Tamamlandı |
+| 3 | Su takibi (backend) | ⬜ Başlanmadı |
+| 4 | Fikir havuzu (backend) | ⬜ Başlanmadı |
+| 5 | Projeler (backend) | ⬜ Başlanmadı |
+| 6 | Dosya (backend) | ⬜ Başlanmadı |
+| 7 | Eğitimler (backend) | ⬜ Başlanmadı |
+| 8 | Takvim (backend) | ⬜ Başlanmadı |
+| 9 | Odak modu + Hava (backend) | ⬜ Başlanmadı |
+| 10 | Asistan (ops, backend) | ⬜ Başlanmadı |
 | 11 | Cila/yayın (ops) | ⬜ Başlanmadı |
 
 İşaretler: ⬜ Başlanmadı · 🟡 Devam ediyor · ✅ Tamamlandı · ⛔ Engellendi
@@ -39,6 +39,27 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 2 — Görevler + Dashboard (backend)
+- Ajan: Antigravity
+- Branch / commit: master / Faz 2
+- Durum: Tamamlandı
+- Yapılanlar:
+  - JPA Entity `Task.java` oluşturuldu, V1 veri tabanı şemasıyla birebir eşlendi.
+  - Görev durumu, türü ve havuzu için `TaskStatus`, `TaskKind`, `PlanningBucket` enum'ları eklendi.
+  - `CurrentUserProvider` ile giriş yapan kullanıcının (`user_id = 1L`) veri erişim kapsamı güvenli hale getirildi.
+  - `TaskRepository` yazıldı ve esnek arama sorgusu entegre edildi.
+  - `TaskService` concrete servis olarak CRUD, complete (toggle), move (aktarma), reorder (sıralama) ve silme iş mantığıyla implement edildi.
+  - `/api/tasks` altındaki tüm REST endpoint'leri (CRUD, `/complete`, `/move`, `/reorder`) `TaskController` ile sunuldu.
+  - `DashboardController` ve `DashboardService` katmanı, modül sınırlarına uygun şekilde `TaskService` aracılığıyla bugünün görev sayılarını (toplam/tamamlanan) getirecek şekilde kodlandı.
+- Kararlar:
+  - PostgreSQL'de sorgu parametre tiplerinin belirsizlik hatasını (`could not determine data type of parameter`) aşmak için JPQL filtrelerinde parametreler açıkça cast edildi: `cast(:param as type)`.
+- Kabul kriteri:
+  - `mvn compile` başarıyla tamamlandı, uygulama Flyway migration'larını sorunsuz uygulayarak başladı.
+  - PowerShell ile `POST`, `GET`, `PATCH` ve `DELETE` istekleri üzerinden tüm CRUD, tamamlama, sıralama ve taşıma işlemleri doğrulanarak sistemin çalıştığı gözlemlendi.
+  - Dashboard API'sinin toplam/tamamlanan görev adetlerini doğru yansıttığı teyit edildi.
+- Açık konular / sıradaki:
+  - Faz 3 (Su Takibi backend) geliştirilmesine geçilecek.
 
 ### 2026-06-07 · Faz 1 — Ortak altyapı
 - Ajan: Antigravity
@@ -115,3 +136,4 @@
 - **`task` merkezi tablo** — bugün/yarın + takvim + faz görevleri aynı tabloda; dokunmak en maliyetlisi.
 - **PostgreSQL Portu:** Yerel port `5432` dolu olduğu için Docker host portu `5433` yapıldı ve backend bu porta bağlandı.
 - **Java Sürümü:** Yerel makinede yalnızca JDK 18 kurulu olduğu için Java 21 yerine hedef derleme sürümü Java `17` yapıldı (Spring Boot 3.x ile tam uyumludur).
+- **PostgreSQL Nullable Parametre Eşleşmesi:** JPQL/HQL sorgularında parametre null kontrolü yapılırken (`:param is null`) PostgreSQL'in tip çözümleme hatası vermesini engellemek için parametreler `cast(:param as type)` şeklinde cast edilir.
