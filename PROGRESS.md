@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 8 — Takvim (backend)
-- **Çalışıyor mu:** Evet (Faz 8 başarıyla tamamlandı, aggregate calendar API /api/calendar testleri başarılı)
-- **Sırada:** Faz 9 — Odak modu + Hava backend modülünü kur (settings, weather proxy, focus sessions).
+- **Aktif faz:** Faz 9 — Odak modu + Hava (backend)
+- **Çalışıyor mu:** Evet (Faz 9 başarıyla tamamlandı, API Key korumalı Settings, Focus Session ve Weather (şehir/lat-lon) API testleri başarılı)
+- **Sırada:** Faz 10 — Asistan (ops, backend) veya doğrudan FE-0 — Temel & ortak UI (Frontend Fazı).
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
@@ -29,7 +29,7 @@
 | 6 | Dosya (backend) | ✅ Tamamlandı |
 | 7 | Eğitimler (backend) | ✅ Tamamlandı |
 | 8 | Takvim (backend) | ✅ Tamamlandı |
-| 9 | Odak modu + Hava (backend) | ⬜ Başlanmadı |
+| 9 | Odak modu + Hava (backend) | ✅ Tamamlandı |
 | 10 | Asistan (ops, backend) | ⬜ Başlanmadı |
 | 11 | Cila/yayın (ops) | ⬜ Başlanmadı |
 
@@ -39,6 +39,25 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 9 — Odak modu + Hava (backend)
+- Ajan: Antigravity
+- Branch / commit: master / a5c56e4
+- Durum: Tamamlandı
+- Yapılanlar:
+  - OpenWeatherMap API Key'in güvenliği için kök dizinde `.env` dosyası oluşturuldu ve `.gitignore` altında korumaya alındı.
+  - `docker-compose.yml` ve `application.yml` dosyaları güncellenerek çevre değişkeni enjeksiyonu (`OPENWEATHER_API_KEY`) sağlandı.
+  - `Settings.java` entity, `SettingsRepository.java`, `SettingsService.java` (get/update fallback mantıklı) ve `SettingsController.java` eklendi.
+  - `FocusSession.java` entity, `FocusSessionRepository.java`, `FocusSessionService.java` (otomatik aktif oturum kapatma ve duration hesabı mantıklı) ve `FocusSessionController.java` eklendi.
+  - RestClient kullanan proxy `WeatherService.java` ve şehir adı yanında **enlem/boylam (lat/lon) koordinat** destekli `WeatherController.java` eklendi.
+- Kararlar:
+  - settings ve focus_session tabloları audit kolonları içermediği için validate hata koruması adına `BaseEntity`'den türetilmedi.
+  - Hava durumu proxy endpoint'i, dönen JSON yanıtını doğrudan (raw formatta) istemciye iletecek şekilde tasarlandı.
+- Kabul kriteri:
+  - JDK 21 ile yerel ve docker derlemeleri sıfır hata ile geçti.
+  - PowerShell ile yapılan Settings API (GET/PUT), Weather API (şehir ve koordinat bazlı proxy testleri) ve Focus Session API (start, sleep, stop, listeleme) testleri başarıyla doğrulandı.
+- Açık konular / sıradaki:
+  - Faz 10 (Asistan backend - opsiyonel) veya doğrudan Frontend entegrasyonuna (FE-0) geçilecek.
 
 ### 2026-06-07 · Faz 8 — Takvim (backend)
 - Ajan: Antigravity
@@ -265,3 +284,6 @@
 - **PostgreSQL Nullable Parametre Eşleşmesi:** JPQL/HQL sorgularında parametre null kontrolü yapılırken (`:param is null`) PostgreSQL'in tip çözümleme hatası vermesini engellemek için parametreler `cast(:param as type)` şeklinde cast edilir.
 - **Java 21 Modernizasyonu ve Docker:** Proje Java 21 LTS sürümüne yükseltildi, Maven multi-stage Dockerfile ve docker-compose backend servisi eklenerek tüm mimari Dockerize edildi.
 - **stored_file Denetim Kolonları:** stored_file tablosunda updated_at bulunmadığından entity sınıfı BaseEntity'den türetilmedi.
+- **Weather API Key (.env):** OpenWeatherMap API key yerel .env dosyasında saklanır ve git'e pushlanması engellenir. Docker Compose aracılığıyla container ortamına güvenle aktarılır.
+- **Weather Coordinates (lat/lon):** /api/weather endpoint'i koordinat tabanlı sorguları (lat/lon) doğrudan destekler.
+
