@@ -1,6 +1,7 @@
 package com.compileme.weather;
 
 import com.compileme.common.exception.NotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -13,11 +14,18 @@ public class WeatherService {
     private final String apiKey;
     private final RestClient restClient;
 
+    @Autowired
     public WeatherService(@Value("${app.weather.api-key:}") String apiKey) {
         this.apiKey = apiKey;
         this.restClient = RestClient.builder()
                 .baseUrl("https://api.openweathermap.org/data/2.5")
                 .build();
+    }
+
+    // Test constructor
+    WeatherService(String apiKey, RestClient restClient) {
+        this.apiKey = apiKey;
+        this.restClient = restClient;
     }
 
     public String getWeatherData(String city, Double lat, Double lon) {

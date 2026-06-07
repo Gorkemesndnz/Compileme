@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 9 — Odak modu + Hava (backend)
-- **Çalışıyor mu:** Evet (Faz 9 başarıyla tamamlandı, API Key korumalı Settings, Focus Session ve Weather (şehir/lat-lon) API testleri başarılı)
-- **Sırada:** Faz 10 — Asistan (ops, backend) veya doğrudan FE-0 — Temel & ortak UI (Frontend Fazı).
+- **Aktif faz:** FE-0 — Temel & Ortak UI Altyapısı
+- **Çalışıyor mu:** Evet (Tüm backend modülleri ve 61 testin hepsi başarıyla tamamlandı, BUILD SUCCESS alındı)
+- **Sırada:** FE-0 — Temel & Ortak UI Altyapısı Planlaması ve Uygulanması
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
@@ -31,7 +31,7 @@
 | 8 | Takvim (backend) | ✅ Tamamlandı |
 | 9 | Odak modu + Hava (backend) | ✅ Tamamlandı |
 | 10 | Asistan (ops, backend) | ⬜ Başlanmadı |
-| 11 | Cila/yayın (ops) | ⬜ Başlanmadı |
+| FE-0 | Temel & ortak UI altyapısı | 🟡 Devam ediyor |
 
 İşaretler: ⬜ Başlanmadı · 🟡 Devam ediyor · ✅ Tamamlandı · ⛔ Engellendi
 
@@ -39,6 +39,23 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 9 — Backend Test Altyapısı & Düzeltmeler
+- Ajan: Antigravity
+- Branch / commit: master / ac8afa7 (ve düzeltmeler)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - 9 backend modülünün tüm Service katmanı (Mockito mock'ları ile) ve Controller katmanı (MockMvc ile) testleri JUnit 5 kullanılarak yazıldı.
+  - Spring Boot context yüklenmesi sırasında WeatherService çoklu constructor'ı nedeniyle oluşan `No default constructor found` hatası `@Autowired` eklenerek giderildi.
+  - FileController'ın CREATED (201) yanıtını 200 bekleyen FileControllerTest düzeltildi.
+  - ProjectServiceTest'teki event fırlatma mantığı ayrıştırılarak `create` ve `createFromIdea` testleri iki ayrı metoda bölündü.
+  - Tüm 61 test lokal Maven (`mvn test`) ile hatasız koşturuldu ve `BUILD SUCCESS` alındı.
+- Kararlar:
+  - Testlerin izole çalışabilmesi için veritabanı gerektiren entegrasyon testleri yerine mock katmanı tercih edildi.
+- Kabul kriteri:
+  - `mvn clean test` çıktısında `BUILD SUCCESS` alındı ve tüm 61 test başarıyla geçti.
+- Açık konular / sıradaki:
+  - Frontend modüllerine (FE-0: Temel & ortak UI altyapısı) geçiş yapılacak.
 
 ### 2026-06-07 · Faz 9 — Odak modu + Hava (backend)
 - Ajan: Antigravity
