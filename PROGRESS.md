@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 4 — Fikir Havuzu (backend)
-- **Çalışıyor mu:** Evet (Faz 3 başarıyla tamamlandı, backend derleniyor ve tüm su-dashboard API testleri başarılı)
-- **Sırada:** Faz 4'ü kur → Fikir Havuzu backend modülü (idea CRUD + convert).
+- **Aktif faz:** Faz 5 — Projeler (backend)
+- **Çalışıyor mu:** Evet (Faz 4 başarıyla tamamlandı, backend derleniyor ve tüm fikir havuzu API/domain event testleri başarılı)
+- **Sırada:** Faz 5'i kur → Projeler backend modülü (5a project + project_phase, 5b technology + snippet + link + document).
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
@@ -24,7 +24,7 @@
 | 1 | Ortak altyapı | ✅ Tamamlandı |
 | 2 | Görevler + Dashboard (backend) | ✅ Tamamlandı |
 | 3 | Su takibi (backend) | ✅ Tamamlandı |
-| 4 | Fikir havuzu (backend) | ⬜ Başlanmadı |
+| 4 | Fikir havuzu (backend) | ✅ Tamamlandı |
 | 5 | Projeler (backend) | ⬜ Başlanmadı |
 | 6 | Dosya (backend) | ⬜ Başlanmadı |
 | 7 | Eğitimler (backend) | ⬜ Başlanmadı |
@@ -39,6 +39,28 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 4 — Fikir Havuzu (backend)
+- Ajan: Antigravity
+- Branch / commit: master / Faz 4
+- Durum: Tamamlandı
+- Yapılanlar:
+  - JPA Entity `Idea.java` oluşturuldu, V1 veri tabanı şemasıyla birebir eşlendi (güncelleme tarihi bulunduğundan `BaseEntity`'den türetildi).
+  - Fikir durumu için `RAW`, `DEVELOPING`, `CONVERTED` durumlarını içeren `IdeaStatus` enum'u yazıldı.
+  - Kullanıcıya göre fikirleri listeleyen `IdeaRepository` eklendi.
+  - Girdi/çıktı veri modelleri için `IdeaRequest` ve `IdeaResponse` DTO'ları ve statik mapping için `IdeaMapper`Mapper sınıfı yazıldı.
+  - Domain Event yapısını implement eden `IdeaConvertedEvent` record sınıfı tanımlandı.
+  - `IdeaService` concrete servis sınıfı eklenerek CRUD, güncelleme, silme (sahiplik doğrulamalı) ve projeye dönüştürme (`convert`) işlemleri implement edildi.
+  - `IdeaEventListener` concrete sınıfı yazıldı, `IdeaConvertedEvent` tetiklendiğinde olay loglandı (Faz 5'te bu dinleyici gerçek proje kaydı oluşturacak şekilde genişletilecek).
+  - `/api/ideas` altındaki REST endpoint'leri (`GET`, `POST`, `PATCH`, `/convert`, `DELETE`) `IdeaController` ile sunuldu.
+- Kararlar:
+  - Fikir projeye dönüştürüldüğünde gevşek bağlılığı (loose coupling) sağlamak amacıyla Spring domain event yapısı kullanıldı.
+  - Projeler modülü henüz yazılmadığı için geçici bir olay dinleyicisi `@EventListener` yazılarak olay loglandı.
+- Kabul kriteri:
+  - Proje `mvn compile` ile hatasız derlendi, Tomcat başarıyla başladı.
+  - API üzerinden log ekleme, güncelleme, dönüştürme ve silme testleri PowerShell aracılığıyla başarıyla tamamlandı. Fikir dönüştürüldüğünde olay dinleyicisinin (`IdeaEventListener`) log mesajını başarıyla bastığı doğrulandı.
+- Açık konular / sıradaki:
+  - Faz 5 (Projeler backend) modülünün geliştirilmesine geçilecek.
 
 ### 2026-06-07 · Faz 3 — Su Takibi (backend)
 - Ajan: Antigravity
