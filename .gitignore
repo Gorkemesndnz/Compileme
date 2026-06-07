@@ -1,0 +1,39 @@
+# IDE / Editor folders
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Java / Maven target directories
+backend/target/
+target/
+*.class
+
+# Node / npm directories
+frontend/node_modules/
+node_modules/
+frontend/dist/
+dist/
+
+# Env and local configurations
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Agent configuration directories
+.anthropic/
+.claude/
+.gemini/
+.copilot/
+
+# Operating System Files
+thumbs.db
+db.db
+Desktop.ini
+.DS_Store
