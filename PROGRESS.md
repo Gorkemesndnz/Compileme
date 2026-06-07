@@ -12,15 +12,15 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 0 — İskelet & bağlama
-- **Çalışıyor mu:** Henüz çalıştırılmadı (Antigravity planı üretti, uygulama bekleniyor)
-- **Sırada:** Faz 0'ı kur → 3 kabul kriterini geçir → git'e "Faz 0: iskelet" commit'i
-- **Son güncelleme:** —
+- **Aktif faz:** Faz 1 — Ortak altyapı
+- **Çalışıyor mu:** Evet (Faz 0 başarıyla çalıştırıldı, backend 8080'de, frontend 5173'te ve veritabanı Docker'da çalışıyor)
+- **Sırada:** Faz 1'i kur → BaseEntity, GlobalExceptionHandler, frontend query hook
+- **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
 |-----|------|-------|
-| 0 | İskelet & bağlama | ⬜ Başlanmadı |
+| 0 | İskelet & bağlama | ✅ Tamamlandı |
 | 1 | Ortak altyapı | ⬜ Başlanmadı |
 | 2 | Görevler + Anasayfa | ⬜ Başlanmadı |
 | 3 | Su takibi | ⬜ Başlanmadı |
@@ -40,7 +40,30 @@
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
 
-_(Henüz giriş yok — ilk girişi Faz 0 tamamlandığında ekle.)_
+### 2026-06-07 · Faz 0 — İskelet & bağlama
+- Ajan: Antigravity
+- Branch / commit: master / a2121d1
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `docker-compose.yml` ile PostgreSQL 16 ve pgAdmin 4 ayağa kaldırıldı (Çakışma önlemek için host portu `5433` yapıldı).
+  - Spring Boot 3.4.5 Maven backend oluşturuldu. Local sistemde JDK 18 olduğundan target compile sürümü `17` olarak ayarlandı.
+  - Flyway entegrasyonu tamamlandı, `V1__init_schema.sql` ve `V2__seed_user.sql` (Görkem kullanıcısı ve ayarları) migrations başarıyla uygulandı.
+  - `/api/health` durum endpoint'i yazıldı.
+  - React + Vite + TypeScript + Tailwind CSS tabanlı frontend iskeleti kuruldu.
+  - Sol navigasyon sidebar'ı ve tam ekran Odak Modu geçişi uygulandı.
+  - TanStack Query ile dashboard üzerinde `/api/health` çağrılıp API bağlantı durumu görselleştirildi.
+  - Oturumda bir kez çalışan animasyonlu `WelcomeSplash` ("Hoş geldin, Görkem") entegre edildi.
+  - `npm run build` ile frontend'in hatasız derlendiği doğrulandı.
+- Kararlar:
+  - Local makinede port `5432` dolu olduğundan Docker host portu `5433` olarak değiştirildi.
+  - Local makinede JDK 21 bulunmadığından backend target compiler release sürümü Java `17`'ye çekildi (Spring Boot 3.4.5 ile tam uyumludur).
+  - Lucide React'ın bu sürümünde Rollup bundler compile sırasında `FolderCode` bulunamadığı için Sidebar ve Projects sayfasındaki ikon `Folder` olarak değiştirildi.
+- Kabul kriteri: 
+  - `docker compose up -d` başarılı.
+  - `/api/health` 200 dönüyor.
+  - Frontend `localhost:5173`'te açılıyor, Sidebar sayfaları geziliyor, animasyon oynuyor ve yeşil "API bağlantısı çalışıyor" görünüyor.
+- Açık konular / sıradaki: 
+  - Faz 1 (Ortak altyapı) başlatılacak.
 
 ---
 
@@ -67,3 +90,5 @@ _(Henüz giriş yok — ilk girişi Faz 0 tamamlandığında ekle.)_
 - **Redis yok** — gerekirse önce Spring Cache + Caffeine.
 - **Auth v1'de yok** — şema `user_id` ile hazır, tek kullanıcı `id=1`.
 - **`task` merkezi tablo** — bugün/yarın + takvim + faz görevleri aynı tabloda; dokunmak en maliyetlisi.
+- **PostgreSQL Portu:** Yerel port `5432` dolu olduğu için Docker host portu `5433` yapıldı ve backend bu porta bağlandı.
+- **Java Sürümü:** Yerel makinede yalnızca JDK 18 kurulu olduğu için Java 21 yerine hedef derleme sürümü Java `17` yapıldı (Spring Boot 3.x ile tam uyumludur).
