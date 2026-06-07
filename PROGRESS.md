@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 5 — Projeler (backend)
-- **Çalışıyor mu:** Evet (Faz 4 başarıyla tamamlandı, backend derleniyor ve tüm fikir havuzu API/domain event testleri başarılı)
-- **Sırada:** Faz 5'i kur → Projeler backend modülü (5a project + project_phase, 5b technology + snippet + link + document).
+- **Aktif faz:** Faz 6 — Dosya (backend)
+- **Çalışıyor mu:** Evet (Faz 5 başarıyla tamamlandı, backend derleniyor, tüm projeler ve alt kaynaklar ile fikir dönüşüm API/domain event testleri başarılı)
+- **Sırada:** Faz 6 — Dosya backend modülünü kur (multipart upload, indir/aç).
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
@@ -25,7 +25,7 @@
 | 2 | Görevler + Dashboard (backend) | ✅ Tamamlandı |
 | 3 | Su takibi (backend) | ✅ Tamamlandı |
 | 4 | Fikir havuzu (backend) | ✅ Tamamlandı |
-| 5 | Projeler (backend) | ⬜ Başlanmadı |
+| 5 | Projeler (backend) | ✅ Tamamlandı |
 | 6 | Dosya (backend) | ⬜ Başlanmadı |
 | 7 | Eğitimler (backend) | ⬜ Başlanmadı |
 | 8 | Takvim (backend) | ⬜ Başlanmadı |
@@ -39,6 +39,32 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 5 — Projeler (backend)
+- Ajan: Antigravity
+- Branch / commit: master / Faz 5
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Projeler modülünde kullanılan enum'lar (`ProjectStatus`, `TechnologyCategory`, `SnippetCategory`, `LinkType`, `LinkCategory`, `DocumentType`, `DocumentFormat`) oluşturuldu.
+  - V1 şemasına uygun JPA entity sınıfları (`Project`, `ProjectPhase`, `ProjectTechnology`, `ProjectSnippet`, `ProjectLink`, `ProjectDocument`) yazıldı. Denetim kolonları (created_at, updated_at) olmayan tablolar için entity sınıfları `BaseEntity`'den türetilmedi.
+  - Altı ana repository arayüzü (`ProjectRepository`, `ProjectPhaseRepository`, `ProjectTechnologyRepository`, `ProjectSnippetRepository`, `ProjectLinkRepository`, `ProjectDocumentRepository`) oluşturuldu.
+  - Modüller arası gevşek bağlılık için `ProjectCreatedFromIdeaEvent` domain event sınıfı yazıldı.
+  - `ProjectEventListener` (`IdeaConvertedEvent` dinler) ve `IdeaEventListener` (`ProjectCreatedFromIdeaEvent` dinler) dinleyicileri eklendi.
+  - Fikir modülündeki `IdeaService` sınıfına `linkProject(Long ideaId, Long projectId)` metodu eklenerek fikir ile dönüşen proje arasındaki ilişkilendirme sağlandı.
+  - Proje, faz, teknoloji, snippet, link ve doküman için DTO sınıfları ile veri eşleme için `ProjectMapper` yazıldı.
+  - Tüm iş mantığı ve yetkilendirme (sahiplik) denetimlerini gerçekleştiren `ProjectService` ile REST endpoint'lerini (`GET`, `POST`, `PATCH`, `DELETE`) sunan `ProjectController` kodlandı.
+  - Faz sıralama sıralamasını yönetmek için `PATCH /api/projects/phases/reorder` endpoint'i yazıldı.
+- Kararlar:
+  - Fikir havuzunun projeler modülü ile sıkı sıkıya bağlı (hard-dependency) olmasını engellemek için çift yönlü olay tabanlı döngü (double-event loop) tasarlandı. Fikir dönüştürüldüğünde proje oluşturulur, proje oluşturulunca olay fırlatılarak fikir güncellenir.
+- Kabul kriteri:
+  - Proje `mvn compile` ile başarıyla derlendi, tüm 9 JPA repository'si yüklendi.
+  - PowerShell / curl.exe ile yapılan API testlerinde:
+    - Yeni bir fikir eklendi, projeye başarıyla dönüştürüldü ve fikrin `convertedProjectId` alanı ve durumu `CONVERTED` olarak güncellendi.
+    - Proje güncelleme, faz ekleme/listeleme/sıralama değiştirme (reorder) testleri başarıyla gerçekleştirildi.
+    - Teknoloji, snippet, link, doküman ekleme/listeleme/güncelleme/silme işlemleri başarıyla tamamlandı.
+    - Proje silindiğinde ilişkili faz, teknoloji, snippet vb. verilerin ON DELETE CASCADE ile silindiği ve ilgili fikrin `convertedProjectId` alanının SET NULL yapıldığı doğrulandı.
+- Açık konular / sıradaki:
+  - Faz 6 (Dosya backend modülü - multipart upload ve dosya indirme/açma işlemleri) başlatılacak.
 
 ### 2026-06-07 · Faz 4 — Fikir Havuzu (backend)
 - Ajan: Antigravity

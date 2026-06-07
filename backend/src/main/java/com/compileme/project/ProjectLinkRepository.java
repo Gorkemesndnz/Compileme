@@ -1,0 +1,8 @@
+package com.compileme.project;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface ProjectLinkRepository extends JpaRepository<ProjectLink, Long> {
+    List<ProjectLink> findAllByProjectIdOrderByOrderIndexAsc(Long projectId);
+}
