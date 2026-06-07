@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 7 — Eğitimler (backend)
-- **Çalışıyor mu:** Evet (Faz 6 başarıyla tamamlandı, backend Java 21 ile Docker ve lokal ortamda derleniyor, dosya yükleme/indirme/silme API ve disk testleri başarılı)
-- **Sırada:** Faz 7 — Eğitimler backend modülünü kur (education, resource, practice; Faz 6 entegrasyonuyla dosya ekleme).
+- **Aktif faz:** Faz 8 — Takvim (backend)
+- **Çalışıyor mu:** Evet (Faz 8 başarıyla tamamlandı, aggregate calendar API /api/calendar testleri başarılı)
+- **Sırada:** Faz 9 — Odak modu + Hava backend modülünü kur (settings, weather proxy, focus sessions).
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
@@ -27,8 +27,8 @@
 | 4 | Fikir havuzu (backend) | ✅ Tamamlandı |
 | 5 | Projeler (backend) | ✅ Tamamlandı |
 | 6 | Dosya (backend) | ✅ Tamamlandı |
-| 7 | Eğitimler (backend) | ⬜ Başlanmadı |
-| 8 | Takvim (backend) | ⬜ Başlanmadı |
+| 7 | Eğitimler (backend) | ✅ Tamamlandı |
+| 8 | Takvim (backend) | ✅ Tamamlandı |
 | 9 | Odak modu + Hava (backend) | ⬜ Başlanmadı |
 | 10 | Asistan (ops, backend) | ⬜ Başlanmadı |
 | 11 | Cila/yayın (ops) | ⬜ Başlanmadı |
@@ -39,6 +39,40 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 8 — Takvim (backend)
+- Ajan: Antigravity
+- Branch / commit: master / c50d3b0
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Takvim görünüm türleri için `CalendarView.java` (`DAY`, `WEEK`, `MONTH`) enum sınıfı eklendi.
+  - Tasks (`TaskResponse`) ve Educations (`EducationResponse`) listelerini tek bir aggregate response gövdesinde birleştiren `CalendarResponse.java` DTO record sınıfı oluşturuldu.
+  - Görevler ve eğitimleri tarih aralığı hesaplayarak getiren `CalendarService.java` servis sınıfı eklendi. Modül sınırlarına sadık kalınarak `TaskService` ve `EducationService` çağrıları kullanıldı.
+  - HTTP `GET /api/calendar` endpoint'ini sağlayan `CalendarController.java` sınıfı eklendi.
+- Kararlar:
+  - `kind` parametresiyle filtreleme yapıldığında, eğitimlerin (education) sadece `kind == TaskKind.EDUCATION` veya filtre belirtilmediğinde getirilmesi, diğer kind'larda (`PROJECT`, `REFACTOR` vb.) listelenmemesi sağlandı.
+- Kabul kriteri:
+  - Proje JDK 21 ve IntelliJ Maven ile başarıyla derlendi, Docker imajı sorunsuz build edildi.
+  - Günlük, haftalık, aylık görünümler ve kind filtreleri powershell API testleriyle doğrulandı. Pazartesi-Pazar haftalık sınır hesaplamalarının doğru yapıldığı görüldü.
+- Açık konular / sıradaki:
+  - Faz 9 (Odak modu + hava + settings backend) modülünün geliştirilmesine geçilecek.
+
+### 2026-06-07 · Faz 7 — Eğitimler (backend)
+- Ajan: Antigravity
+- Branch / commit: master / 8a82684
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Eğitim kaynak tipleri, durumu ve eğitim türü için `ResourceType`, `EducationStatus` ve `EducationType` enumları tanımlandı.
+  - JPA Entity sınıfları `Education.java`, `EducationResource.java` ve `EducationPractice.java` yazıldı.
+  - `EducationRepository`, `EducationResourceRepository` ve `EducationPracticeRepository` interface'leri oluşturuldu.
+  - DTO record'ları ve veri eşleme için `EducationMapper` mapping katmanı yazıldı.
+  - Tüm iş mantığını, sahiplik doğrulamalarını ve Faz 6 dosya doğrulamalarını içeren `EducationService` concrete sınıfı yazıldı.
+  - REST endpoint'lerini sunan `EducationController.java` denetleyicisi eklendi.
+- Kararlar:
+  - `education_resource` ve `education_practice` tabloları Validate şemasında `updated_at` içermediğinden JPA doğrulaması hatası almamak adına `BaseEntity`'den türetilmedi.
+- Kabul kriteri:
+  - Derleme, Docker Compose başlangıcı ve Flyway V3 doğrulamaları başarıyla geçti.
+  - Yüzdelik validasyonu, var olmayan dosya sahiplik doğrulamaları ve silme/güncelleme testleri başarıyla gerçekleştirildi.
 
 ### 2026-06-07 · Faz 6 — Dosya (backend)
 - Ajan: Antigravity
