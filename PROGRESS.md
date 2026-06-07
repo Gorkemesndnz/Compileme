@@ -12,16 +12,16 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 1 — Ortak altyapı
-- **Çalışıyor mu:** Evet (Faz 0 başarıyla çalıştırıldı, backend 8080'de, frontend 5173'te ve veritabanı Docker'da çalışıyor)
-- **Sırada:** Faz 1'i kur → BaseEntity, GlobalExceptionHandler, frontend query hook
+- **Aktif faz:** Faz 2 — Görevler + Anasayfa (çekirdek)
+- **Çalışıyor mu:** Evet (Faz 1 başarıyla tamamlandı, backend derleniyor, sonner, date helpers, custom hook entegre edildi)
+- **Sırada:** Faz 2'yi kur → task CRUD + complete + move + reorder; bugün/yarın listeleri.
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
 |-----|------|-------|
 | 0 | İskelet & bağlama | ✅ Tamamlandı |
-| 1 | Ortak altyapı | ⬜ Başlanmadı |
+| 1 | Ortak altyapı | ✅ Tamamlandı |
 | 2 | Görevler + Anasayfa | ⬜ Başlanmadı |
 | 3 | Su takibi | ⬜ Başlanmadı |
 | 4 | Fikir havuzu | ⬜ Başlanmadı |
@@ -39,6 +39,29 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 1 — Ortak altyapı
+- Ajan: Antigravity
+- Branch / commit: master / c550817 (Faz 0) -> Sonraki commit Faz 1
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Backend tarafında `DomainEvent` marker interface'i ve `ExampleDomainEvent` örnek event kaydı oluşturuldu.
+  - Jackson nesne serileştiricisinin tarih verilerini ISO-8601 biçiminde dönmesi için `JacksonConfig.java` yazıldı.
+  - Frontend tarafına `sonner` bildirim kütüphanesi kuruldu ve `App.tsx` içerisine `<Toaster />` enjekte edildi.
+  - TanStack Query `staleTime: 30000` ve pencere odağı yenilemeleri devre dışı bırakacak şekilde güncellendi.
+  - Türkçe tarih biçimlendirme ve gün ekleme fonksiyonları `src/lib/date.ts` altında kodlandı.
+  - Zustand ile sol menü ve tema yönetimi sağlayan `useUiStore.ts` store'u oluşturuldu.
+  - `src/api/health.ts` custom hook'u yazıldı ve Dashboard inline query yerine `useHealth()` hook'una geçirildi.
+  - Çekirdek primitive bileşenler (`Button`, `Card`, `Input`, `Textarea`, `Label`, `Badge`, `Spinner`, `EmptyState`) `components/ui/` altında oluşturuldu.
+  - `docs/MODULE-TEMPLATE.md` ile yeni modül ekleme standartları dökümante edildi.
+- Kararlar:
+  - Bağımlılık sadeliğini korumak adına MapStruct kullanılmadı, elle eşleme konvensiyonu dökümante edildi.
+  - Sayfalama (pagination) kişisel ölçekte gerek görülmediği için listeler doğrudan `List<XResponse>` dönülecek.
+- Kabul kriteri:
+  - `npm run build` ve `mvn compile` başarıyla tamamlandı.
+  - Dashboard'daki durum göstergesi custom hook ile çalışmakta, bildirim sistemi (toast) çalışır vaziyettedir.
+- Açık konular / sıradaki:
+  - Faz 2 (Görevler ve Anasayfa) başlatılacak.
 
 ### 2026-06-07 · Faz 0 — İskelet & bağlama
 - Ajan: Antigravity

@@ -1,45 +1,59 @@
-import React from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '../../api/client'
+import React, { useEffect } from 'react'
+import { toast } from 'sonner'
+import { useHealth } from '../../api/health'
 import { PageHeader } from '../../components/PageHeader'
-import { ShieldCheck, ShieldAlert, Cpu, Database, Activity } from 'lucide-react'
+import { ShieldCheck, ShieldAlert, Cpu, Database, Activity, Terminal } from 'lucide-react'
 
 export const DashboardPage: React.FC = () => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['health'],
-    queryFn: async () => {
-      const response = await apiClient.get<{ status: string; app: string }>('/health')
-      return response.data
-    },
-    refetchInterval: 5000,
-  })
+  const { data, isLoading, error } = useHealth()
+
+  useEffect(() => {
+    if (error) {
+      toast.error('API Bağlantı Hatası: Sunucuya erişilemiyor!', {
+        id: 'api-error-toast',
+      })
+    } else if (data?.status === 'UP') {
+      toast.success('Sistem Aktif: API bağlantısı başarıyla kuruldu.', {
+        id: 'api-success-toast',
+      })
+    }
+  }, [data, error])
 
   const isApiConnected = !isLoading && !error && data?.status === 'UP'
 
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Dashboard" 
+        title="Anasayfa" 
         subtitle="Günlük hedefler, projeler ve genel durum özeti."
         action={
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Sistem Durumu:</span>
-            {isLoading ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-400/10 text-amber-400 border border-amber-400/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-                Kontrol ediliyor...
-              </span>
-            ) : isApiConnected ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                API bağlantısı çalışıyor
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
-                <ShieldAlert className="h-3.5 w-3.5" />
-                API bağlantısı çalışmıyor
-              </span>
-            )}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => toast.info('Test Bildirimi: Arayüz bildirim sistemi çalışıyor!')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all cursor-pointer"
+            >
+              <Terminal className="h-3.5 w-3.5" />
+              Bildirim Test Et
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Sistem Durumu:</span>
+              {isLoading ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                  Kontrol ediliyor...
+                </span>
+              ) : isApiConnected ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  API bağlantısı çalışıyor
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                  API bağlantısı çalışmıyor
+                </span>
+              )}
+            </div>
           </div>
         }
       />
