@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U compileme -d compileme"]
+      test: [ "CMD-SHELL", "pg_isready -U compileme -d compileme" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,6 +26,20 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
+    depends_on:
+      - postgres
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: compileme-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/compileme
+      SPRING_DATASOURCE_USERNAME: compileme
+      SPRING_DATASOURCE_PASSWORD: compileme
+    ports:
+      - "8081:8080"
     depends_on:
       - postgres
 
