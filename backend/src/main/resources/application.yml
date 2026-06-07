@@ -5,6 +5,11 @@ spring:
   application:
     name: compileme
 
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+
   datasource:
     url: jdbc:postgresql://localhost:5433/compileme
     username: compileme
@@ -30,3 +35,7 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+app:
+  upload:
+    dir: ./uploads

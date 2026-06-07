@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz 6 — Dosya (backend)
-- **Çalışıyor mu:** Evet (Faz 5 başarıyla tamamlandı, backend derleniyor, tüm projeler ve alt kaynaklar ile fikir dönüşüm API/domain event testleri başarılı)
-- **Sırada:** Faz 6 — Dosya backend modülünü kur (multipart upload, indir/aç).
+- **Aktif faz:** Faz 7 — Eğitimler (backend)
+- **Çalışıyor mu:** Evet (Faz 6 başarıyla tamamlandı, backend Java 21 ile Docker ve lokal ortamda derleniyor, dosya yükleme/indirme/silme API ve disk testleri başarılı)
+- **Sırada:** Faz 7 — Eğitimler backend modülünü kur (education, resource, practice; Faz 6 entegrasyonuyla dosya ekleme).
 - **Son güncelleme:** 07.06.2026
 
 ## Faz Durumu
@@ -26,7 +26,7 @@
 | 3 | Su takibi (backend) | ✅ Tamamlandı |
 | 4 | Fikir havuzu (backend) | ✅ Tamamlandı |
 | 5 | Projeler (backend) | ✅ Tamamlandı |
-| 6 | Dosya (backend) | ⬜ Başlanmadı |
+| 6 | Dosya (backend) | ✅ Tamamlandı |
 | 7 | Eğitimler (backend) | ⬜ Başlanmadı |
 | 8 | Takvim (backend) | ⬜ Başlanmadı |
 | 9 | Odak modu + Hava (backend) | ⬜ Başlanmadı |
@@ -39,6 +39,29 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-07 · Faz 6 — Dosya (backend)
+- Ajan: Antigravity
+- Branch / commit: master / Faz 6
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Dosya metaverilerini saklamak için `StoredFile.java` JPA Entity sınıfı ve `StoredFileRepository.java` interface'i oluşturuldu.
+  - Flyway şema değişikliğini uygulamak için `V3__create_stored_file_table.sql` migration dosyası eklendi.
+  - `application.yml` dosyasına multipart dosya boyutu limitleri (15MB) ve `app.upload.dir` (diskte `./uploads`) özelliği eklendi.
+  - Dosya yükleme ve indirme işlemleri sırasında oluşabilecek disk ve I/O hataları için `FileStorageException.java` hata sınıfı common paketine eklendi.
+  - Dosyaların diskte UUID tabanlı benzersiz isimlerle kaydedilmesi, diskten yüklenmesi, silinmesi ve metaverilerinin veritabanında saklanması iş mantığını yöneten `FileService.java` concrete sınıfı yazıldı. Uygulama başlarken (`@PostConstruct`) diskteki upload dizininin otomatik oluşturulması sağlandı.
+  - Dosya yükleme (`POST /api/files`), indirme/ inline görüntüleme (`GET /api/files/{id}`), metadata sorgulama (`GET /api/files/{id}/metadata`) ve dosya silme (`DELETE /api/files/{id}`) REST endpoint'lerini sunan `FileController.java` sınıfı eklendi.
+- Kararlar:
+  - `stored_file` tablosunda `updated_at` kolonu bulunmadığı için `StoredFile` entity sınıfı `BaseEntity`'den türetilmedi (validate hatasını önlemek amacıyla).
+  - Dosya indirme endpoint'inde `Content-Disposition` header'ı `inline` yapılarak tarayıcıların desteklenen formatları (PDF, resim, metin) doğrudan açabilmesi sağlandı.
+- Kabul kriteri:
+  - Proje JDK 21 ile hem yerel ortamda hem de Docker multi-stage build içinde başarıyla derlendi.
+  - Docker Compose ortamı (`postgres`, `backend`, `pgadmin`) sorunsuz ayağa kaldırıldı, Flyway V3 başarıyla uygulandı.
+  - curl.exe ile yapılan testlerde dosya başarıyla yüklendi, `id = 1` ile metaveri alındı.
+  - Yüklenen dosya `/api/files/1` ile içeriği ve `Content-Type: text/plain` header'ı doğrulanarak indirildi.
+  - Dosya `/api/files/1` üzerinden silindi, veritabanı kaydıyla beraber Docker üzerindeki `/uploads` dizininden de fiziksel dosyanın tamamen silindiği ve tekrar sorgulandığında `404 Not Found` döndüğü doğrulandı.
+- Açık konular / sıradaki:
+  - Faz 7 (Eğitimler backend modülü - education, resource, practice CRUD işlemleri) başlatılacak.
 
 ### 2026-06-07 · Faz 5 — Projeler (backend)
 - Ajan: Antigravity
@@ -206,3 +229,5 @@
 - **PostgreSQL Portu:** Yerel port `5432` dolu olduğu için Docker host portu `5433` yapıldı ve backend bu porta bağlandı.
 - **Java Sürümü:** Yerel makinede yalnızca JDK 18 kurulu olduğu için Java 21 yerine hedef derleme sürümü Java `17` yapıldı (Spring Boot 3.x ile tam uyumludur).
 - **PostgreSQL Nullable Parametre Eşleşmesi:** JPQL/HQL sorgularında parametre null kontrolü yapılırken (`:param is null`) PostgreSQL'in tip çözümleme hatası vermesini engellemek için parametreler `cast(:param as type)` şeklinde cast edilir.
+- **Java 21 Modernizasyonu ve Docker:** Proje Java 21 LTS sürümüne yükseltildi, Maven multi-stage Dockerfile ve docker-compose backend servisi eklenerek tüm mimari Dockerize edildi.
+- **stored_file Denetim Kolonları:** stored_file tablosunda updated_at bulunmadığından entity sınıfı BaseEntity'den türetilmedi.
