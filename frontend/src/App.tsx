@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'sonner'
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query'
+import { toast, Toaster } from 'sonner'
 import { AppLayout } from './layout/AppLayout'
 import { WelcomeSplash } from './components/WelcomeSplash'
 
@@ -14,6 +14,22 @@ import { CalendarPage } from './features/calendar/CalendarPage'
 import { FocusPage } from './features/focus/FocusPage'
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error: any) => {
+      const message = error.response?.data?.message || error.message || 'Veriler alınamadı.'
+      toast.error(`İstek Başarısız: ${message}`, {
+        id: `query-error-${message.substring(0, 25)}`
+      })
+    }
+  }),
+  mutationCache: new MutationCache({
+    onError: (error: any) => {
+      const message = error.response?.data?.message || error.message || 'İşlem gerçekleştirilemedi.'
+      toast.error(`Hata: ${message}`, {
+        id: `mutation-error-${message.substring(0, 25)}`
+      })
+    }
+  }),
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,

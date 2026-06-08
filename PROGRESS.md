@@ -12,10 +12,10 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** FE-0 — Temel & Ortak UI Altyapısı
-- **Çalışıyor mu:** Evet (Tüm backend modülleri ve 61 testin hepsi başarıyla tamamlandı, BUILD SUCCESS alındı)
-- **Sırada:** FE-0 — Temel & Ortak UI Altyapısı Planlaması ve Uygulanması
-- **Son güncelleme:** 07.06.2026
+- **Aktif faz:** FE-1 — Anasayfa + Su Takibi (Frontend)
+- **Çalışıyor mu:** Evet (Tüm backend modülleri, testler ve FE-0 ortak UI altyapısı başarıyla tamamlandı)
+- **Sırada:** FE-1 — Anasayfa + Su Takibi Geliştirmeleri
+- **Son güncelleme:** 08.06.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
@@ -31,7 +31,7 @@
 | 8 | Takvim (backend) | ✅ Tamamlandı |
 | 9 | Odak modu + Hava (backend) | ✅ Tamamlandı |
 | 10 | Asistan (ops, backend) | ⬜ Başlanmadı |
-| FE-0 | Temel & ortak UI altyapısı | 🟡 Devam ediyor |
+| FE-0 | Temel & ortak UI altyapısı | ✅ Tamamlandı |
 
 İşaretler: ⬜ Başlanmadı · 🟡 Devam ediyor · ✅ Tamamlandı · ⛔ Engellendi
 
@@ -39,6 +39,20 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-08 · Faz FE-0 — Temel & Ortak UI Altyapısı
+- Ajan: Antigravity
+- Branch / commit: master / (FE-0 tamamlama)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - 21st.dev'den alınan collapsible, `framer-motion` animasyonlu modern `Sidebar.tsx` bileşeni React Router uyumlu hale getirilerek entegre edildi.
+  - Sidebar ve diğer UI ihtiyaçları için Radix UI tabanlı `Avatar`, `DropdownMenu`, `Separator`, `ScrollArea`, `Dialog`, `Select`, `Progress` ve `Tooltip` primitive'leri oluşturuldu.
+  - `Skeleton` pulsate yükleme bileşeni, yeniden dene destekli `ErrorScreen` ve `LoadingScreen` ortak ekranları eklendi.
+  - `index.css` dosyasına `.glass-panel` ve `.glow-cyan` gibi premium neon/glassmorphism sınıfları eklendi.
+  - `App.tsx` QueryClient yapılandırılarak global query/mutation cache hata dinleyicileri ve otomatik `sonner` toast tetikleyicileri entegre edildi.
+  - `types.ts` ile ortak API tipleri ve `ApiError` sarmalayıcısı tanımlandı.
+- Kabul kriteri:
+  - `npm run build` derleme testi başarıyla `Vite built` çıktısı vererek tamamlandı.
 
 ### 2026-06-07 · Faz 9 — Backend Test Altyapısı & Hata Yönetimi Düzeltmeleri
 - Ajan: Antigravity
