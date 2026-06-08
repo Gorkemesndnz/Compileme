@@ -1,152 +1,135 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useRef, useEffect } from "react";
 
-export const LivingVineBackground: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+interface LivingVineBackgroundProps {
+  vineColor?: string;
+  branchColor?: string;
+  maxBranchLength?: number;
+  className?: string;
+}
+
+export const LivingVineBackground: React.FC<LivingVineBackgroundProps> = ({
+  vineColor = "rgba(45, 255, 190, 0.8)",
+  branchColor = "rgba(45, 255, 190, 0.6)",
+  maxBranchLength = 50,
+  className = "",
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameIdRef = useRef<number | null>(null);
+  const mousePosRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const pathHistoryRef = useRef<{ x: number; y: number }[]>([]);
+  const branchesRef = useRef<any[]>([]);
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    let destroyed = false;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
 
-    let animationId: number
-    let width = (canvas.width = window.innerWidth)
-    let height = (canvas.height = window.innerHeight)
+    class Branch {
+      points: { x: number; y: number }[];
+      life: number;
+      angle: number;
+      speed: number;
+      length: number;
 
-    const handleResize = () => {
-      if (!canvas) return
-      width = canvas.width = window.innerWidth
-      height = canvas.height = window.innerHeight
+      constructor(x: number, y: number) {
+        this.points = [{ x, y }];
+        this.life = 1;
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = Math.random() * 1.5 + 0.5;
+        this.length = 0;
+      }
+
+      update() {
+        if (this.length >= maxBranchLength) {
+          this.life -= 0.02;
+          return;
+        }
+        this.angle += (Math.random() - 0.5) * 0.2;
+        const last = this.points[this.points.length - 1];
+        const newX = last.x + Math.cos(this.angle) * this.speed;
+        const newY = last.y + Math.sin(this.angle) * this.speed;
+        this.points.push({ x: newX, y: newY });
+        this.length++;
+      }
+
+      draw() {
+        if (!ctx) return;
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+        for (let i = 1; i < this.points.length; i++) {
+          ctx.lineTo(this.points[i].x, this.points[i].y);
+        }
+        ctx.strokeStyle = branchColor.replace(/[\d.]+\)$/, `${this.life * 0.4})`);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     }
-    window.addEventListener('resize', handleResize)
-
-    interface VineBranch {
-      x: number
-      y: number
-      vx: number
-      vy: number
-      angle: number
-      life: number
-      maxLife: number
-      width: number
-      color: string
-    }
-
-    const branches: VineBranch[] = []
-    const maxBranches = 15
-
-    const mouse = { x: width / 2, y: height / 2, moved: false }
 
     const handleMouseMove = (e: MouseEvent) => {
-      mouse.x = e.clientX
-      mouse.y = e.clientY
-      mouse.moved = true
-
-      if (Math.random() < 0.12 && branches.length < maxBranches) {
-        spawnBranch(mouse.x, mouse.y)
+      mousePosRef.current = { x: e.clientX, y: e.clientY };
+      pathHistoryRef.current.push({ ...mousePosRef.current });
+      if (pathHistoryRef.current.length > 100) pathHistoryRef.current.shift();
+      if (Math.random() > 0.95) {
+        branchesRef.current.push(new Branch(e.clientX, e.clientY));
       }
-    }
-    window.addEventListener('mousemove', handleMouseMove)
+    };
 
-    const spawnBranch = (startX: number, startY: number) => {
-      const angle = Math.random() * Math.PI * 2
-      const speed = Math.random() * 1.2 + 0.4
-      branches.push({
-        x: startX,
-        y: startY,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        angle: angle,
-        life: 0,
-        maxLife: Math.random() * 150 + 80,
-        width: Math.random() * 1.8 + 0.6,
-        color: `hsla(${175 + Math.random() * 25}, 100%, 40%, ${Math.random() * 0.2 + 0.08})`
-      })
-    }
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
 
-    for (let i = 0; i < 4; i++) {
-      spawnBranch(Math.random() * width, height)
-    }
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("resize", handleResize);
 
-    const draw = () => {
-      if (!ctx || !canvas) return
+    const animate = () => {
+      if (destroyed) return;
+      ctx.fillStyle = "rgba(11, 15, 25, 0.1)"; // Dark theme base color trails
+      ctx.fillRect(0, 0, width, height);
 
-      ctx.fillStyle = 'rgba(11, 15, 25, 0.035)'
-      ctx.fillRect(0, 0, width, height)
-
-      for (let i = branches.length - 1; i >= 0; i--) {
-        const b = branches[i]
-        
-        ctx.beginPath()
-        ctx.moveTo(b.x, b.y)
-
-        b.angle += (Math.random() - 0.5) * 0.35
-        
-        if (mouse.moved) {
-          const dx = mouse.x - b.x
-          const dy = mouse.y - b.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 250) {
-            const targetAngle = Math.atan2(dy, dx)
-            b.angle += (targetAngle - b.angle) * 0.04
-          }
+      if (pathHistoryRef.current.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(pathHistoryRef.current[0].x, pathHistoryRef.current[0].y);
+        for (let i = 1; i < pathHistoryRef.current.length; i++) {
+          ctx.lineTo(pathHistoryRef.current[i].x, pathHistoryRef.current[i].y);
         }
-
-        b.vx = Math.cos(b.angle) * 1.1
-        b.vy = Math.sin(b.angle) * 1.1
-
-        b.x += b.vx
-        b.y += b.vy
-        b.life++
-
-        ctx.lineTo(b.x, b.y)
-        ctx.strokeStyle = b.color
-        ctx.lineWidth = b.width
-        ctx.stroke()
-
-        if (Math.random() < 0.04 && b.life < b.maxLife - 15) {
-          ctx.beginPath()
-          const leafSize = Math.random() * 3 + 1.5
-          const leafAngle = b.angle + (Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2)
-          const leafX = b.x + Math.cos(leafAngle) * 4
-          const leafY = b.y + Math.sin(leafAngle) * 4
-          ctx.ellipse(leafX, leafY, leafSize, leafSize / 2, leafAngle, 0, Math.PI * 2)
-          ctx.fillStyle = `hsla(180, 100%, 35%, 0.08)`
-          ctx.fill()
-        }
-
-        if (Math.random() < 0.008 && branches.length < maxBranches && b.life < b.maxLife / 2) {
-          spawnBranch(b.x, b.y)
-        }
-
-        if (b.life >= b.maxLife) {
-          branches.splice(i, 1)
-          if (Math.random() < 0.5) {
-            spawnBranch(Math.random() * width, height)
-          } else {
-            spawnBranch(mouse.x, mouse.y)
-          }
-        }
+        ctx.strokeStyle = vineColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
       }
 
-      animationId = requestAnimationFrame(draw)
-    }
+      branchesRef.current = branchesRef.current.filter((b) => b.life > 0);
+      for (const branch of branchesRef.current) {
+        branch.update();
+        branch.draw();
+      }
 
-    draw()
+      animationFrameIdRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
 
     return () => {
-      window.removeEventListener('resize', handleResize)
-      window.removeEventListener('mousemove', handleMouseMove)
-      cancelAnimationFrame(animationId)
-    }
-  }, [])
+      destroyed = true;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("resize", handleResize);
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
+  }, [vineColor, branchColor, maxBranchLength]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 -z-20 pointer-events-none w-full h-full block bg-[#0b0f19]"
+      className={`fixed inset-0 pointer-events-none -z-20 block h-full w-full bg-[#0b0f19] ${className}`}
     />
-  )
-}
-export default LivingVineBackground
+  );
+};
+
+export default LivingVineBackground;
