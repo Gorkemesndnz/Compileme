@@ -17,8 +17,11 @@ import {
   ChevronsUpDown,
   UserCog,
   Blocks,
-  Plus
+  Plus,
+  Sun,
+  Moon
 } from 'lucide-react'
+import { useUiStore } from '@/store/useUiStore'
 import { Avatar, AvatarFallback } from '@/components/ui/Avatar'
 import {
   DropdownMenu,
@@ -77,6 +80,7 @@ export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(true)
   const location = useLocation()
   const pathname = location.pathname
+  const { theme, toggleTheme } = useUiStore()
 
   const navItems = [
     { to: '/', label: 'Anasayfa', icon: LayoutDashboard },
@@ -180,6 +184,22 @@ export const Sidebar: React.FC = () => {
 
               {/* Bottom Footer - Settings & Account */}
               <div className="flex flex-col p-2 gap-1 border-t border-border bg-muted/10">
+                <button
+                  onClick={toggleTheme}
+                  className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 transition-all text-muted-foreground hover:text-foreground hover:bg-secondary/40 text-left cursor-pointer"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-4 w-4 shrink-0 text-amber-400" />
+                  ) : (
+                    <Moon className="h-4 w-4 shrink-0 text-slate-500" />
+                  )}
+                  {!isCollapsed && (
+                    <motion.span variants={variants} className="ml-3.5 text-sm">
+                      {theme === 'dark' ? 'Açık Tema' : 'Karanlık Tema'}
+                    </motion.span>
+                  )}
+                </button>
+
                 <Link
                   to="/settings"
                   className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 transition-all text-muted-foreground hover:text-foreground hover:bg-secondary/40"

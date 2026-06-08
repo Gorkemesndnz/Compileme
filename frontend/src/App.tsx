@@ -5,6 +5,7 @@ import { toast, Toaster } from 'sonner'
 import { AppLayout } from './layout/AppLayout'
 import { WelcomeSplash } from './components/WelcomeSplash'
 import { LivingVineBackground } from './components/LivingVineBackground'
+import { useUiStore } from './store/useUiStore'
 
 // Feature pages
 import { DashboardPage } from './features/dashboard/DashboardPage'
@@ -42,6 +43,15 @@ const queryClient = new QueryClient({
 
 export const App: React.FC = () => {
   const [splashComplete, setSplashComplete] = useState(false)
+  const { theme } = useUiStore()
+
+  React.useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [theme])
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -4,36 +4,67 @@
 
 @layer base {
   :root {
-    /* Base theme colors - Dark Mode Default (navy theme with cyan highlight) */
-    --background: 222 47% 7%;
+    /* Light Mode colors */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 7%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 7%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 7%;
+
+    --primary: 180 100% 35%; /* slightly darker cyan for readability in light mode */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 222 47% 7%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 0 0% 96%;
+    --accent-foreground: 222 47% 7%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 180 100% 35%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Dark Mode colors - Pure Black Background Default */
+    --background: 0 0% 0%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 10%;
+    --card: 0 0% 4%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 7%;
+    --popover: 0 0% 2%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 180 100% 45%; /* Cyan accent #00e6e6 */
-    --primary-foreground: 222 47% 7%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 217 33% 15%;
+    --secondary: 0 0% 10%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 12%;
+    --muted: 0 0% 8%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 217 33% 15%;
+    --accent: 0 0% 10%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 15%;
-    --input: 217 33% 15%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
     --ring: 180 100% 45%;
-
-    --radius: 0.5rem;
   }
 }
 
@@ -49,10 +80,10 @@
 
 @layer utilities {
   .glass-panel {
-    background: rgba(15, 23, 42, 0.45);
+    background: hsl(var(--card) / 0.45);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid hsl(var(--border) / 0.3);
   }
   .glow-cyan {
     box-shadow: 0 0 20px rgba(0, 230, 230, 0.15);

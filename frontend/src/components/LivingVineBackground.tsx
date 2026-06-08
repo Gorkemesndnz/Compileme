@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { useUiStore } from "../store/useUiStore";
 
 interface LivingVineBackgroundProps {
   vineColor?: string;
@@ -16,6 +17,7 @@ export const LivingVineBackground: React.FC<LivingVineBackgroundProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const mousePosRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const { theme } = useUiStore();
   const pathHistoryRef = useRef<{ x: number; y: number }[]>([]);
   const branchesRef = useRef<any[]>([]);
 
@@ -89,7 +91,7 @@ export const LivingVineBackground: React.FC<LivingVineBackgroundProps> = ({
 
     const animate = () => {
       if (destroyed) return;
-      ctx.fillStyle = "rgba(11, 15, 25, 0.1)"; // Dark theme base color trails
+      ctx.fillStyle = theme === "dark" ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.1)";
       ctx.fillRect(0, 0, width, height);
 
       if (pathHistoryRef.current.length > 1) {
@@ -122,12 +124,12 @@ export const LivingVineBackground: React.FC<LivingVineBackgroundProps> = ({
         cancelAnimationFrame(animationFrameIdRef.current);
       }
     };
-  }, [vineColor, branchColor, maxBranchLength]);
+  }, [vineColor, branchColor, maxBranchLength, theme]);
 
   return (
     <canvas
       ref={canvasRef}
-      className={`fixed inset-0 pointer-events-none -z-20 block h-full w-full bg-[#0b0f19] ${className}`}
+      className={`fixed inset-0 pointer-events-none -z-20 block h-full w-full ${theme === "dark" ? "bg-black" : "bg-white"} ${className}`}
     />
   );
 };
