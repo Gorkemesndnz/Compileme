@@ -530,7 +530,7 @@ export const DashboardPage: React.FC = () => {
               <Button 
                 variant="outline" 
                 onClick={() => handleAddWater('BOTTLE_1500')}
-                className="justify-start gap-2.5 h-12 bg-secondary/5 border-border/40 hover:bg-secondary/15 hover:border-primary/30 transition-all cursor-pointer group px-3"
+                className="w-full justify-start gap-2.5 h-12 bg-secondary/5 border-border/40 hover:bg-secondary/15 hover:border-primary/30 transition-all cursor-pointer group px-3"
               >
                 <Droplet className="h-4 w-4 text-blue-500 fill-blue-500/10 group-hover:scale-110 transition-transform shrink-0" />
                 <div className="text-left min-w-0">
@@ -542,7 +542,7 @@ export const DashboardPage: React.FC = () => {
               <Button 
                 variant="outline" 
                 onClick={() => handleAddWater('GLASS_300')}
-                className="justify-start gap-2.5 h-12 bg-secondary/5 border-border/40 hover:bg-secondary/15 hover:border-primary/30 transition-all cursor-pointer group px-3"
+                className="w-full justify-start gap-2.5 h-12 bg-secondary/5 border-border/40 hover:bg-secondary/15 hover:border-primary/30 transition-all cursor-pointer group px-3"
               >
                 <Droplet className="h-4 w-4 text-cyan-400 fill-cyan-400/10 group-hover:scale-110 transition-transform shrink-0" />
                 <div className="text-left min-w-0">
@@ -554,7 +554,7 @@ export const DashboardPage: React.FC = () => {
               <Button 
                 variant="outline" 
                 onClick={() => handleAddWater('CUSTOM', 470)}
-                className="justify-start gap-2.5 h-12 bg-secondary/5 border-border/40 hover:bg-secondary/15 hover:border-primary/30 transition-all cursor-pointer group px-3"
+                className="w-full justify-start gap-2.5 h-12 bg-secondary/5 border-border/40 hover:bg-secondary/15 hover:border-primary/30 transition-all cursor-pointer group px-3"
               >
                 <Droplet className="h-4 w-4 text-primary fill-primary/10 group-hover:scale-110 transition-transform shrink-0" />
                 <div className="text-left min-w-0">
@@ -566,7 +566,7 @@ export const DashboardPage: React.FC = () => {
               <Button 
                 variant="outline" 
                 onClick={() => handleAddWater('HALF_500')}
-                className="justify-start gap-2.5 h-12 bg-secondary/5 border-border/40 hover:bg-secondary/15 hover:border-primary/30 transition-all cursor-pointer group px-3"
+                className="w-full justify-start gap-2.5 h-12 bg-secondary/5 border-border/40 hover:bg-secondary/15 hover:border-primary/30 transition-all cursor-pointer group px-3"
               >
                 <Droplet className="h-4 w-4 text-blue-400 fill-blue-400/10 group-hover:scale-110 transition-transform shrink-0" />
                 <div className="text-left min-w-0">

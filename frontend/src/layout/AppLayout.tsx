@@ -15,7 +15,7 @@ export const AppLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground w-full relative">
+    <div className="min-h-screen bg-transparent text-foreground w-full relative">
       <Sidebar />
       {/* Sidebar is fixed, so we add 3.2rem left padding to prevent content overlap */}
       <main className="pl-[3.2rem] flex-grow overflow-y-auto px-6 py-8 md:px-8">
