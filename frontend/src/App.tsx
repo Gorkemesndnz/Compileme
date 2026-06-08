@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@ta
 import { toast, Toaster } from 'sonner'
 import { AppLayout } from './layout/AppLayout'
 import { WelcomeSplash } from './components/WelcomeSplash'
+import { LivingVineBackground } from './components/LivingVineBackground'
 
 // Feature pages
 import { DashboardPage } from './features/dashboard/DashboardPage'
@@ -44,6 +45,7 @@ export const App: React.FC = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <LivingVineBackground />
       <BrowserRouter>
         <Routes>
           <Route element={<AppLayout />}>

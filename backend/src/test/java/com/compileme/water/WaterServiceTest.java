@@ -77,6 +77,27 @@ class WaterServiceTest {
     }
 
     @Test
+    void logWater_ShouldResolvePresetSourceWithCustomAmount() {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        WaterLog customWaterLog = WaterLog.builder()
+                .id(2L)
+                .userId(userId)
+                .amountMl(470)
+                .source(WaterSource.HALF_500)
+                .logDate(LocalDate.now())
+                .build();
+        when(waterLogRepository.save(any(WaterLog.class))).thenReturn(customWaterLog);
+
+        WaterLogRequest request = new WaterLogRequest(WaterSource.HALF_500, 470, LocalDate.now());
+        WaterLogResponse response = waterService.addLog(request);
+
+        assertNotNull(response);
+        assertEquals(470, response.amountMl());
+        verify(waterLogRepository, times(1)).save(any(WaterLog.class));
+    }
+
+    @Test
     void logWater_ShouldThrowError_WhenCustomAmountInvalid() {
         WaterLogRequest request = new WaterLogRequest(WaterSource.CUSTOM, 0, LocalDate.now());
         assertThrows(IllegalArgumentException.class, () -> waterService.addLog(request));

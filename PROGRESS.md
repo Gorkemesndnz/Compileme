@@ -12,9 +12,9 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** FE-1 — Anasayfa + Su Takibi (Frontend)
-- **Çalışıyor mu:** Evet (Tüm backend modülleri, testler ve FE-0 ortak UI altyapısı başarıyla tamamlandı)
-- **Sırada:** FE-1 — Anasayfa + Su Takibi Geliştirmeleri
+- **Aktif faz:** FE-2 — Projeler (Frontend)
+- **Çalışıyor mu:** Evet (Tüm backend modülleri, testler, FE-0 altyapısı ve FE-1 anasayfa/su tamamlandı)
+- **Sırada:** FE-2 — Projeler (Frontend) Geliştirmeleri
 - **Son güncelleme:** 08.06.2026
 
 ## Faz Durumu
@@ -32,6 +32,8 @@
 | 9 | Odak modu + Hava (backend) | ✅ Tamamlandı |
 | 10 | Asistan (ops, backend) | ⬜ Başlanmadı |
 | FE-0 | Temel & ortak UI altyapısı | ✅ Tamamlandı |
+| FE-1 | Anasayfa + Su takibi (Frontend) | ✅ Tamamlandı |
+| FE-2 | Projeler (Frontend) | 🟡 Devam ediyor |
 
 İşaretler: ⬜ Başlanmadı · 🟡 Devam ediyor · ✅ Tamamlandı · ⛔ Engellendi
 
@@ -39,6 +41,29 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-08 · Faz FE-1 — Anasayfa + Su Takibi (Frontend)
+- Ajan: Antigravity
+- Branch / commit: master / (FE-1 tamamlama ve Su Takibi görsel/işlevsel güncellemeleri)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `DashboardPage.tsx` sayfası API'ye bağlanarak dinamik hale getirildi. Bugünün/yarının görev adetleri ve su tüketimi dynamic stats kartlarında gösterildi.
+  - SVG dalga animasyonlu, dairesel su takip widget'ı kodlandı (Hedef yüzdesine göre su seviyesi otomatik yükselir/düşer).
+  - **Yeni Su Takibi Görsel Tasarımı**: Kullanıcının paylaştığı tasarım doğrultusunda su takibi widget'ı yenilendi:
+    - Sol kısımda dalga animasyonlu dairesel ilerleme halkası, sağ kısımda ml cinsinden tüketilen miktar ve hedef bilgisi yerleşimine geçildi.
+    - **2x2 Grid Butonları**: Büyük Şişe (+1.5L), Küçük Şişe (+500ml), Stanley (+470ml) ve Normal Bardak (+350ml) seçenekleri grid halinde yerleştirildi.
+    - **Custom Stepper Entegrasyonu**: Özel ml eklemeleri için `+`/`-` stepper düğmeleri içeren ve `+ Ekle` butonu ile çalışan dinamik kontrol alanı geliştirildi.
+    - **Günü Sıfırla Desteği**: Footer alanına bugünkü tüm su loglarını onay kutusuyla temizleyen "Günü sıfırla" butonu eklendi.
+  - **Su Takibi Güncellemesi**: Backend tarafında (`WaterService.java`) varsayılan ml değerlerinin preset'lerde ezilmesine izin verecek şekilde `amountMl` parametre desteği entegre edildi; böylece frontend üzerinden gönderilen 350ml ve 470ml değerleri artık DB'ye başarıyla kaydediliyor. `WaterServiceTest` sınıfına bu davranışı doğrulayan test eklendi.
+  - **Geri Al / Çıkartma Butonu**: Yanlış eklemelere karşı hızlıca son eklenen su log kaydını geri alan/çıkartan turuncu vurgulu `Geri al` (Undo) butonu footer kısmına eklendi.
+  - Su geçmişi geçmiş tablosu eklendi ve eklenen su loglarının tek tıkla silinmesini sağlayan silme işlevi bağlandı.
+  - Hızlı görev ekleme, tamamlandı/yapılacak checkbox toggle işlevleri ve "Yarına Aktar" butonu bağlandı.
+  - Geçmiş günlerden kalan eksik görevleri gösteren ve tek tıkla bugüne taşıyan "Tümünü Bugüne Taşı" banner'ı eklendi.
+  - Global animasyonlu asma sarmaşık (`LivingVineBackground.tsx`) arka planı kodlandı ve `App.tsx` içerisine enjekte edildi.
+  - Butonlar için şık `liquid-glass` (parlama/cam efekti) variantı `Button.tsx`'e entegre edildi.
+- Kabul kriteri:
+  - `npm run build` hatasız tamamlandı.
+  - Backend `WaterServiceTest` testleri ve `mvn test` derleme testleri (manuel incelendi) başarıyla entegre edildi.
 
 ### 2026-06-08 · Faz FE-0 — Temel & Ortak UI Altyapısı
 - Ajan: Antigravity

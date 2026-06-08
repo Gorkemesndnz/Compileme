@@ -61,3 +61,20 @@
     box-shadow: 0 0 20px hsl(var(--primary) / 0.15);
   }
 }
+
+@keyframes wave {
+  0% {
+    transform: translate(-50%, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, 0) rotate(360deg);
+  }
+}
+
+.animate-wave {
+  animation: wave 12s infinite linear;
+}
+
+.animate-wave-slow {
+  animation: wave 18s infinite linear;
+}

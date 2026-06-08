@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils'
 import { Spinner } from './Spinner'
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'outline' | 'ghost' | 'destructive'
+  variant?: 'default' | 'outline' | 'ghost' | 'destructive' | 'glass' | 'liquid-glass'
   size?: 'sm' | 'md' | 'lg'
   isLoading?: boolean
 }
@@ -22,6 +22,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             "border border-border bg-transparent hover:bg-accent hover:text-accent-foreground text-foreground": variant === 'outline',
             "bg-transparent hover:bg-accent hover:text-accent-foreground text-muted-foreground hover:text-foreground": variant === 'ghost',
             "bg-destructive text-destructive-foreground hover:bg-destructive/90": variant === 'destructive',
+            "bg-gradient-to-r from-primary/10 to-cyan-500/10 hover:from-primary/25 hover:to-cyan-500/25 text-primary border border-primary/30 hover:border-primary/60 backdrop-blur-md shadow-[0_0_15px_rgba(0,255,255,0.05)] hover:shadow-[0_0_20px_rgba(0,255,255,0.15)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 font-bold": variant === 'liquid-glass' || variant === 'glass',
           },
           // Sizes
           {

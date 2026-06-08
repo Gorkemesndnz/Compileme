@@ -41,13 +41,12 @@ public class WaterService {
         LocalDate targetDate = request.logDate() != null ? request.logDate() : LocalDate.now();
 
         int amountMl;
-        if (request.source() == WaterSource.CUSTOM) {
-            if (request.amountMl() == null || request.amountMl() <= 0) {
-                throw new IllegalArgumentException("Özel su miktarı 0'dan büyük olmalıdır");
-            }
+        if (request.amountMl() != null && request.amountMl() > 0) {
             amountMl = request.amountMl();
-        } else {
+        } else if (request.source() != WaterSource.CUSTOM) {
             amountMl = request.source().getDefaultMl();
+        } else {
+            throw new IllegalArgumentException("Özel su miktarı 0'dan büyük olmalıdır");
         }
 
         WaterLog waterLog = WaterLogMapper.toEntity(targetDate, request.source(), amountMl, userId);
