@@ -41,10 +41,10 @@
     --background: 0 0% 0%;
     --foreground: 210 40% 98%;
 
-    --card: 0 0% 4%;
+    --card: 222 25% 10%; /* Slate color for cards and sidebar so they do not blend into black */
     --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 2%;
+    --popover: 222 25% 8%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 180 100% 45%; /* Cyan accent #00e6e6 */
@@ -80,10 +80,16 @@
 
 @layer utilities {
   .glass-panel {
-    background: hsl(var(--card) / 0.45);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--border) / 0.3);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04);
+  }
+  .dark .glass-panel {
+    background: rgba(22, 28, 45, 0.55); /* Slate gray translucent card that contrasts with black */
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
   }
   .glow-cyan {
     box-shadow: 0 0 20px rgba(0, 230, 230, 0.15);

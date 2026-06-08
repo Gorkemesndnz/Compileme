@@ -47,6 +47,12 @@
 - Branch / commit: master / (FE-1 tamamlama ve Su Takibi görsel/işlevsel güncellemeleri)
 - Durum: Tamamlandı
 - Yapılanlar:
+  - **Siyah Koyu Tema & Açık Tema Entegrasyonu**:
+    - Koyu tema arka planı lacivertten saf siyaha (`#000000`) çevrildi. `LivingVineBackground.tsx` kanvas zemin rengi siyah yapıldı ve animasyon izleri siyah trails olarak güncellendi.
+    - `index.css` üzerinde `:root` için Açık Tema renkleri (beyaz arka plan ve koyu metinler), `.dark` sınıfı altında ise Siyah Koyu Tema renkleri tanımlandı.
+    - `.glass-panel` kart arka planları dinamik `var(--card)` ve `var(--border)` CSS değişkenlerine geçirilerek temaya göre otomatik renk değiştiren cam kart tasarımı (light frosted / dark smoky glass) sağlandı.
+    - `Sidebar.tsx` sol menüsünün en altına Açık/Koyu tema arasında geçişi tetikleyen Sun/Moon ikonlu dinamik tema değiştirme düğmesi yerleştirildi.
+    - `App.tsx` içerisine `useEffect` eklenerek `useUiStore` üzerindeki tema durumu HTML elementine senkronize edildi.
   - `DashboardPage.tsx` sayfası API'ye bağlanarak dinamik hale getirildi. Bugünün/yarının görev adetleri ve su tüketimi dynamic stats kartlarında gösterildi.
   - SVG dalga animasyonlu, dairesel su takip widget'ı kodlandı (Hedef yüzdesine göre su seviyesi otomatik yükselir/düşer).
   - **Yeni Su Takibi Görsel Tasarımı**: Kullanıcının paylaştığı tasarım doğrultusunda su takibi widget'ı yenilendi:
