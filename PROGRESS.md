@@ -13,7 +13,7 @@
 
 ## Şu Anki Durum
 - **Aktif faz:** FE-2 — Projeler (Frontend)
-- **Çalışıyor mu:** Evet (Tüm backend modülleri, testler, FE-0 altyapısı ve FE-1 anasayfa/su tamamlandı)
+- **Çalışıyor mu:** Evet (Tüm backend modülleri, testler, FE-0 altyapısı ve FE-1 anasayfa/su takibi cila ve entegrasyonu tamamlandı)
 - **Sırada:** FE-2 — Projeler (Frontend) Geliştirmeleri
 - **Son güncelleme:** 08.06.2026
 
@@ -41,6 +41,21 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-08 · Faz FE-1 — Anasayfa + Su Takibi Entegrasyon & Cila
+- Ajan: Antigravity
+- Branch / commit: master / (master b8882b0 - feat(frontend): implement black background, light glass layout, EaseMize premium glass button, inline task CRUD, and ideas API integration)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - **EaseMize Glass Button & CVA Kaldırılması**: `class-variance-authority` bağımlılığı olmayan pure React mapping yöntemine geçilerek Vite/Rollup derleme hatası giderildi. `variant="glass"` durumunda bu premium cam buton sarmalandı.
+  - **Zemin & Frosted Cam Entegrasyonu**: Body arka planı `#000000` yapıldı. Beyaz frosted cam panellerde (`.glass-panel`) yazı kontrastını sağlamak adına local değişkenler ezilerek mükemmel okunabilirlik elde edildi.
+  - **Su Dalga Animasyonu ve Stepper Revizyonu**: Circular wave dairesinde dikey yükselme inline `top` CSS özelliğiyle ayrıştırılarak animasyon çakışması önlendi. Preset'ler ve stepper'lar EaseMize `variant="glass"` butonlarıyla donatıldı.
+  - **Görev CRUD Arayüzü**: Görev kartlarına tıklandığında açılan inline düzenleme formu, anlık markdown önizlemesi, yarına/bugüne taşıma ve hızlı ekleme barı entegrasyonu tamamen çalışır duruma getirildi.
+  - **Fikirler Entegrasyonu**: `ideas.ts` API hook'u tamamlandı ve Dashboard'daki stat kartı ve Quick-Add barı üzerinden backend veri tabanıyla başarıyla bağlandı.
+- Kabul kriteri:
+  - `npm run build` komutu sıfır hata ile frontend tarafında derlendi (`Build Success`).
+  - Yerel backend (8080) ve postgres (5433) port bağlantıları yeşil alındı.
+
 
 ### 2026-06-08 · Faz FE-1 — Anasayfa + Su Takibi (Frontend)
 - Ajan: Antigravity
