@@ -1,6 +1,7 @@
 import React from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { CinematicFooter } from '../components/CinematicFooter'
 
 export const AppLayout: React.FC = () => {
   const location = useLocation()
@@ -22,6 +23,8 @@ export const AppLayout: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <Outlet />
         </div>
+        {/* Cinematic Footer — curtain reveal on scroll */}
+        <CinematicFooter />
       </main>
     </div>
   )
