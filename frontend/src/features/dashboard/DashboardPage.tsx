@@ -671,9 +671,10 @@ export const DashboardPage: React.FC = () => {
               {/* Retro Modern Sketch Button */}
               <button
                 onClick={() => saveTaskEdit(task.id)}
-                className="px-3 py-1 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200"
+                disabled={updateTaskMutation.isPending}
+                className="px-3 py-1 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
               >
-                Kaydet
+                {updateTaskMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
               </button>
             </div>
           </div>
@@ -683,9 +684,15 @@ export const DashboardPage: React.FC = () => {
             {/* Left Box: Tick Checkbox + Times */}
             <div className="flex items-start gap-2.5 pt-0.5">
               <div 
-                onClick={() => handleToggleComplete(task)}
+                onClick={() => {
+                  if (toggleTaskCompleteMutation.isPending) return
+                  handleToggleComplete(task)
+                }}
                 className={cn(
-                  "flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border transition-all duration-200 mt-0.5",
+                  "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all duration-200 mt-0.5",
+                  toggleTaskCompleteMutation.isPending
+                    ? "opacity-50 cursor-not-allowed"
+                    : "cursor-pointer",
                   task.status === 'DONE' 
                     ? "bg-cyan-500 border-cyan-500 text-white" 
                     : "border-neutral-400 dark:border-neutral-600 hover:border-cyan-400"
@@ -765,7 +772,8 @@ export const DashboardPage: React.FC = () => {
                 {task.scheduledDate !== tomorrow && task.planningBucket === 'DAY' && (
                   <button
                     onClick={() => handleDeferToTomorrow(task)}
-                    className="p-1 text-neutral-500 hover:text-cyan-500 transition-colors"
+                    disabled={moveTaskToTomorrowMutation.isPending}
+                    className="p-1 text-neutral-500 hover:text-cyan-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Yarına ertele"
                   >
                     <ArrowRight className="h-3 w-3" />
@@ -773,7 +781,8 @@ export const DashboardPage: React.FC = () => {
                 )}
                 <button
                   onClick={() => deleteTaskMutation.mutate(task.id)}
-                  className="p-1 text-neutral-500 hover:text-red-500 transition-colors"
+                  disabled={deleteTaskMutation.isPending}
+                  className="p-1 text-neutral-500 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Görevi Sil"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -805,6 +814,7 @@ export const DashboardPage: React.FC = () => {
             onUndoWater={handleUndoWater}
             onResetDay={handleResetDay}
             hasLogs={!!(waterSummary?.logs && waterSummary.logs.length > 0)}
+            disabled={addWaterMutation.isPending || deleteWaterMutation.isPending}
           />
         </div>
       </div>
@@ -846,7 +856,8 @@ export const DashboardPage: React.FC = () => {
 
           <button
             type="submit"
-            className="group flex h-10 shrink-0 items-center justify-center gap-2 self-end bg-transparent px-2 text-neutral-950 sm:self-auto dark:text-white"
+            disabled={createTaskMutation.isPending || createIdeaMutation.isPending}
+            className="group flex h-10 shrink-0 items-center justify-center gap-2 self-end bg-transparent px-2 text-neutral-950 sm:self-auto dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="relative pb-1 text-xs font-black uppercase after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-bottom-right after:scale-x-0 after:bg-neutral-950 after:transition-transform after:duration-300 group-hover:after:origin-bottom-left group-hover:after:scale-x-100 dark:after:bg-white">
               Ekle
@@ -999,9 +1010,10 @@ export const DashboardPage: React.FC = () => {
                   {/* Retro Modern Sketch Button */}
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200"
+                    disabled={createTaskMutation.isPending}
+                    className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
                   >
-                    Ekle
+                    {createTaskMutation.isPending ? 'Ekleniyor...' : 'Ekle'}
                   </button>
                 </div>
               </form>
@@ -1136,9 +1148,10 @@ export const DashboardPage: React.FC = () => {
                   {/* Retro Modern Sketch Button */}
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200"
+                    disabled={createTaskMutation.isPending}
+                    className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
                   >
-                    Ekle
+                    {createTaskMutation.isPending ? 'Ekleniyor...' : 'Ekle'}
                   </button>
                 </div>
               </form>
@@ -1302,9 +1315,10 @@ export const DashboardPage: React.FC = () => {
                   {/* Retro Modern Sketch Button */}
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200"
+                    disabled={createTaskMutation.isPending}
+                    className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
                   >
-                    Ekle
+                    {createTaskMutation.isPending ? 'Ekleniyor...' : 'Ekle'}
                   </button>
                 </div>
               </form>

@@ -11,6 +11,7 @@ interface MicroWaterTrackerProps {
   onUndoWater: () => void
   onResetDay: () => void
   hasLogs: boolean
+  disabled?: boolean
 }
 
 export const MicroWaterTracker: React.FC<MicroWaterTrackerProps> = ({
@@ -20,7 +21,8 @@ export const MicroWaterTracker: React.FC<MicroWaterTrackerProps> = ({
   onAddWater,
   onUndoWater,
   onResetDay,
-  hasLogs
+  hasLogs,
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -111,10 +113,12 @@ export const MicroWaterTracker: React.FC<MicroWaterTrackerProps> = ({
                 <button
                   key={preset.label}
                   onClick={() => onAddWater(preset.type, preset.amount)}
+                  disabled={disabled}
                   className={cn(
                     "flex flex-col items-center justify-center py-2 px-3 rounded-full border transition duration-200",
                     "border-neutral-200 bg-white/50 hover:bg-cyan-50 hover:border-cyan-200 text-neutral-800",
-                    "dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-cyan-950/20 dark:hover:border-cyan-900/40 dark:text-zinc-200"
+                    "dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-cyan-950/20 dark:hover:border-cyan-900/40 dark:text-zinc-200",
+                    "disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed dark:disabled:hover:bg-transparent"
                   )}
                 >
                   <span className="text-xs font-bold font-mono">{preset.label}</span>
@@ -127,7 +131,7 @@ export const MicroWaterTracker: React.FC<MicroWaterTrackerProps> = ({
             <div className="flex gap-2 justify-between border-t border-neutral-100 dark:border-zinc-800/60 pt-4">
               <button
                 onClick={onUndoWater}
-                disabled={!hasLogs}
+                disabled={!hasLogs || disabled}
                 className={cn(
                   "flex items-center justify-center gap-1.5 flex-1",
                   "px-4 py-2 rounded-md text-xs font-bold transition duration-200 border",
@@ -145,7 +149,7 @@ export const MicroWaterTracker: React.FC<MicroWaterTrackerProps> = ({
 
               <button
                 onClick={onResetDay}
-                disabled={!hasLogs}
+                disabled={!hasLogs || disabled}
                 className={cn(
                   "flex items-center justify-center gap-1.5 flex-1",
                   "px-4 py-2 rounded-md text-xs font-bold transition duration-200 border",
