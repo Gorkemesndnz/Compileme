@@ -88,6 +88,7 @@ Her backend feature paketinde tipik: `*Controller`, `*Service`, `*Repository`, `
 - Hata yönetimi: `GlobalExceptionHandler` + `ApiError` (timestamp, status, error, message, path).
 - Tailwind: shadcn token'ları (CSS değişkenleri: `--background`, `--primary`, …) + `cn()` yardımcısı. Koyu tema varsayılan (lacivert zemin, cyan vurgu). 21st.dev component'leri `src/components/` altına doğrudan yapıştırılabilir.
 - Tarih/saat: tarih `date`, saat `time`; göreceli tarihler her zaman **bugünün tarihine** göre çözülür.
+- Premium Tarih/Saat Seçimi: Arayüzlerde tarih ve saat seçimi için native tarayıcı girdileri yerine custom `DateTimePicker` bileşeni kullanılır. Bu bileşen, takvim görünümünün yanı sıra dikey kaydırma tekerleği (dikey wheel picker, 00-23 ve 00-59 scroll-snap destekli) ile premium saat seçimi sağlar. Tüm görev ekleme formları bu bileşeni kullanmalıdır.
 
 ---
 

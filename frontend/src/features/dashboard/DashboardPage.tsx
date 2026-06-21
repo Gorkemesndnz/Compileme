@@ -87,6 +87,7 @@ export const DashboardPage: React.FC = () => {
 
   // Form Inputs
   const [focusedFormTitle, setFocusedFormTitle] = useState('')
+  const [focusedFormDate, setFocusedFormDate] = useState(focusedDate)
   const [focusedFormTime, setFocusedFormTime] = useState('')
   const [focusedFormDuration, setFocusedFormDuration] = useState('')
   const [focusedFormNotes, setFocusedFormNotes] = useState('')
@@ -95,6 +96,7 @@ export const DashboardPage: React.FC = () => {
   const [focusedFormKind, setFocusedFormKind] = useState<'GENERAL' | 'PROJECT' | 'EDUCATION' | 'REFACTOR'>('GENERAL')
 
   const [tomorrowFormTitle, setTomorrowFormTitle] = useState('')
+  const [tomorrowFormDate, setTomorrowFormDate] = useState(tomorrow)
   const [tomorrowFormTime, setTomorrowFormTime] = useState('')
   const [tomorrowFormDuration, setTomorrowFormDuration] = useState('')
   const [tomorrowFormNotes, setTomorrowFormNotes] = useState('')
@@ -103,6 +105,8 @@ export const DashboardPage: React.FC = () => {
   const [tomorrowFormKind, setTomorrowFormKind] = useState<'GENERAL' | 'PROJECT' | 'EDUCATION' | 'REFACTOR'>('GENERAL')
 
   const [monthFormTitle, setMonthFormTitle] = useState('')
+  const [monthFormDate, setMonthFormDate] = useState('')
+  const [monthFormTime, setMonthFormTime] = useState('')
   const [monthFormDuration, setMonthFormDuration] = useState('')
   const [monthFormNotes, setMonthFormNotes] = useState('')
   const [monthFormProj, setMonthFormProj] = useState('')
@@ -203,6 +207,19 @@ export const DashboardPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Sync form date states when base date or form visibility changes
+  useEffect(() => {
+    if (showAddFormFocused) {
+      setFocusedFormDate(focusedDate)
+    }
+  }, [focusedDate, showAddFormFocused])
+
+  useEffect(() => {
+    if (showAddFormTomorrow) {
+      setTomorrowFormDate(tomorrow)
+    }
+  }, [tomorrow, showAddFormTomorrow])
+
   // Handle Quick Add Submit
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -236,7 +253,6 @@ export const DashboardPage: React.FC = () => {
     }
   }
 
-  // Task adding callbacks
   const handleAddFocusedTask = (e: React.FormEvent) => {
     e.preventDefault()
     if (!focusedFormTitle.trim()) return
@@ -245,7 +261,7 @@ export const DashboardPage: React.FC = () => {
       title: focusedFormTitle,
       status: 'TODO',
       kind: focusedFormKind,
-      scheduledDate: focusedDate,
+      scheduledDate: focusedFormDate,
       scheduledTime: focusedFormTime || undefined,
       durationMinutes: focusedFormDuration ? parseInt(focusedFormDuration, 10) : undefined,
       notes: focusedFormNotes || undefined,
@@ -255,6 +271,7 @@ export const DashboardPage: React.FC = () => {
     }, {
       onSuccess: () => {
         setFocusedFormTitle('')
+        setFocusedFormDate(focusedDate)
         setFocusedFormTime('')
         setFocusedFormDuration('')
         setFocusedFormNotes('')
@@ -275,7 +292,7 @@ export const DashboardPage: React.FC = () => {
       title: tomorrowFormTitle,
       status: 'TODO',
       kind: tomorrowFormKind,
-      scheduledDate: tomorrow,
+      scheduledDate: tomorrowFormDate,
       scheduledTime: tomorrowFormTime || undefined,
       durationMinutes: tomorrowFormDuration ? parseInt(tomorrowFormDuration, 10) : undefined,
       notes: tomorrowFormNotes || undefined,
@@ -285,6 +302,7 @@ export const DashboardPage: React.FC = () => {
     }, {
       onSuccess: () => {
         setTomorrowFormTitle('')
+        setTomorrowFormDate(tomorrow)
         setTomorrowFormTime('')
         setTomorrowFormDuration('')
         setTomorrowFormNotes('')
@@ -302,29 +320,32 @@ export const DashboardPage: React.FC = () => {
     if (!monthFormTitle.trim()) return
 
     const currentYearMonth = focusedDate.substring(0, 7) // YYYY-MM format
+    const hasDate = !!monthFormDate
 
     createTaskMutation.mutate({
       title: monthFormTitle,
       status: 'TODO',
       kind: monthFormKind,
-      scheduledDate: undefined,
-      scheduledTime: undefined,
+      scheduledDate: hasDate ? monthFormDate : undefined,
+      scheduledTime: monthFormTime || undefined,
       durationMinutes: monthFormDuration ? parseInt(monthFormDuration, 10) : undefined,
       notes: monthFormNotes || undefined,
       projectId: monthFormProj ? parseInt(monthFormProj, 10) : undefined,
       educationId: monthFormEdu ? parseInt(monthFormEdu, 10) : undefined,
-      planningBucket: 'MONTH',
-      targetPeriod: currentYearMonth
+      planningBucket: hasDate ? 'DAY' : 'MONTH',
+      targetPeriod: hasDate ? undefined : currentYearMonth
     }, {
       onSuccess: () => {
         setMonthFormTitle('')
+        setMonthFormDate('')
+        setMonthFormTime('')
         setMonthFormDuration('')
         setMonthFormNotes('')
         setMonthFormProj('')
         setMonthFormEdu('')
         setMonthFormKind('GENERAL')
         setShowAddFormMonth(false)
-        toast.success('Aylık plana görev eklendi.')
+        toast.success(hasDate ? 'Görev planlanarak eklendi.' : 'Aylık plana görev eklendi.')
       }
     })
   }
@@ -909,13 +930,15 @@ export const DashboardPage: React.FC = () => {
                     placeholder="Görev adı..."
                     className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-cyan-500"
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="time"
-                      value={focusedFormTime}
-                      onChange={(e) => setFocusedFormTime(e.target.value)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                  <div className="w-full">
+                    <DateTimePicker
+                      date={focusedFormDate}
+                      time={focusedFormTime}
+                      onDateChange={setFocusedFormDate}
+                      onTimeChange={setFocusedFormTime}
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <input
                       type="number"
                       value={focusedFormDuration}
@@ -923,8 +946,6 @@ export const DashboardPage: React.FC = () => {
                       placeholder="Süre (dk)"
                       className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
                     <select
                       value={focusedFormProj}
                       onChange={(e) => setFocusedFormProj(e.target.value)}
@@ -935,6 +956,8 @@ export const DashboardPage: React.FC = () => {
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <select
                       value={focusedFormEdu}
                       onChange={(e) => setFocusedFormEdu(e.target.value)}
@@ -945,8 +968,6 @@ export const DashboardPage: React.FC = () => {
                         <option key={edu.id} value={edu.id}>{edu.title}</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="flex gap-2">
                     <select
                       value={focusedFormKind}
                       onChange={(e) => setFocusedFormKind(e.target.value as any)}
@@ -957,14 +978,14 @@ export const DashboardPage: React.FC = () => {
                       <option value="EDUCATION">EĞİTİM</option>
                       <option value="REFACTOR">REFAKTÖR</option>
                     </select>
-                    <input
-                      type="text"
-                      value={focusedFormNotes}
-                      onChange={(e) => setFocusedFormNotes(e.target.value)}
-                      placeholder="Not ekle (markdown)..."
-                      className="flex-grow bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
-                    />
                   </div>
+                  <input
+                    type="text"
+                    value={focusedFormNotes}
+                    onChange={(e) => setFocusedFormNotes(e.target.value)}
+                    placeholder="Not ekle (markdown)..."
+                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                  />
                 </div>
 
                 <div className="flex justify-end gap-2 pt-1">
@@ -1046,13 +1067,15 @@ export const DashboardPage: React.FC = () => {
                     placeholder="Görev adı..."
                     className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-cyan-500"
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="time"
-                      value={tomorrowFormTime}
-                      onChange={(e) => setTomorrowFormTime(e.target.value)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                  <div className="w-full">
+                    <DateTimePicker
+                      date={tomorrowFormDate}
+                      time={tomorrowFormTime}
+                      onDateChange={setTomorrowFormDate}
+                      onTimeChange={setTomorrowFormTime}
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <input
                       type="number"
                       value={tomorrowFormDuration}
@@ -1060,8 +1083,6 @@ export const DashboardPage: React.FC = () => {
                       placeholder="Süre (dk)"
                       className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
                     <select
                       value={tomorrowFormProj}
                       onChange={(e) => setTomorrowFormProj(e.target.value)}
@@ -1072,6 +1093,8 @@ export const DashboardPage: React.FC = () => {
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <select
                       value={tomorrowFormEdu}
                       onChange={(e) => setTomorrowFormEdu(e.target.value)}
@@ -1082,8 +1105,6 @@ export const DashboardPage: React.FC = () => {
                         <option key={edu.id} value={edu.id}>{edu.title}</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="flex gap-2">
                     <select
                       value={tomorrowFormKind}
                       onChange={(e) => setTomorrowFormKind(e.target.value as any)}
@@ -1094,14 +1115,14 @@ export const DashboardPage: React.FC = () => {
                       <option value="EDUCATION">EĞİTİM</option>
                       <option value="REFACTOR">REFAKTÖR</option>
                     </select>
-                    <input
-                      type="text"
-                      value={tomorrowFormNotes}
-                      onChange={(e) => setTomorrowFormNotes(e.target.value)}
-                      placeholder="Not ekle (markdown)..."
-                      className="flex-grow bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
-                    />
                   </div>
+                  <input
+                    type="text"
+                    value={tomorrowFormNotes}
+                    onChange={(e) => setTomorrowFormNotes(e.target.value)}
+                    placeholder="Not ekle (markdown)..."
+                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                  />
                 </div>
 
                 <div className="flex justify-end gap-2 pt-1">
@@ -1212,6 +1233,14 @@ export const DashboardPage: React.FC = () => {
                     placeholder="Görev adı..."
                     className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-cyan-500"
                   />
+                  <div className="w-full">
+                    <DateTimePicker
+                      date={monthFormDate}
+                      time={monthFormTime}
+                      onDateChange={setMonthFormDate}
+                      onTimeChange={setMonthFormTime}
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <input
                       type="number"
