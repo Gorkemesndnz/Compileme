@@ -94,7 +94,7 @@ export const Sidebar: React.FC = () => {
   return (
     <motion.div
       className={cn(
-        "sidebar fixed left-0 top-0 z-40 h-full shrink-0 border-r border-border bg-card shadow-lg select-none",
+        "sidebar fixed left-0 top-0 z-50 h-full shrink-0 border-r border-border bg-card shadow-lg select-none",
       )}
       initial={isCollapsed ? "closed" : "open"}
       animate={isCollapsed ? "closed" : "open"}
@@ -104,7 +104,7 @@ export const Sidebar: React.FC = () => {
       onMouseLeave={() => setIsCollapsed(true)}
     >
       <motion.div
-        className="relative z-40 flex text-muted-foreground h-full shrink-0 flex-col transition-all"
+        className="relative z-40 flex h-full shrink-0 flex-col text-slate-700 transition-all dark:text-muted-foreground"
         variants={contentVariants}
       >
         <motion.ul variants={staggerVariants} className="flex h-full flex-col p-0 m-0 list-none">
@@ -127,7 +127,7 @@ export const Sidebar: React.FC = () => {
                           <span className="text-sm font-bold text-foreground truncate mr-1">
                             Compileme
                           </span>
-                          <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                          <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-slate-600 dark:text-muted-foreground/70" />
                         </motion.div>
                       )}
                     </button>
@@ -162,7 +162,7 @@ export const Sidebar: React.FC = () => {
                           key={item.to}
                           to={item.to}
                           className={cn(
-                            "flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-secondary/40",
+                            "flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-slate-700 transition-all duration-200 hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground",
                             isActive && "bg-primary/10 text-primary border-l-2 border-primary font-semibold shadow-[0_0_15px_rgba(0,255,255,0.05)]",
                           )}
                         >
@@ -186,12 +186,12 @@ export const Sidebar: React.FC = () => {
               <div className="flex flex-col p-2 gap-1 border-t border-border bg-muted/10">
                 <button
                   onClick={toggleTheme}
-                  className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 transition-all text-muted-foreground hover:text-foreground hover:bg-secondary/40 text-left cursor-pointer"
+                  className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground"
                 >
                   {theme === 'dark' ? (
                     <Sun className="h-4 w-4 shrink-0 text-amber-400" />
                   ) : (
-                    <Moon className="h-4 w-4 shrink-0 text-slate-500" />
+                    <Moon className="h-4 w-4 shrink-0 text-slate-700 dark:text-slate-500" />
                   )}
                   {!isCollapsed && (
                     <motion.span variants={variants} className="ml-3.5 text-sm">
@@ -202,7 +202,7 @@ export const Sidebar: React.FC = () => {
 
                 <Link
                   to="/settings"
-                  className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 transition-all text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                  className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground"
                 >
                   <Settings className="h-4 w-4 shrink-0" />
                   {!isCollapsed && (
@@ -215,9 +215,9 @@ export const Sidebar: React.FC = () => {
                 <div>
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger className="w-full focus:outline-none" asChild>
-                      <button className="flex h-9 w-full flex-row items-center gap-2 rounded-md px-2 py-1.5 transition-all hover:bg-secondary/40 text-muted-foreground hover:text-foreground text-left cursor-pointer">
+                      <button className="flex h-9 w-full flex-row items-center gap-2 rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground">
                         <Avatar className="size-5 bg-secondary border border-border">
-                          <AvatarFallback className="text-[10px] font-bold text-muted-foreground bg-transparent">G</AvatarFallback>
+                          <AvatarFallback className="bg-transparent text-[10px] font-bold text-slate-700 dark:text-muted-foreground">G</AvatarFallback>
                         </Avatar>
                         {!isCollapsed && (
                           <motion.div
@@ -225,7 +225,7 @@ export const Sidebar: React.FC = () => {
                             className="flex w-full items-center justify-between min-w-0"
                           >
                             <span className="text-sm font-medium truncate mr-1">Görkem</span>
-                            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-slate-600 dark:text-muted-foreground/70" />
                           </motion.div>
                         )}
                       </button>

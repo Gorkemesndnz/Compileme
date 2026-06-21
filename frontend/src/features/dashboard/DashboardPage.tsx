@@ -34,13 +34,24 @@ import {
   Undo,
   RotateCcw,
   Minus,
-  Edit2
+  Edit2,
+  Sun
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Badge } from '../../components/ui/Badge'
+import { cn } from '../../lib/utils'
+import { DateTimePicker } from './DateTimePicker'
+import { IdeaTaskToggle } from './IdeaTaskToggle'
+import { TerminalMetrics } from './TerminalMetrics'
+import { useSettings } from '../../api/settings'
+import { useWeather } from '../../api/weather'
+import { GreetingWithWeather } from './GreetingWithWeather'
+import { MicroWaterTracker } from './MicroWaterTracker'
+import { useQueryClient } from '@tanstack/react-query'
 
 export const DashboardPage: React.FC = () => {
+  const queryClient = useQueryClient()
   // Local dates helpers
   const getLocalDateString = (daysOffset = 0) => {
     const d = new Date()
@@ -80,13 +91,64 @@ export const DashboardPage: React.FC = () => {
   const [editTime, setEditTime] = useState('')
   const [editNotes, setEditNotes] = useState('')
 
-  // Query Hooks
+  // Local dates helpers for Week and Month Ranges
+  const getWeekRange = () => {
+    const todayDate = new Date()
+    const day = todayDate.getDay()
+    
+    // Start of week (Monday)
+    const monday = new Date(todayDate)
+    const mondayOffset = day === 0 ? -6 : 1 - day
+    monday.setDate(todayDate.getDate() + mondayOffset)
+    
+    // End of week (Sunday)
+    const sunday = new Date(todayDate)
+    const sundayOffset = day === 0 ? 0 : 7 - day
+    sunday.setDate(todayDate.getDate() + sundayOffset)
+    
+    const toISOStringLocal = (date: Date) => {
+      const offset = date.getTimezoneOffset()
+      const local = new Date(date.getTime() - (offset * 60 * 1000))
+      return local.toISOString().split('T')[0]
+    }
+    
+    return {
+      start: toISOStringLocal(monday),
+      end: toISOStringLocal(sunday)
+    }
+  }
+
+  const getMonthRange = () => {
+    const todayDate = new Date()
+    
+    const firstDay = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
+    const lastDay = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0)
+    
+    const toISOStringLocal = (date: Date) => {
+      const offset = date.getTimezoneOffset()
+      const local = new Date(date.getTime() - (offset * 60 * 1000))
+      return local.toISOString().split('T')[0]
+    }
+    
+    return {
+      start: toISOStringLocal(firstDay),
+      end: toISOStringLocal(lastDay)
+    }
+  }
+
+  const weekRange = getWeekRange()
+  const monthRange = getMonthRange()
+
   const { data: todayTasks = [], isLoading: loadingToday } = useTasks({ date: today })
   const { data: tomorrowTasks = [], isLoading: loadingTomorrow } = useTasks({ date: tomorrow })
+  const { data: weekTasks = [] } = useTasks({ from: weekRange.start, to: weekRange.end })
+  const { data: monthTasks = [] } = useTasks({ from: monthRange.start, to: monthRange.end })
   const { data: projects = [] } = useProjects()
   const { data: educations = [] } = useEducations()
   const { data: ideas = [] } = useIdeas()
   const { data: waterSummary } = useWaterSummary(today)
+  const { data: settings } = useSettings()
+  const { data: weatherData } = useWeather(settings?.weatherCity || 'İstanbul')
   
   // Mutations
   const createTaskMutation = useCreateTask()
@@ -239,10 +301,28 @@ export const DashboardPage: React.FC = () => {
   const handleResetDay = async () => {
     if (waterSummary && waterSummary.logs && waterSummary.logs.length > 0) {
       if (window.confirm('Bugünkü tüm su tüketim geçmişini sıfırlamak istediğinize emin misiniz?')) {
+        const originalLogs = [...waterSummary.logs]
+        const originalAmount = waterSummary.consumedMl
+
+        // Optimistically clear all water data in query client
+        queryClient.setQueryData(['water', today], {
+          ...waterSummary,
+          consumedMl: 0,
+          percent: 0,
+          logs: []
+        })
+
         try {
-          await Promise.all(waterSummary.logs.map(log => deleteWaterMutation.mutateAsync(log.id)))
+          await Promise.all(originalLogs.map(log => deleteWaterMutation.mutateAsync(log.id)))
           toast.success('Bugünkü su tüketim verileri sıfırlandı.')
         } catch (e) {
+          // Rollback on error
+          queryClient.setQueryData(['water', today], {
+            ...waterSummary,
+            consumedMl: originalAmount,
+            percent: Math.min(100, Math.round((originalAmount / waterSummary.targetMl) * 100)),
+            logs: originalLogs
+          })
           toast.error('Sıfırlama sırasında bir hata oluştu.')
         }
       }
@@ -295,6 +375,12 @@ export const DashboardPage: React.FC = () => {
   // Date and stats calculations
   const completedTodayCount = todayTasks.filter(t => t.status === 'DONE').length
   const totalTodayCount = todayTasks.length
+
+  const completedWeekCount = weekTasks.filter(t => t.status === 'DONE').length
+  const totalWeekCount = weekTasks.length
+
+  const completedMonthCount = monthTasks.filter(t => t.status === 'DONE').length
+  const totalMonthCount = monthTasks.length
   
   const completedTomorrowCount = tomorrowTasks.filter(t => t.status === 'DONE').length
   const totalTomorrowCount = tomorrowTasks.length
@@ -302,18 +388,9 @@ export const DashboardPage: React.FC = () => {
   const activeProjectsCount = projects.filter(p => p.status === 'ACTIVE').length
 
   // Water stats
-  const waterAmount = waterSummary?.amountMl || 0
-  const waterGoal = waterSummary?.goalMl || 3000
-  const waterPercentage = Math.min(100, Math.round((waterAmount / waterGoal) * 100))
-
-  // Time based dynamic greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour >= 5 && hour < 12) return 'Günaydın ☀️'
-    if (hour >= 12 && hour < 18) return 'Tünaydın ☀️'
-    if (hour >= 18 && hour < 22) return 'İyi akşamlar 🌙'
-    return 'İyi geceler 👏'
-  }
+  const waterAmount = waterSummary?.consumedMl || 0
+  const waterGoal = waterSummary?.targetMl || 3000
+  const waterPercentage = Math.min(100, waterSummary?.percent ?? Math.round((waterAmount / waterGoal) * 100))
 
   // Turkish date formatting helper
   const formatTurkishDate = (dateStr: string) => {
@@ -360,149 +437,99 @@ export const DashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dashboard-page space-y-6 text-neutral-950 dark:text-neutral-100">
       
-      {/* Time-based dynamic greeting and title */}
-      <div>
-        <h1 className="text-3xl font-extrabold text-white tracking-tight">{getGreeting()}</h1>
-        <p className="text-sm text-neutral-400 mt-1">
-          {fullFormattedDate} · bugüne odaklan, gerisini akışa bırak
-        </p>
+      {/* Greeting & Micro Water Tracker */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <GreetingWithWeather
+          temp={weatherData?.main?.temp}
+          condition={weatherData?.weather?.[0]?.main}
+        />
+        <div className="flex items-center self-end sm:self-auto bg-transparent relative z-20">
+          <MicroWaterTracker
+            waterAmount={waterAmount}
+            waterGoal={waterGoal}
+            waterPercentage={waterPercentage}
+            onAddWater={handleAddWater}
+            onUndoWater={handleUndoWater}
+            onResetDay={handleResetDay}
+            hasLogs={!!(waterSummary?.logs && waterSummary.logs.length > 0)}
+          />
+        </div>
       </div>
 
       {/* Quick Add Bar */}
-      <div className="glass-panel rounded-2xl p-3 flex flex-col sm:flex-row items-center gap-3">
-        {/* Fikir / Görev toggles */}
-        <div className="flex bg-neutral-900/40 p-1 rounded-xl border border-neutral-800/40 shrink-0">
-          <button
-            onClick={() => setQuickAddType('idea')}
-            className={cn(
-              "px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-              quickAddType === 'idea' 
-                ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 shadow-[0_0_10px_rgba(0,255,255,0.05)]" 
-                : "text-neutral-400 hover:text-neutral-200 border border-transparent"
-            )}
-          >
-            💡 Fikir
-          </button>
-          <button
-            onClick={() => setQuickAddType('task')}
-            className={cn(
-              "px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-              quickAddType === 'task' 
-                ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 shadow-[0_0_10px_rgba(0,255,255,0.05)]" 
-                : "text-neutral-400 hover:text-neutral-200 border border-transparent"
-            )}
-          >
-            ✓ Görev
-          </button>
-        </div>
+      <div className="quick-add-bar glass-panel relative z-10 flex flex-col items-stretch gap-3 overflow-visible rounded-full px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+        <IdeaTaskToggle
+          value={quickAddType}
+          onValueChange={setQuickAddType}
+          className="self-center sm:self-auto"
+        />
 
         {/* Input Bar Form */}
-        <form onSubmit={handleQuickAddSubmit} className="flex-grow flex items-center gap-3 w-full">
-          <Input
-            ref={quickAddInputRef}
-            value={quickAddText}
-            onChange={(e) => setQuickAddText(e.target.value)}
-            placeholder={
-              quickAddType === 'idea' 
-                ? "Aklına bir fikir mi geldi? Yaz ve Enter'a bas..." 
-                : "Yeni bir görev ekle..."
-            }
-            className="flex-grow bg-transparent border-none focus-visible:ring-0 p-0 text-sm placeholder:text-neutral-500 text-neutral-800 dark:text-neutral-200"
-          />
+        <form onSubmit={handleQuickAddSubmit} className="flex w-full min-w-0 flex-grow flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex h-10 min-w-0 flex-grow items-center px-2">
+            <Input
+              ref={quickAddInputRef}
+              value={quickAddText}
+              onChange={(e) => setQuickAddText(e.target.value)}
+              placeholder={
+                quickAddType === 'idea'
+                  ? 'Aklındaki fikri yaz...'
+                  : 'Yeni görev oluştur...'
+              }
+              className="h-10 w-full min-w-0 flex-grow appearance-none border-0 bg-transparent p-0 text-sm font-medium text-neutral-950 shadow-none outline-none ring-0 placeholder:text-neutral-600 focus:border-transparent focus:bg-transparent focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-transparent dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:bg-transparent"
+            />
+          </div>
 
           {/* Task specifics inline settings */}
           {quickAddType === 'task' && (
-            <div className="flex items-center gap-2 shrink-0 animate-fade-in">
-              <input
-                type="date"
-                value={quickAddDate}
-                onChange={(e) => setQuickAddDate(e.target.value)}
-                className="bg-neutral-800/50 hover:bg-neutral-800 border border-neutral-700/40 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-cyan-500/50 transition-colors cursor-pointer"
-              />
-              <input
-                type="time"
-                value={quickAddTime}
-                onChange={(e) => setQuickAddTime(e.target.value)}
-                className="bg-neutral-800/50 hover:bg-neutral-800 border border-neutral-700/40 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-cyan-500/50 transition-colors cursor-pointer"
+            <div className="w-full shrink-0 animate-fade-in sm:w-auto">
+              <DateTimePicker
+                date={quickAddDate}
+                time={quickAddTime}
+                onDateChange={setQuickAddDate}
+                onTimeChange={setQuickAddTime}
               />
             </div>
           )}
 
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden md:inline text-[10px] text-neutral-500 font-bold px-2 py-1 rounded bg-neutral-900/40 border border-neutral-800/40 select-none">
-              / ile odaklan
+          <button
+            type="submit"
+            className="group flex h-10 shrink-0 items-center justify-center gap-2 self-end bg-transparent px-2 text-neutral-950 sm:self-auto dark:text-white"
+          >
+            <span className="relative pb-1 text-xs font-black uppercase after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-bottom-right after:scale-x-0 after:bg-neutral-950 after:transition-transform after:duration-300 group-hover:after:origin-bottom-left group-hover:after:scale-x-100 dark:after:bg-white">
+              Ekle
             </span>
-            <Button type="submit" variant="glass" size="sm" className="h-8">
-              <Plus className="h-3.5 w-3.5 mr-1" /> Ekle
-            </Button>
-          </div>
+            <ArrowRight className="h-4 w-5 -translate-x-2 transition-transform duration-300 group-hover:translate-x-0 group-active:scale-90" />
+          </button>
         </form>
       </div>
 
-      {/* Horizontal Stats summary row (4 small cards) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Card 1 */}
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
-          <div className="space-y-0.5">
-            <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-400 flex items-center gap-1.5">
-              <Check className="h-3 w-3 text-cyan-400" /> Bugünkü görev
-            </div>
-            <div className="text-2xl font-extrabold text-neutral-900 dark:text-white mt-1">
-              {completedTodayCount}/{totalTodayCount}
-            </div>
-          </div>
-        </div>
+      {/* Horizontal Stats summary row (Terminal Metrics) */}
+      <TerminalMetrics
+        completedTodayCount={completedTodayCount}
+        totalTodayCount={totalTodayCount}
+        completedWeekCount={completedWeekCount}
+        totalWeekCount={totalWeekCount}
+        completedMonthCount={completedMonthCount}
+        totalMonthCount={totalMonthCount}
+        activeProjects={projects}
+        educations={educations}
+        ideas={ideas}
+      />
 
-        {/* Card 2 */}
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
-          <div className="space-y-0.5">
-            <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-400 flex items-center gap-1.5">
-              <Cpu className="h-3 w-3 text-cyan-400" /> Aktif proje
-            </div>
-            <div className="text-2xl font-extrabold text-neutral-900 dark:text-white mt-1">
-              {activeProjectsCount}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
-          <div className="space-y-0.5">
-            <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-400 flex items-center gap-1.5">
-              <Database className="h-3 w-3 text-cyan-400" /> Eğitim
-            </div>
-            <div className="text-2xl font-extrabold text-neutral-900 dark:text-white mt-1">
-              {educations.length}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4 */}
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
-          <div className="space-y-0.5">
-            <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-400 flex items-center gap-1.5">
-              <Lightbulb className="h-3 w-3 text-cyan-400" /> Fikir
-            </div>
-            <div className="text-2xl font-extrabold text-neutral-900 dark:text-white mt-1">
-              {ideas.length}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3 Column Layout (Today, Tomorrow, Water Tracker) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 2 Column Layout (Today, Tomorrow) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Column 1: Bugün (Today's Tasks) */}
         <div className="glass-panel rounded-2xl p-5 space-y-4 flex flex-col justify-between min-h-[400px]">
           <div className="space-y-4 w-full">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-neutral-200/10 pb-3">
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-200/10">
               <div className="flex items-center gap-2">
                 <span className="text-base font-extrabold text-neutral-900 dark:text-white">Bugün</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-900/40 text-neutral-400 border border-neutral-800/40">
+                <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-[10px] font-bold text-neutral-700 dark:border-neutral-800/40 dark:bg-neutral-900/40 dark:text-neutral-400">
                   {formatTurkishDate(today)}
                 </span>
               </div>
@@ -515,7 +542,7 @@ export const DashboardPage: React.FC = () => {
                 <div className="h-10 bg-neutral-800/20 rounded-xl" />
               </div>
             ) : todayTasks.length === 0 ? (
-              <p className="text-xs text-neutral-500 text-center py-12 select-none">Henüz görev yok.</p>
+              <p className="select-none py-12 text-center text-xs font-medium text-neutral-700 dark:text-neutral-400">Henüz görev yok.</p>
             ) : (
               <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
                 {todayTasks.map((task) => {
@@ -659,7 +686,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Bottom inline add task toggle form */}
-          <div className="w-full pt-3 mt-4 border-t border-neutral-200/10">
+          <div className="mt-4 w-full border-t border-neutral-200 pt-3 dark:border-neutral-200/10">
             {showAddFormToday ? (
               <form onSubmit={handleAddTodayTask} className="glass-panel border-cyan-500/20 rounded-xl p-3.5 space-y-3 animate-fade-in">
                 <div className="flex gap-2">
@@ -702,7 +729,7 @@ export const DashboardPage: React.FC = () => {
             ) : (
               <button
                 onClick={() => setShowAddFormToday(true)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-neutral-400/20 hover:border-cyan-500/40 hover:bg-cyan-500/5 text-xs text-neutral-500 hover:text-cyan-400 transition-all cursor-pointer font-medium"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-400 py-2 text-xs font-bold text-neutral-800 transition-all hover:border-cyan-600 hover:bg-cyan-50 hover:text-cyan-700 dark:border-neutral-400/20 dark:text-neutral-400 dark:hover:border-cyan-500/40 dark:hover:bg-cyan-500/5 dark:hover:text-cyan-400"
               >
                 <Plus className="h-3.5 w-3.5" /> Görev ekle
               </button>
@@ -714,14 +741,14 @@ export const DashboardPage: React.FC = () => {
         <div className="glass-panel rounded-2xl p-5 space-y-4 flex flex-col justify-between min-h-[400px]">
           <div className="space-y-4 w-full">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-neutral-200/10 pb-3">
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-200/10">
               <div className="flex items-center gap-2">
                 <span className="text-base font-extrabold text-neutral-900 dark:text-white">Yarın</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-900/40 text-neutral-400 border border-neutral-800/40">
+                <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-[10px] font-bold text-neutral-700 dark:border-neutral-800/40 dark:bg-neutral-900/40 dark:text-neutral-400">
                   {formatTurkishDate(tomorrow)}
                 </span>
               </div>
-              <Badge variant="outline" className="border-neutral-800 text-[10px] text-neutral-400">
+              <Badge variant="outline" className="border-neutral-400 text-[10px] font-bold text-neutral-700 dark:border-neutral-800 dark:text-neutral-400">
                 {completedTomorrowCount} / {totalTomorrowCount}
               </Badge>
             </div>
@@ -732,7 +759,7 @@ export const DashboardPage: React.FC = () => {
                 <div className="h-10 bg-neutral-800/20 rounded-xl" />
               </div>
             ) : tomorrowTasks.length === 0 ? (
-              <p className="text-xs text-neutral-500 text-center py-12 select-none">Henüz görev yok.</p>
+              <p className="select-none py-12 text-center text-xs font-medium text-neutral-700 dark:text-neutral-400">Henüz görev yok.</p>
             ) : (
               <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
                 {tomorrowTasks.map((task) => {
@@ -874,7 +901,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Bottom inline add task toggle form */}
-          <div className="w-full pt-3 mt-4 border-t border-neutral-200/10">
+          <div className="mt-4 w-full border-t border-neutral-200 pt-3 dark:border-neutral-200/10">
             {showAddFormTomorrow ? (
               <form onSubmit={handleAddTomorrowTask} className="glass-panel border-cyan-500/20 rounded-xl p-3.5 space-y-3 animate-fade-in">
                 <div className="flex gap-2">
@@ -917,7 +944,7 @@ export const DashboardPage: React.FC = () => {
             ) : (
               <button
                 onClick={() => setShowAddFormTomorrow(true)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-neutral-400/20 hover:border-cyan-500/40 hover:bg-cyan-500/5 text-xs text-neutral-500 hover:text-cyan-400 transition-all cursor-pointer font-medium"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-400 py-2 text-xs font-bold text-neutral-800 transition-all hover:border-cyan-600 hover:bg-cyan-50 hover:text-cyan-700 dark:border-neutral-400/20 dark:text-neutral-400 dark:hover:border-cyan-500/40 dark:hover:bg-cyan-500/5 dark:hover:text-cyan-400"
               >
                 <Plus className="h-3.5 w-3.5" /> Görev ekle
               </button>
@@ -925,174 +952,7 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Column 3: Premium Water Tracker Widget (1/3 width) */}
-        <div className="glass-panel rounded-2xl p-5 space-y-5 relative overflow-hidden flex flex-col justify-between min-h-[400px]">
-          <div className="space-y-4 w-full">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-primary">
-                <Droplet className="h-5 w-5 fill-primary text-cyan-400 animate-pulse" />
-                <h3 className="font-extrabold text-base text-neutral-900 dark:text-white">Su Takibi</h3>
-              </div>
-              <Badge variant="outline" className="border-cyan-500/20 text-cyan-400 bg-cyan-500/5 font-semibold text-[10px]">
-                {Math.max(0, (waterGoal - waterAmount) / 1000).toFixed(1)}L kaldı
-              </Badge>
-            </div>
 
-            {/* Circular wave tracker */}
-            <div className="flex items-center gap-6 py-2 border-b border-neutral-200/10 pb-4">
-              {/* Animated wave circle (using top styling to prevent animation collision) */}
-              <div className="relative h-28 w-28 rounded-full border-[3px] border-cyan-500/20 flex items-center justify-center overflow-hidden bg-neutral-950/20 shrink-0 shadow-[0_0_20px_rgba(0,255,255,0.01)]">
-                {/* Wave effect layer inside */}
-                <div 
-                  className="absolute left-[-50%] w-[200%] h-[200%] bg-cyan-500/25 rounded-[38%] animate-wave z-10 transition-all duration-1000 ease-out"
-                  style={{ 
-                    top: `${100 - waterPercentage}%` 
-                  }}
-                />
-                <div 
-                  className="absolute left-[-50%] w-[200%] h-[200%] bg-cyan-500/15 rounded-[35%] animate-wave-slow z-0 transition-all duration-1000 ease-out"
-                  style={{ 
-                    top: `${100 - waterPercentage - 4}%` 
-                  }}
-                />
-                
-                {/* Percentage Centered Info Text */}
-                <div className="z-20 text-center select-none">
-                  <span className="text-xl font-extrabold tracking-tighter text-neutral-900 dark:text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
-                    {waterPercentage}%
-                  </span>
-                  <p className="text-[8px] uppercase font-bold tracking-widest text-neutral-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">
-                    hedefin
-                  </p>
-                </div>
-              </div>
-
-              {/* Right statistics info */}
-              <div className="space-y-1.5">
-                <div>
-                  <div className="text-2xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
-                    {waterAmount} ml
-                  </div>
-                  <div className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider">
-                    bugün içilen
-                  </div>
-                </div>
-                
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-bold text-cyan-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  hedef {waterGoal / 1000}L
-                </div>
-              </div>
-            </div>
-
-            {/* 2x2 Grid of Presets using Glass Buttons */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <Button 
-                variant="glass" 
-                onClick={() => handleAddWater('BOTTLE_1500')}
-                className="w-full text-left"
-                contentClassName="flex items-center gap-2 px-3 py-2.5 justify-start"
-              >
-                <Droplet className="h-3.5 w-3.5 text-cyan-400 fill-cyan-400/20 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-neutral-200 truncate leading-tight">Şişe</div>
-                  <div className="text-[9px] text-neutral-400 font-semibold leading-none">+1.5L</div>
-                </div>
-              </Button>
-
-              <Button 
-                variant="glass" 
-                onClick={() => handleAddWater('GLASS_300')}
-                className="w-full text-left"
-                contentClassName="flex items-center gap-2 px-3 py-2.5 justify-start"
-              >
-                <Droplet className="h-3.5 w-3.5 text-cyan-400 fill-cyan-400/20 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-neutral-200 truncate leading-tight">Bardak</div>
-                  <div className="text-[9px] text-neutral-400 font-semibold leading-none">+300ml</div>
-                </div>
-              </Button>
-
-              <Button 
-                variant="glass" 
-                onClick={() => handleAddWater('CUSTOM', 470)}
-                className="w-full text-left"
-                contentClassName="flex items-center gap-2 px-3 py-2.5 justify-start"
-              >
-                <Droplet className="h-3.5 w-3.5 text-cyan-400 fill-cyan-400/20 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-neutral-200 truncate leading-tight">Stanley</div>
-                  <div className="text-[9px] text-neutral-400 font-semibold leading-none">+470ml</div>
-                </div>
-              </Button>
-
-              <Button 
-                variant="glass" 
-                onClick={() => handleAddWater('HALF_500')}
-                className="w-full text-left"
-                contentClassName="flex items-center gap-2 px-3 py-2.5 justify-start"
-              >
-                <Droplet className="h-3.5 w-3.5 text-cyan-400 fill-cyan-400/20 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-neutral-200 truncate leading-tight">Yarım</div>
-                  <div className="text-[9px] text-neutral-400 font-semibold leading-none">+500ml</div>
-                </div>
-              </Button>
-            </div>
-
-            {/* Stepper with custom ml increment */}
-            <div className="flex items-center gap-2.5 pt-1">
-              <div className="flex items-center bg-neutral-900/50 border border-neutral-800/40 rounded-full h-9 px-1.5 shrink-0">
-                <button 
-                  onClick={() => setCustomStepperMl(prev => Math.max(50, prev - 50))}
-                  className="h-6 w-6 rounded-full hover:bg-neutral-800/60 flex items-center justify-center text-neutral-400 hover:text-white transition-all cursor-pointer"
-                  title="Azalt"
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-                <div className="w-14 text-center select-none">
-                  <span className="text-xs font-extrabold text-white">{customStepperMl}</span>
-                  <span className="text-[8px] font-bold text-neutral-500 uppercase ml-0.5">ml</span>
-                </div>
-                <button 
-                  onClick={() => setCustomStepperMl(prev => prev + 50)}
-                  className="h-6 w-6 rounded-full hover:bg-neutral-800/60 flex items-center justify-center text-neutral-400 hover:text-white transition-all cursor-pointer"
-                  title="Arttır"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              </div>
-
-              <Button 
-                variant="glass"
-                onClick={() => handleAddWater('CUSTOM', customStepperMl)}
-                className="flex-grow h-9 text-xs"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" /> Ekle
-              </Button>
-            </div>
-          </div>
-
-          {/* Stepper Footer controls */}
-          <div className="flex justify-between items-center pt-3 mt-4 border-t border-neutral-200/10">
-            <button 
-              onClick={handleUndoWater}
-              disabled={!waterSummary?.logs || waterSummary.logs.length === 0}
-              className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-400 hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
-            >
-              <Undo className="h-3 w-3 text-orange-400" /> Geri al
-            </button>
-
-            <button 
-              onClick={handleResetDay}
-              disabled={!waterSummary?.logs || waterSummary.logs.length === 0}
-              className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-400 hover:text-red-400 disabled:opacity-40 transition-colors cursor-pointer"
-            >
-              <RotateCcw className="h-3 w-3" /> Günü sıfırla
-            </button>
-          </div>
-        </div>
 
       </div>
     </div>

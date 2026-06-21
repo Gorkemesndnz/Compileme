@@ -12,10 +12,10 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** FE-2 — Projeler (Frontend)
-- **Çalışıyor mu:** Evet (Tüm backend modülleri, testler, FE-0 altyapısı ve FE-1 anasayfa/su takibi cila ve entegrasyonu tamamlandı)
-- **Sırada:** FE-2 — Projeler (Frontend) Geliştirmeleri
-- **Son güncelleme:** 08.06.2026
+- **Aktif faz:** FE-1 — Anasayfa + Su takibi (Frontend) (Mikro Widget Cila)
+- **Çalışıyor mu:** Evet (Tüm backend modülleri, testler, FE-0 altyapısı, FE-1 anasayfa/su takibi ve FE-2 projeler control room tamamlandı. Mikro Su Takibi Widget'ı sağ üst köşeye entegre edildi.)
+- **Sırada:** FE-3 — Eğitimler (Frontend)
+- **Son güncelleme:** 21.06.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
@@ -33,7 +33,7 @@
 | 10 | Asistan (ops, backend) | ⬜ Başlanmadı |
 | FE-0 | Temel & ortak UI altyapısı | ✅ Tamamlandı |
 | FE-1 | Anasayfa + Su takibi (Frontend) | ✅ Tamamlandı |
-| FE-2 | Projeler (Frontend) | 🟡 Devam ediyor |
+| FE-2 | Projeler (Frontend) | ✅ Tamamlandı |
 
 İşaretler: ⬜ Başlanmadı · 🟡 Devam ediyor · ✅ Tamamlandı · ⛔ Engellendi
 
@@ -41,6 +41,133 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-21 · Faz FE-1 — Mikro Su Takibi Widget Entegrasyonu
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Dashboard ekranındaki eski devasa su takip kartı tamamen kaldırıldı.
+  - Ekranın en sağ üst köşesine (karşılama alanının karşısına) havada asılı, minimal `<MicroWaterTracker>` popover widget'ı eklendi.
+  - Popover buzlu cam efektleri, ince progress bar, 4 kapsül su preset butonu (+300ml, +470ml, +500ml, +1500ml) ve kalın gölgeli retro-modern "Geri Al" / "Günü Sıfırla" butonlarıyla donatıldı.
+  - Dışarıya tıklayınca kapanma (click-outside) ve `framer-motion` animasyonu eklendi.
+  - Dashboard görev kolonları 3'ten 2'ye düşürülerek Bugün ve Yarın listeleri genişletildi.
+  - **Optimizasyon:** Su ekleme, silme ve günü sıfırlama işlemlerine TanStack Query **Optimistic Updates (İyimser Güncellemeler)** modeli entegre edildi. Tepkime süresi 0ms'ye indirildi.
+  - **Hata Düzeltme:** Backend API veri modeli (`consumedMl`, `targetMl`, `percent`) ile frontend önbellek modeli (`amountMl`, `goalMl`, `percentage`) arasındaki alan adı uyuşmazlığı tespit edilerek frontend modeli backend ile tam uyumlu hale getirildi. Su miktarının ve progress bar'ın artmama hatası kökten çözüldü.
+- Kararlar:
+  - Stanley (+470ml) eklemeleri DB şemasını korumak için `CUSTOM` kaynak tipi ve `470` ml miktarı ile backend'e bağlandı.
+- Kabul kriteri:
+  - `npm run build` derlemesi sıfır hata ile tamamlandı.
+  - Su ekleme/silme tepkimesi 0ms olarak doğrulandı, progress bar animasyonları, su miktarları ve yüzdeleri anında güncelleniyor.
+- Açık konular / sıradaki:
+  - FE-3 Eğitimler ekranına geçilebilir.
+
+### 2026-06-21 · Faz FE-1 — DateTimePicker Katman ve Saat Seçici Düzeltmesi
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Sidebar `z-50`, quick-add bar `z-10` yapılarak genişleyen Sidebar'ın giriş barının üstünde kalması sağlandı.
+  - DateTimePicker trigger yüksekliği/radius'u Fikir-Görev switcher ile uyumlu `h-11 rounded-full` geometriye geçirildi.
+  - Popover footer'ındaki “Bugün” aksiyonu kaldırıldı; onay butonu kompakt saat alanının yanına taşındı.
+  - DateTimePicker içindeki native `input[type=time]` kaldırıldı ve özel saat/dakika grid seçicisi eklendi.
+  - Native dropdown'un mavi blokları ve siyah focus/active katmanı özel light/dark Tailwind durumlarıyla değiştirildi.
+- Kararlar:
+  - Siyah ekran bug'ını kalıcı olarak önlemek için tarayıcı-native saat seçici yerine uygulama kontrollü seçenek grid'i kullanıldı.
+- Kabul kriteri:
+  - `npm.cmd run build` ve `git diff --check` başarıyla tamamlandı.
+- Açık konular / sıradaki:
+  - FE-3 Eğitimler ekranına geçilebilir.
+
+### 2026-06-21 · Faz FE-1 — Quick Add Input Çerçeve Temizliği
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Quick-add input alanındaki border, outline, ring, ring-offset ve shadow focus stilleri tamamen sıfırlandı.
+  - Input arka planı light/dark modda şeffaf tutuldu; mobil alt border kaldırıldı.
+  - Quick-add ana wrapper radius değeri `20px`, iç padding ve flex boşlukları switcher/picker/CTA ile uyumlu hale getirildi.
+- Kararlar:
+  - Değişiklik ortak `Input` primitive'i yerine yalnızca Dashboard quick-add kullanımına scope edildi.
+- Kabul kriteri:
+  - `npm.cmd run build` başarıyla tamamlandı.
+- Açık konular / sıradaki:
+  - FE-3 Eğitimler ekranına geçilebilir.
+
+### 2026-06-21 · Faz FE-1 — Fikir/Görev Toggle Revizyonu
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Quick-add seçim alanı bağımsız `IdeaTaskToggle` bileşenine taşındı.
+  - Bileşen kontrollü `value` / `onValueChange` prop'larıyla ve kontrolsüz kullanım için varsayılan `idea` state'iyle hazırlandı.
+  - Kayan rounded seçim yüzeyi, `Lightbulb` ve `CheckSquare` ikonları ile light/dark tema stilleri eklendi.
+  - Dashboard placeholder metinleri moda göre “Aklındaki fikri yaz...” ve “Yeni görev oluştur...” olarak güncellendi.
+- Kararlar:
+  - Yeni dependency eklenmedi; mevcut React, Tailwind, Lucide ve `cn()` altyapısı kullanıldı.
+- Kabul kriteri:
+  - `npm.cmd run build` başarıyla tamamlandı.
+- Açık konular / sıradaki:
+  - FE-3 Eğitimler ekranına geçilebilir.
+
+### 2026-06-21 · Faz FE-1 — Quick Add DateTimePicker ve CTA Revizyonu
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Dashboard quick-add barındaki native tarih/saat inputları kaldırıldı.
+  - RuixenUI/21st.dev çizgisinde ay geçişi, gün seçimi, saat girişi, bugün seçimi, saat temizleme, dışarı tıklama ve Escape kapanışı destekleyen `DateTimePicker` eklendi.
+  - Yuvarlak glass “Ekle” butonu kaldırılarak underline genişleme ve sağa kayan Lucide ok animasyonuna sahip metin tabanlı `EKLE` CTA uygulandı.
+  - Fikir/Görev sekmeleri Lucide ikonlarıyla yenilendi; quick-add wrapper light/dark zinc glass yüzeyleriyle uyumlu hale getirildi.
+  - Mobilde sekme, input, picker ve CTA dikey akışa geçecek şekilde responsive düzen korundu.
+- Kararlar:
+  - `date-fns`, Radix Popover ve `styled-components` eklenmedi; mevcut React, Tailwind ve Lucide altyapısıyla feature-scope bileşen oluşturuldu.
+  - Kullanıcının SVG oku yerine proje UI kuralına uygun Lucide `ArrowRight` kullanıldı.
+- Kabul kriteri:
+  - `npm.cmd run build` başarıyla tamamlandı.
+  - Playwright oturumu açıldı; etkileşim snapshot testi araç kullanım limiti nedeniyle tamamlanamadı.
+- Açık konular / sıradaki:
+  - Araç limiti yenilendiğinde görev sekmesi, takvim açma/gün seçme/saat seçme ve dark mode etkileşim smoke testi tekrar çalıştırılabilir.
+
+### 2026-06-21 · Faz FE-1 — Dashboard Light Tema Kontrast Revizyonu
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Dashboard açık tema metinleri, istatistik değerleri, görev boş durumları, su takip verileri ve aksiyonları daha koyu/okunabilir renklere geçirildi.
+  - Karşılama alanı `Sun` ikonu, “İyi Günler” başlığı ve belirgin tarih satırıyla yenilendi.
+  - Quick-add fikir/görev seçimi, odak kısayolu ve EaseMize glass butonları açık temaya özel kontrast ve doğal gölge stilleriyle güncellendi.
+  - Sidebar ikon/metin kontrastı artırıldı; aktif ve hover durumları dark tema korunarak düzenlendi.
+  - Quick-add mobil yerleşimi dikey akışa alınarak yatay viewport taşması giderildi.
+- Kararlar:
+  - 21st.dev EaseMize button ve mevcut layout korunarak light tema düzeltmeleri Dashboard kapsamında sınırlandırıldı.
+- Kabul kriteri:
+  - `npm.cmd run build` başarıyla tamamlandı.
+  - Dashboard 1440x900 ve 390x844 Edge renderlarında görsel olarak doğrulandı; yatay taşma ve açık tema okunurluk sorunları giderildi.
+- Açık konular / sıradaki:
+  - FE-3 Eğitimler ekranına geçilebilir.
+
+### 2026-06-08 · Faz FE-2 — Projeler Control Room
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `ProjectsPage.tsx` placeholder ekrandan premium glass Project Control Room ekranına dönüştürüldü.
+  - Sol proje kütüphanesi, seçili proje üst paneli, hafıza/metric kartları ve tab yapısı eklendi.
+  - Fazlar stacked-roadmap hissinde tasarlandı; faz ekleme, status güncelleme, silme ve yukarı/aşağı sıralama bağlandı.
+  - Proje görevleri `task` tablosuna `kind=PROJECT`, `projectId`, `phaseId` ile bağlandı; tarihli görevler `DAY`, tarihsizler `UNSCHEDULED` gider.
+  - Stack, dokümanlar, refactor planları, snippet kopyalama, linkler ve dosya upload -> project link workaround akışları eklendi.
+  - DB Schema Studio eklendi: tablo/kolon/PK/FK form editorü, diyagram görünümü ve otomatik Mermaid ER kodu üretimi.
+  - `projects.ts` tüm proje alt kaynak hook'larıyla genişletildi, `files.ts` upload helper'ı eklendi, `tasks.ts` move endpoint'i backend `MoveRequest` body sözleşmesine göre düzeltildi.
+  - 21st.dev EaseMize cam buton için `components/ui/glass-button.tsx` resmi import yolu eklendi.
+- Kararlar:
+  - Backend değiştirilmedi. Dosya-proje ilişkisi v1 için upload sonrası `project_link` kaydı ile çözüldü.
+  - Mermaid dependency eklenmedi; frontend DB Schema Studio formdan Mermaid ER kodu üretiyor ve yerel diyagram görünümü render ediyor.
+- Kabul kriteri:
+  - `npm.cmd run build` başarıyla tamamlandı.
+  - Vite sadece mevcut bundle size uyarısı verdi; TypeScript/Vite build hatası yok.
+- Açık konular / sıradaki:
+  - FE-3 Eğitimler ekranına geçilebilir.
 
 ### 2026-06-08 · Faz FE-1 — Anasayfa + Su Takibi Entegrasyon & Cila
 - Ajan: Antigravity

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from './client'
 import { BaseEntity } from './types'
 
@@ -39,6 +39,12 @@ export interface TaskRequest {
   educationId?: number
 }
 
+export interface MoveTaskRequest {
+  id: number
+  scheduledDate: string
+  planningBucket?: PlanningBucket
+}
+
 export interface TaskFilters {
   date?: string
   from?: string
@@ -47,6 +53,12 @@ export interface TaskFilters {
   kind?: TaskKind
   projectId?: number
   educationId?: number
+}
+
+const invalidateTaskViews = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: ['tasks'] })
+  queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  queryClient.invalidateQueries({ queryKey: ['calendar'] })
 }
 
 export const useTasks = (filters: TaskFilters) => {
@@ -66,11 +78,7 @@ export const useCreateTask = () => {
       const response = await apiClient.post<Task>('/tasks', newTask)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['calendar'] })
-    }
+    onSuccess: () => invalidateTaskViews(queryClient)
   })
 }
 
@@ -81,31 +89,21 @@ export const useToggleTaskComplete = () => {
       const response = await apiClient.patch<Task>(`/tasks/${id}/complete`)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['calendar'] })
-    }
+    onSuccess: () => invalidateTaskViews(queryClient)
   })
 }
 
 export const useMoveTaskToTomorrow = () => {
   const queryClient = useQueryClient()
-  return useMutation<Task, Error, number>({
-    mutationFn: async (id) => {
-      // Yarına aktar endpoint'i patch /{id}/move?days=1 veya scheduledDate güncellemesi şeklinde çalışabilir.
-      // Backend testlerinde taskService.moveTask(id, days) var.
-      // HTTP endpoint: PATCH /api/tasks/{id}/move?days=1
-      const response = await apiClient.patch<Task>(`/tasks/${id}/move`, null, {
-        params: { days: 1 }
+  return useMutation<Task, Error, MoveTaskRequest>({
+    mutationFn: async ({ id, scheduledDate, planningBucket = 'DAY' }) => {
+      const response = await apiClient.patch<Task>(`/tasks/${id}/move`, {
+        scheduledDate,
+        planningBucket
       })
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['calendar'] })
-    }
+    onSuccess: () => invalidateTaskViews(queryClient)
   })
 }
 
@@ -115,11 +113,7 @@ export const useDeleteTask = () => {
     mutationFn: async (id) => {
       await apiClient.delete(`/tasks/${id}`)
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['calendar'] })
-    }
+    onSuccess: () => invalidateTaskViews(queryClient)
   })
 }
 
@@ -130,10 +124,6 @@ export const useUpdateTask = () => {
       const response = await apiClient.patch<Task>(`/tasks/${id}`, request)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['calendar'] })
-    }
+    onSuccess: () => invalidateTaskViews(queryClient)
   })
 }
