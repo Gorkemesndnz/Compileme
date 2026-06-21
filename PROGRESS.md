@@ -42,6 +42,20 @@
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
 
+### 2026-06-21 · Faz FE-0/FE-1 — GlassFooter Redesign (efferd/footer-section)
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Eski `CinematicFooter.tsx` (parallax curtain-reveal) kaldırıldı.
+  - 21st.dev'in `efferd/footer-section` şablonundan esinlenen modern, minimal, cam temalı `GlassFooter.tsx` bileşeni oluşturuldu.
+  - Footer tabanına obsidyen cam görünümü (`bg-black/45 backdrop-blur-xl border-t border-white/10`) ve orta üst kısma şık bir cyan border glow çizgisi yerleştirildi.
+  - Arka planda sürekli ve yavaşça salınım yapan iki adet renkli parıltı küresi (Cyan ve Violet) CSS keyframe animasyonları ile canlandırıldı.
+  - Footer bileşenleri (modüller, kısayollar, API ve GitHub bağlantıları) `framer-motion` (`whileInView`, delay ve blur efektleriyle) staggered olarak animasyonlu giriş yapacak şekilde yapılandırıldı.
+  - Bileşen `AppLayout.tsx` içerisine sayfa akışının sonuna standart olarak entegre edildi.
+- Kabul kriteri:
+  - `npm run build` derlemesi sıfır hata ile tamamlandı.
+
 ### 2026-06-21 · Faz FE-1 — 3 Sütunlu Zaman Çizelgesi ve Aceternity UI Buton Entegrasyonu
 - Ajan: Antigravity
 - Branch / commit: master / (commit bekliyor)
