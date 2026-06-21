@@ -42,6 +42,22 @@
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
 
+### 2026-06-21 · Faz FE-1 — 3 Sütunlu Zaman Çizelgesi ve Aceternity UI Buton Entegrasyonu
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Dashboard görev paneli 3 Sütunlu (Bugün, Yarın, Aylık Plan) akışkan zaman çizelgesine dönüştürüldü.
+  - Sütun altlarındaki "+ Görev Ekle" butonlarında pürüzsüz dönen cyan gradyan kenarlıklı Aceternity UI Moving Border (`moving-border.tsx`) entegrasyonu yapıldı.
+  - Sürükle-bırak için HTML5 native drag-drop altyapısı kurularak sütun içi ve arası taşımalar mutasyonlarla bağlandı.
+  - 3. sütunda tarihsiz aylık plan havuzu (`planning_bucket = 'MONTH'`) ve ayın planlı günlerini içeren akıllı odaklayıcı listelendi. Planlı bir güne tıklayınca 1. sütun o güne odaklanacak şekilde dinamik hale getirildi.
+  - `completed_at` alanı, tik durumuna göre anlık ISO String zaman damgası veya `null` olacak şekilde otomatik yönetildi.
+  - `duration_minutes` süre girdileri backend ile entegrasyon için integer sayı tipine cast edilerek gönderildi.
+  - Aylık plana görev eklenirken veya taşınırken `target_period` o anki ayın koduyla (örn: "2026-06") beslendi.
+  - `project_id` ve `education_id` alanlarında lookup isim eşleşmeleri yapılarak ID numaraları yerine şık proje/eğitim isimleri gösterildi.
+- Kabul kriteri:
+  - `npm run build` derlemesi sıfır hata ile tamamlandı.
+
 ### 2026-06-21 · Faz FE-1 — Mikro Su Takibi Widget Entegrasyonu
 - Ajan: Antigravity
 - Branch / commit: master / (commit bekliyor)
