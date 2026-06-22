@@ -42,6 +42,20 @@
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
 
+### 2026-06-22 · Faz FE-2 — Tarih Seçici Taşma Hatası, Faz Durumu Dropdown & Backdrop Blur Entegrasyonu (Bugfix & UI Improvement)
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `DateTimePicker.tsx` bileşeninde açılır takvimin dar container'larda sola taşarak ekrandan çıkması (overflow) sorunu, bileşene dynamic align (`align="left" | "right"`) desteği eklenerek çözüldü.
+  - `PhasesManagerPage.tsx` üzerindeki `Başlangıç Tarihi` seçici `align="left"`, `Bitiş Tarihi` seçici ise `align="right"` olarak ayarlanarak takvimin drawer sınırları içinde kalması sağlandı.
+  - Yeni faz oluşturma formundaki native HTML `<select>` elemanı kaldırıldı. Yerine projenin genel siber-komuta ve glassmorphic temasına uygun, Framer Motion (`AnimatePresence` + `motion.div`) destekli, `DateTimePicker` stili tetikleyici butona ve durum ikonlarına (🟡, 🟢, 🔵, 🟣) sahip premium bir özel açılır kutu (custom select dropdown) entegre edildi.
+  - Sayfa geçiş animasyonlarında kullanılan `motion.div` transformlarının child `position: fixed` elemanlarının (backdrop overlay ve drawer) viewport yerine container'a göre konumlanmasına yol açması sebebiyle, drawer ve backdrop overlay `createPortal` ile doğrudan `document.body` üzerine taşındı. Böylece sayfa başlığı (header), sidebar ve footer da dahil olmak üzere tüm ekranın pürüzsüz bir şekilde bulanıklaşması (backdrop-blur) sağlandı.
+  - Form başarıyla gönderildiğinde veya kapatıldığında açılır kutunun açık kalma durumu resetlenecek şekilde state yönetimi pürüzsüzleştirildi.
+- Kararlar:
+  - Form kontrollerinde native select'ler yerine custom UI bileşenleri kullanılarak premium hissi sürdürüldü.
+- Kabul kriteri: `npm run build` hatasız tamamlandı.
+
 ### 2026-06-22 · Proje Sayfası Siyah Ekran Hatası Düzeltmesi (Bugfix)
 - Ajan: Antigravity
 - Branch / commit: master / (commit bekliyor)

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import {
   CalendarDays,
@@ -8,6 +9,7 @@ import {
   Trash2,
   Clock,
   Menu,
+  Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Project, ProjectPhase, ProjectStatus } from '../../api/projects'
@@ -51,6 +53,13 @@ const STATUS_STYLES: Record<ProjectStatus, string> = {
   DONE: 'border-violet-400/30 bg-violet-400/10 text-violet-300',
 }
 
+const STATUS_OPTIONS: { value: ProjectStatus; label: string; icon: string }[] = [
+  { value: 'PLANNING', label: 'Planlama', icon: '🟡' },
+  { value: 'ACTIVE', label: 'Aktif', icon: '🟢' },
+  { value: 'PAUSED', label: 'Beklemede', icon: '🔵' },
+  { value: 'DONE', label: 'Tamamlandı', icon: '🟣' },
+]
+
 export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
   project,
   phases,
@@ -63,6 +72,19 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [localPhases, setLocalPhases] = useState<ProjectPhase[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
+  const statusRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!statusOpen) return
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (!statusRef.current?.contains(e.target as Node)) {
+        setStatusOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [statusOpen])
 
   const [form, setForm] = useState<{
     name: string
@@ -105,6 +127,7 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
       })
       setForm({ name: '', description: '', status: 'PLANNING', startDate: '', endDate: '' })
       setDrawerOpen(false)
+      setStatusOpen(false)
       toast.success('Yeni proje fazı başarıyla oluşturuldu.')
     } catch {
       toast.error('Faz eklenirken bir hata oluştu.')
@@ -251,142 +274,206 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
       </div>
 
       {/* Drawer: Yeni Faz Oluştur */}
-      <AnimatePresence>
-        {drawerOpen && (
-          <>
-            {/* Backdrop overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 z-50 bg-zinc-950/20 backdrop-blur-sm transition-opacity duration-300"
-            />
+      {createPortal(
+        <AnimatePresence>
+          {drawerOpen && (
+            <>
+              {/* Backdrop overlay */}
+              <motion.div
+                key="drawer-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setDrawerOpen(false)}
+                className="fixed inset-0 z-50 bg-zinc-950/20 backdrop-blur-sm transition-opacity duration-300"
+              />
 
-            {/* Sliding Drawer Container */}
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-neutral-200/40 bg-white/80 p-6 shadow-[-10px_0_30px_rgba(0,0,0,0.15)] backdrop-blur-2xl dark:border-neutral-800/40 dark:bg-neutral-950/80 dark:shadow-[-10px_0_30px_rgba(6,182,212,0.04)] flex flex-col gap-5 overflow-y-auto"
-            >
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between border-b border-neutral-200/50 dark:border-zinc-800/50 pb-4">
-                <div>
-                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">
-                    Phase Initialization
-                  </span>
-                  <h3 className="text-xl font-black text-neutral-900 dark:text-white mt-0.5">
-                    Yeni Faz Oluştur
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setDrawerOpen(false)}
-                  className="rounded-lg border border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3 py-1.5 text-xs font-black text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-all shadow-sm"
-                >
-                  Kapat
-                </button>
-              </div>
-
-              {/* Form Content */}
-              <form onSubmit={handleSubmit} className="space-y-5 mt-2">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
-                    Faz Adı
-                  </label>
-                  <Input
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Örn: Faz 1 - API Geliştirmeleri"
-                    required
-                    disabled={isSubmitting}
-                    className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
-                  />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
-                    Detay / Açıklama
-                  </label>
-                  <Textarea
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="Bu faz kapsamında yapılacak teknik işleri yazın..."
-                    rows={4}
-                    disabled={isSubmitting}
-                    className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)] resize-none"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
-                    Faz Durumu
-                  </label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as ProjectStatus })}
-                    disabled={isSubmitting}
-                    className="w-full h-11 bg-white/40 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 text-neutral-950 dark:text-white rounded-xl px-3 text-sm outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(6,182,212,0.12)] cursor-pointer font-bold"
+              {/* Sliding Drawer Container */}
+              <motion.div
+                key="drawer-container"
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-neutral-200/40 bg-white/80 p-6 shadow-[-10px_0_30px_rgba(0,0,0,0.15)] backdrop-blur-2xl dark:border-neutral-800/40 dark:bg-neutral-950/80 dark:shadow-[-10px_0_30px_rgba(6,182,212,0.04)] flex flex-col gap-5 overflow-y-auto"
+              >
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between border-b border-neutral-200/50 dark:border-zinc-800/50 pb-4">
+                  <div>
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">
+                      Phase Initialization
+                    </span>
+                    <h3 className="text-xl font-black text-neutral-900 dark:text-white mt-0.5">
+                      Yeni Faz Oluştur
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setDrawerOpen(false)}
+                    className="rounded-lg border border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700 bg-white/50 dark:bg-neutral-950/50 px-3 py-1.5 text-xs font-black text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-all shadow-sm"
                   >
-                    <option value="PLANNING" className="bg-white dark:bg-neutral-900 text-amber-500 font-bold">🟡 Planlama</option>
-                    <option value="ACTIVE" className="bg-white dark:bg-neutral-900 text-emerald-500 font-bold">🟢 Aktif</option>
-                    <option value="PAUSED" className="bg-white dark:bg-neutral-900 text-sky-500 font-bold">🔵 Beklemede</option>
-                    <option value="DONE" className="bg-white dark:bg-neutral-900 text-violet-500 font-bold">🟣 Tamamlandı</option>
-                  </select>
+                    Kapat
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                {/* Form Content */}
+                <form onSubmit={handleSubmit} className="space-y-5 mt-2">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
-                      Başlangıç Tarihi
+                      Faz Adı
                     </label>
-                    <DateTimePicker
-                      date={form.startDate}
-                      onDateChange={(date) => setForm((f) => ({ ...f, startDate: date }))}
-                      showTime={false}
+                    <Input
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      placeholder="Örn: Faz 1 - API Geliştirmeleri"
+                      required
+                      disabled={isSubmitting}
+                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
                     />
                   </div>
                   
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
-                      Bitiş Tarihi
+                      Detay / Açıklama
                     </label>
-                    <DateTimePicker
-                      date={form.endDate}
-                      onDateChange={(date) => setForm((f) => ({ ...f, endDate: date }))}
-                      showTime={false}
+                    <Textarea
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      placeholder="Bu faz kapsamında yapılacak teknik işleri yazın..."
+                      rows={4}
+                      disabled={isSubmitting}
+                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)] resize-none"
                     />
                   </div>
-                </div>
 
-                {/* Submit Actions */}
-                <div className="flex justify-end items-center gap-3 pt-5 border-t border-neutral-200/50 dark:border-zinc-800/50 mt-5">
-                  <SketchButton
-                    type="button"
-                    onClick={() => setDrawerOpen(false)}
-                    disabled={isSubmitting}
-                    className="h-9 px-4 text-xs font-bold"
-                  >
-                    İptal
-                  </SketchButton>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
+                      Faz Durumu
+                    </label>
+                    <div ref={statusRef} className="relative w-full">
+                      <button
+                        type="button"
+                        onClick={() => setStatusOpen((prev) => !prev)}
+                        disabled={isSubmitting}
+                        className={cn(
+                          "flex h-11 w-full items-center justify-between gap-3 rounded-full border px-4 text-left outline-none transition-colors",
+                          "border-neutral-300 bg-white/80 text-neutral-800 hover:border-neutral-400 hover:bg-white",
+                          "dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-900",
+                          statusOpen && "border-cyan-500 ring-2 ring-cyan-500/15 dark:border-cyan-400",
+                          isSubmitting && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="text-sm shrink-0">
+                            {STATUS_OPTIONS.find((opt) => opt.value === form.status)?.icon}
+                          </span>
+                          <span className="truncate text-xs font-bold">
+                            {STATUS_OPTIONS.find((opt) => opt.value === form.status)?.label}
+                          </span>
+                        </span>
+                        <ChevronRight
+                          className={cn(
+                            "h-4 w-4 text-neutral-400 dark:text-zinc-500 transition-transform duration-200 shrink-0",
+                            statusOpen && "rotate-90"
+                          )}
+                        />
+                      </button>
 
-                  <MovingBorderButton
-                    borderRadius="0.75rem"
-                    duration={1800}
-                    containerClassName="h-9 cursor-pointer"
-                    className="px-6 font-bold text-xs"
-                    type="submit"
-                    disabled={isSubmitting}
-                  >
-                    Oluştur
-                  </MovingBorderButton>
-                </div>
-              </form>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                      <AnimatePresence>
+                        {statusOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-[calc(100%+0.5rem)] left-0 right-0 z-[60] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_18px_50px_rgba(0,0,0,0.5)] overflow-hidden"
+                          >
+                            <div className="flex flex-col gap-1">
+                              {STATUS_OPTIONS.map((opt) => {
+                                const isSelected = form.status === opt.value
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => {
+                                      setForm({ ...form, status: opt.value })
+                                      setStatusOpen(false)
+                                    }}
+                                    className={cn(
+                                      "flex items-center gap-2.5 w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
+                                      "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white",
+                                      isSelected && "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300 hover:bg-cyan-500/15 dark:hover:bg-cyan-400/15"
+                                    )}
+                                  >
+                                    <span className="text-sm shrink-0">{opt.icon}</span>
+                                    <span className="flex-grow">{opt.label}</span>
+                                    {isSelected && (
+                                      <Check className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
+                        Başlangıç Tarihi
+                      </label>
+                      <DateTimePicker
+                        date={form.startDate}
+                        onDateChange={(date) => setForm((f) => ({ ...f, startDate: date }))}
+                        showTime={false}
+                        align="left"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
+                        Bitiş Tarihi
+                      </label>
+                      <DateTimePicker
+                        date={form.endDate}
+                        onDateChange={(date) => setForm((f) => ({ ...f, endDate: date }))}
+                        showTime={false}
+                        align="right"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Actions */}
+                  <div className="flex justify-end items-center gap-3 pt-5 border-t border-neutral-200/50 dark:border-zinc-800/50 mt-5">
+                    <SketchButton
+                      type="button"
+                      onClick={() => setDrawerOpen(false)}
+                      disabled={isSubmitting}
+                      className="h-9 px-4 text-xs font-bold"
+                    >
+                      İptal
+                    </SketchButton>
+
+                    <MovingBorderButton
+                      borderRadius="0.75rem"
+                      duration={1800}
+                      containerClassName="h-9 cursor-pointer"
+                      className="px-6 font-bold text-xs"
+                      type="submit"
+                      disabled={isSubmitting}
+                    >
+                      Oluştur
+                    </MovingBorderButton>
+                  </div>
+                </form>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }
