@@ -1,0 +1,138 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - list [ref=e6]:
+      - generic [ref=e7]:
+        - button "C" [ref=e10] [cursor=pointer]:
+          - generic [ref=e12]: C
+        - generic [ref=e13]:
+          - generic [ref=e18]:
+            - link [ref=e19] [cursor=pointer]:
+              - /url: /
+              - img [ref=e20]
+            - link [ref=e25] [cursor=pointer]:
+              - /url: /projects
+              - img [ref=e26]
+            - link [ref=e28] [cursor=pointer]:
+              - /url: /education
+              - img [ref=e29]
+            - link [ref=e32] [cursor=pointer]:
+              - /url: /ideas
+              - img [ref=e33]
+            - link [ref=e35] [cursor=pointer]:
+              - /url: /calendar
+              - img [ref=e36]
+            - link [ref=e38] [cursor=pointer]:
+              - /url: /focus
+              - img [ref=e39]
+          - generic [ref=e42]:
+            - button [ref=e43] [cursor=pointer]:
+              - img [ref=e44]
+            - link [ref=e46] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e47]
+            - button "G" [ref=e51] [cursor=pointer]:
+              - generic [ref=e53]: G
+    - main [ref=e54]:
+      - generic [ref=e56]:
+        - generic [ref=e58]:
+          - heading "Projeler" [level=1] [ref=e59]
+          - paragraph [ref=e60]: Bir projenin teknik hafizasini, roadmap'ini ve gorevlerini tek yerden yonet.
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - img [ref=e64]
+            - paragraph [ref=e67]: Control room initialization
+            - heading "İlk proje odanı kur" [level=2] [ref=e68]
+            - paragraph [ref=e69]: Projenin temelini şimdi oluştur. Teknik stack, ilk faz ve kaynakları istersen başlangıç kurulumuna dahil et.
+          - generic [ref=e70]:
+            - generic [ref=e71]:
+              - generic [ref=e72]: Proje adı *
+              - textbox "Proje adı *" [active] [ref=e73]:
+                - /placeholder: Örn. IyonTree
+            - generic [ref=e74]:
+              - text: Projenin amacı
+              - textbox "Projenin amacı" [ref=e75]:
+                - /placeholder: Ne inşa ediyorsun, hangi problemi çözüyor?
+            - button "Teknik detayları yapılandır Stack, repo, başlangıç fazı ve mimari kaynak" [ref=e76] [cursor=pointer]:
+              - generic [ref=e77]:
+                - img [ref=e78]
+                - generic [ref=e79]:
+                  - generic [ref=e80]: Teknik detayları yapılandır
+                  - generic [ref=e81]: Stack, repo, başlangıç fazı ve mimari kaynak
+              - img [ref=e82]
+            - button "Project Control Room Kur ve Giriş Yap" [disabled] [ref=e84]:
+              - img [ref=e86]
+              - generic [ref=e90]:
+                - img [ref=e91]
+                - text: Project Control Room Kur ve Giriş Yap
+      - generic [ref=e96]:
+        - generic [ref=e97]:
+          - generic [ref=e98]:
+            - generic [ref=e99]:
+              - img [ref=e101]
+              - generic [ref=e104]: Compileme
+            - paragraph [ref=e105]: Bilgisayar mühendisleri ve geliştiriciler için tasarlanmış kişisel üretkenlik ve planlama merkezi.
+            - generic [ref=e107]: Derle, Planla, Uygula.
+          - generic [ref=e108]:
+            - generic [ref=e110]:
+              - heading "Modüller" [level=3] [ref=e111]
+              - list [ref=e112]:
+                - listitem [ref=e113]:
+                  - link "Dashboard" [ref=e114] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e115]
+                    - generic [ref=e120]: Dashboard
+                - listitem [ref=e121]:
+                  - link "Projeler" [ref=e122] [cursor=pointer]:
+                    - /url: /projects
+                    - img [ref=e123]
+                    - generic [ref=e125]: Projeler
+                - listitem [ref=e126]:
+                  - link "Eğitimler" [ref=e127] [cursor=pointer]:
+                    - /url: /education
+                    - img [ref=e128]
+                    - generic [ref=e131]: Eğitimler
+                - listitem [ref=e132]:
+                  - link "Fikir Havuzu" [ref=e133] [cursor=pointer]:
+                    - /url: /ideas
+                    - img [ref=e134]
+                    - generic [ref=e136]: Fikir Havuzu
+            - generic [ref=e138]:
+              - heading "Kısayollar" [level=3] [ref=e139]
+              - list [ref=e140]:
+                - listitem [ref=e141]:
+                  - link "Takvim" [ref=e142] [cursor=pointer]:
+                    - /url: /calendar
+                    - img [ref=e143]
+                    - generic [ref=e145]: Takvim
+                - listitem [ref=e146]:
+                  - link "Odak Modu" [ref=e147] [cursor=pointer]:
+                    - /url: /focus
+                    - img [ref=e148]
+                    - generic [ref=e151]: Odak Modu
+            - generic [ref=e153]:
+              - heading "Sistem & API" [level=3] [ref=e154]
+              - list [ref=e155]:
+                - listitem [ref=e156]:
+                  - link "Swagger API" [ref=e157] [cursor=pointer]:
+                    - /url: http://localhost:8080/swagger-ui/index.html
+                    - img [ref=e158]
+                    - generic [ref=e160]: Swagger API
+                - listitem [ref=e161]:
+                  - link "GitHub" [ref=e162] [cursor=pointer]:
+                    - /url: https://github.com
+                    - img [ref=e163]
+                    - generic [ref=e166]: GitHub
+        - generic [ref=e168]:
+          - generic [ref=e169]: © 2026 Compileme. Tüm hakları saklıdır.
+          - generic [ref=e170]:
+            - generic [ref=e171]: Built with
+            - generic [ref=e172]: ❤
+            - generic [ref=e173]: by
+            - generic [ref=e174]: Görkem
+          - button "Yukarı Git" [ref=e175] [cursor=pointer]:
+            - img [ref=e176]
+  - region "Notifications alt+T"
+  - generic [ref=e179]:
+    - generic [ref=e180]: C
+    - heading "Compileme" [level=1] [ref=e181]
+    - paragraph [ref=e182]: Hoş geldin, Görkem

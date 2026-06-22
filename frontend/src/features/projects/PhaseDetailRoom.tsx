@@ -563,8 +563,8 @@ export const PhaseDetailRoom: React.FC<PhaseDetailRoomProps> = ({
             onClick={handleExportAiContext}
             borderRadius="0.75rem"
             duration={2500}
-            containerClassName="h-10 px-4 cursor-pointer mt-2 sm:mt-0"
-            className="font-bold flex items-center gap-2"
+            containerClassName="h-10 cursor-pointer mt-2 sm:mt-0"
+            className="px-4 font-bold flex items-center gap-2"
           >
             <Sparkles className="h-4 w-4 text-cyan-400" />
             Faz Hafızasını Kopyala
@@ -786,8 +786,8 @@ export const PhaseDetailRoom: React.FC<PhaseDetailRoomProps> = ({
                 onClick={addSchemaTable}
                 borderRadius="0.5rem"
                 duration={1800}
-                containerClassName="h-9 px-3 cursor-pointer"
-                className="font-bold flex items-center gap-1.5 text-xs"
+                containerClassName="h-9 cursor-pointer"
+                className="px-3 font-bold flex items-center gap-1.5 text-xs"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Tablo
@@ -797,8 +797,8 @@ export const PhaseDetailRoom: React.FC<PhaseDetailRoomProps> = ({
                 onClick={handleSaveSchema}
                 borderRadius="0.5rem"
                 duration={2200}
-                containerClassName="h-9 px-3 cursor-pointer"
-                className="font-bold flex items-center gap-1.5 text-xs"
+                containerClassName="h-9 cursor-pointer"
+                className="px-3 font-bold flex items-center gap-1.5 text-xs"
                 disabled={isSavingSchema}
               >
                 <Check className="h-3.5 w-3.5" />
@@ -893,8 +893,8 @@ export const PhaseDetailRoom: React.FC<PhaseDetailRoomProps> = ({
                       onClick={() => addSchemaColumn(table.id)}
                       borderRadius="0.5rem"
                       duration={1500}
-                      containerClassName="h-9 px-3 cursor-pointer shrink-0"
-                      className="text-xs font-bold"
+                      containerClassName="h-9 cursor-pointer shrink-0"
+                      className="px-3 text-xs font-bold"
                     >
                       <Plus className="h-3.5 w-3.5 mr-1" />
                       Kolon

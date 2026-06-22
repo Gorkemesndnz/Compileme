@@ -1023,7 +1023,8 @@ export const ProjectsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <main className="w-full space-y-6">
-        <section className="glass-panel overflow-hidden rounded-2xl">
+        {!selectedPhase && (
+          <section className="glass-panel overflow-hidden rounded-2xl">
           <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex-1 min-w-0 flex flex-col items-start gap-1">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">
@@ -1181,6 +1182,7 @@ export const ProjectsPage: React.FC = () => {
             />
           </div>
         </section>
+        )}
 
         {selectedPhase ? (
           <PhaseDetailRoom

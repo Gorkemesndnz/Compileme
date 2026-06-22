@@ -1,0 +1,177 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - list [ref=e6]:
+      - generic [ref=e7]:
+        - button "C" [ref=e10] [cursor=pointer]:
+          - generic [ref=e12]: C
+        - generic [ref=e13]:
+          - generic [ref=e18]:
+            - link [ref=e19] [cursor=pointer]:
+              - /url: /
+              - img [ref=e20]
+            - link [ref=e25] [cursor=pointer]:
+              - /url: /projects
+              - img [ref=e26]
+            - link [ref=e28] [cursor=pointer]:
+              - /url: /education
+              - img [ref=e29]
+            - link [ref=e32] [cursor=pointer]:
+              - /url: /ideas
+              - img [ref=e33]
+            - link [ref=e35] [cursor=pointer]:
+              - /url: /calendar
+              - img [ref=e36]
+            - link [ref=e38] [cursor=pointer]:
+              - /url: /focus
+              - img [ref=e39]
+          - generic [ref=e42]:
+            - button [ref=e43] [cursor=pointer]:
+              - img [ref=e44]
+            - link [ref=e46] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e47]
+            - button "G" [ref=e51] [cursor=pointer]:
+              - generic [ref=e53]: G
+    - main [ref=e54]:
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - img [ref=e60]
+            - heading "İyi Günler" [level=1] [ref=e66]
+          - paragraph [ref=e67]: 21 Haziran 2026 Pazar · bugüne odaklan, gerisini akışa bırak
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - button "Fikir" [pressed] [ref=e70] [cursor=pointer]:
+              - img [ref=e71]
+              - text: Fikir
+            - button "Görev" [ref=e73] [cursor=pointer]:
+              - img [ref=e74]
+              - text: Görev
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - textbox "Aklına bir fikir mi geldi? Yaz ve Enter'a bas..." [ref=e78]
+              - generic [ref=e79]: /
+            - button "Ekle" [ref=e80] [cursor=pointer]:
+              - generic [ref=e81]: Ekle
+              - img [ref=e82]
+        - generic [ref=e84]:
+          - generic [ref=e86]:
+            - generic [ref=e87]:
+              - img [ref=e88]
+              - text: Bugünkü görev
+            - generic [ref=e90]: 0/1
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - img [ref=e94]
+              - text: Aktif proje
+            - generic [ref=e97]: "0"
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - img [ref=e101]
+              - text: Eğitim
+            - generic [ref=e105]: "2"
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - text: Fikir
+            - generic [ref=e111]: "1"
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e116]:
+                - generic [ref=e117]: Bugün
+                - generic [ref=e118]: 21 Haziran
+              - generic [ref=e121]:
+                - generic [ref=e122]:
+                  - generic [ref=e123]:
+                    - button [ref=e124] [cursor=pointer]
+                    - generic [ref=e125]:
+                      - img [ref=e126]
+                      - text: 21:34:00
+                    - generic [ref=e129] [cursor=pointer]: berbere git
+                  - generic [ref=e130]:
+                    - button "Görevi Düzenle" [ref=e131] [cursor=pointer]:
+                      - img [ref=e132]
+                    - button "Yarına Aktar" [ref=e134] [cursor=pointer]:
+                      - img [ref=e135]
+                    - button "Sil" [ref=e137] [cursor=pointer]:
+                      - img [ref=e138]
+                - paragraph [ref=e143] [cursor=pointer]: saat 9.30 dedin
+            - button "Görev ekle" [ref=e145] [cursor=pointer]:
+              - img [ref=e146]
+              - text: Görev ekle
+          - generic [ref=e147]:
+            - generic [ref=e148]:
+              - generic [ref=e149]:
+                - generic [ref=e150]:
+                  - generic [ref=e151]: Yarın
+                  - generic [ref=e152]: 22 Haziran
+                - generic [ref=e153]: 0 / 0
+              - paragraph [ref=e154]: Henüz görev yok.
+            - button "Görev ekle" [ref=e156] [cursor=pointer]:
+              - img [ref=e157]
+              - text: Görev ekle
+          - generic [ref=e158]:
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - generic [ref=e161]:
+                  - img [ref=e162]
+                  - heading "Su Takibi" [level=3] [ref=e164]
+                - generic [ref=e165]: 3.0L kaldı
+              - generic [ref=e166]:
+                - generic [ref=e170]:
+                  - generic [ref=e171]: 0%
+                  - paragraph [ref=e172]: hedefin
+                - generic [ref=e173]:
+                  - generic [ref=e174]:
+                    - generic [ref=e175]: 0 ml
+                    - generic [ref=e176]: bugün içilen
+                  - generic [ref=e177]: hedef 3L
+              - generic [ref=e179]:
+                - button "Şişe +1.5L" [ref=e181] [cursor=pointer]:
+                  - generic [ref=e182]:
+                    - img [ref=e183]
+                    - generic [ref=e185]:
+                      - generic [ref=e186]: Şişe
+                      - generic [ref=e187]: +1.5L
+                - button "Bardak +300ml" [ref=e189] [cursor=pointer]:
+                  - generic [ref=e190]:
+                    - img [ref=e191]
+                    - generic [ref=e193]:
+                      - generic [ref=e194]: Bardak
+                      - generic [ref=e195]: +300ml
+                - button "Stanley +470ml" [ref=e197] [cursor=pointer]:
+                  - generic [ref=e198]:
+                    - img [ref=e199]
+                    - generic [ref=e201]:
+                      - generic [ref=e202]: Stanley
+                      - generic [ref=e203]: +470ml
+                - button "Yarım +500ml" [ref=e205] [cursor=pointer]:
+                  - generic [ref=e206]:
+                    - img [ref=e207]
+                    - generic [ref=e209]:
+                      - generic [ref=e210]: Yarım
+                      - generic [ref=e211]: +500ml
+              - generic [ref=e212]:
+                - generic [ref=e213]:
+                  - button "Azalt" [ref=e214] [cursor=pointer]:
+                    - img [ref=e215]
+                  - generic [ref=e216]: 300ml
+                  - button "Arttır" [ref=e217] [cursor=pointer]:
+                    - img [ref=e218]
+                - button "Ekle" [ref=e220] [cursor=pointer]:
+                  - generic [ref=e221]:
+                    - img [ref=e222]
+                    - text: Ekle
+            - generic [ref=e223]:
+              - button "Geri al" [disabled] [ref=e224]:
+                - img [ref=e225]
+                - text: Geri al
+              - button "Günü sıfırla" [disabled] [ref=e228]:
+                - img [ref=e229]
+                - text: Günü sıfırla
+  - region "Notifications alt+T"
+  - generic [ref=e233]:
+    - generic [ref=e234]: C
+    - heading "Compileme" [level=1] [ref=e235]
+    - paragraph [ref=e236]: Hoş geldin, Görkem
