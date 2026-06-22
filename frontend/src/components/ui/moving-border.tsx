@@ -1,4 +1,4 @@
-import React, { useRef } from "react"
+import React, { useRef, useState, useCallback } from "react"
 import {
   motion,
   useAnimationFrame,
@@ -84,9 +84,20 @@ export const MovingBorder = ({
 }) => {
   const pathRef = useRef<any>(null)
   const progress = useMotionValue<number>(0)
+  const [length, setLength] = useState<number>(0)
+
+  const setPathRef = useCallback((node: any) => {
+    pathRef.current = node
+    if (node) {
+      try {
+        setLength(node.getTotalLength())
+      } catch (e) {
+        // Fallback
+      }
+    }
+  }, [])
 
   useAnimationFrame((time) => {
-    const length = pathRef.current?.getTotalLength()
     if (length) {
       const pxPerMillisecond = length / duration
       progress.set((time * pxPerMillisecond) % length)
@@ -95,11 +106,23 @@ export const MovingBorder = ({
 
   const x = useTransform(
     progress,
-    (val) => pathRef.current?.getPointAtLength(val).x
+    (val) => {
+      try {
+        return pathRef.current?.getPointAtLength(val).x || 0
+      } catch (e) {
+        return 0
+      }
+    }
   )
   const y = useTransform(
     progress,
-    (val) => pathRef.current?.getPointAtLength(val).y
+    (val) => {
+      try {
+        return pathRef.current?.getPointAtLength(val).y || 0
+      } catch (e) {
+        return 0
+      }
+    }
   )
 
   const transform = useMotionTemplate`translate(-50%, -50%) translate3d(${x}px, ${y}px, 0px)`
@@ -120,7 +143,7 @@ export const MovingBorder = ({
           height="100%"
           rx={rx}
           ry={ry}
-          ref={pathRef}
+          ref={setPathRef}
         />
       </svg>
       <motion.div
