@@ -37,3 +37,9 @@ thumbs.db
 db.db
 Desktop.ini
 .DS_Store
+
+# Log files and test artifacts
+.playwright-cli/
+*.log
+**/vite.err.log
+**/vite.out.log

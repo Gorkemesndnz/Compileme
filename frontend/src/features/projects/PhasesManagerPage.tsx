@@ -131,8 +131,8 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
           onClick={() => setDrawerOpen(true)}
           borderRadius="0.75rem"
           duration={2400}
-          containerClassName="h-10 px-4 cursor-pointer"
-          className="font-bold text-xs flex items-center gap-1.5"
+          containerClassName="h-10 cursor-pointer"
+          className="px-4 font-bold text-xs flex items-center gap-1.5"
         >
           <Plus className="h-4 w-4" />
           Yeni Faz Oluştur
@@ -220,8 +220,8 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
                     onClick={() => onEnterRoom(phase.id)}
                     borderRadius="0.75rem"
                     duration={2000}
-                    containerClassName="h-10 px-4 cursor-pointer"
-                    className="font-bold text-xs flex items-center gap-1.5"
+                    containerClassName="h-10 cursor-pointer"
+                    className="px-4 font-bold text-xs flex items-center gap-1.5"
                   >
                     Control Room'u Aç 🚀
                   </MovingBorderButton>
@@ -252,7 +252,7 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
               onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/40 dark:bg-black/60 backdrop-blur-[4px]"
             />
 
             {/* Sliding Drawer Container */}
@@ -261,80 +261,100 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-border bg-background/95 p-6 shadow-2xl backdrop-blur-xl dark:bg-neutral-950/95 flex flex-col gap-4 overflow-y-auto"
+              className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-neutral-200/40 bg-white/80 p-6 shadow-[-10px_0_30px_rgba(0,0,0,0.15)] backdrop-blur-2xl dark:border-neutral-800/40 dark:bg-neutral-950/80 dark:shadow-[-10px_0_30px_rgba(6,182,212,0.04)] flex flex-col gap-5 overflow-y-auto"
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between border-b border-border/40 pb-4">
-                <h3 className="text-lg font-black text-neutral-900 dark:text-white">Yeni Faz Oluştur</h3>
+              <div className="flex items-center justify-between border-b border-neutral-200/50 dark:border-zinc-800/50 pb-4">
+                <div>
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">
+                    Phase Initialization
+                  </span>
+                  <h3 className="text-xl font-black text-neutral-900 dark:text-white mt-0.5">
+                    Yeni Faz Oluştur
+                  </h3>
+                </div>
                 <button
                   onClick={() => setDrawerOpen(false)}
-                  className="text-xs text-neutral-400 hover:text-neutral-800 dark:hover:text-white font-bold"
+                  className="rounded-lg border border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3 py-1.5 text-xs font-black text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-all shadow-sm"
                 >
                   Kapat
                 </button>
               </div>
 
               {/* Form Content */}
-              <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+              <form onSubmit={handleSubmit} className="space-y-5 mt-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-neutral-400">Faz Adı</label>
+                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
+                    Faz Adı
+                  </label>
                   <Input
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Örn: Faz 1 - API Geliştirmeleri"
                     required
                     disabled={isSubmitting}
+                    className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
                   />
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-neutral-400">Detay / Açıklama</label>
+                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
+                    Detay / Açıklama
+                  </label>
                   <Textarea
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="Bu faz kapsamında yapılacak teknik işleri yazın..."
                     rows={4}
                     disabled={isSubmitting}
+                    className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)] resize-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-neutral-400">Başlangıç Tarihi</label>
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
+                      Başlangıç Tarihi
+                    </label>
                     <Input
                       type="date"
                       value={form.startDate}
                       onChange={(e) => setForm({ ...form, startDate: e.target.value })}
                       disabled={isSubmitting}
+                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
                     />
                   </div>
                   
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-neutral-400">Bitiş Tarihi</label>
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
+                      Bitiş Tarihi
+                    </label>
                     <Input
                       type="date"
                       value={form.endDate}
                       onChange={(e) => setForm({ ...form, endDate: e.target.value })}
                       disabled={isSubmitting}
+                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
                     />
                   </div>
                 </div>
 
                 {/* Submit Actions */}
-                <div className="flex justify-end gap-2.5 pt-4 border-t border-border/20 mt-4">
+                <div className="flex justify-end items-center gap-3 pt-5 border-t border-neutral-200/50 dark:border-zinc-800/50 mt-5">
                   <SketchButton
                     type="button"
                     onClick={() => setDrawerOpen(false)}
                     disabled={isSubmitting}
+                    className="h-9 px-4 text-xs font-bold"
                   >
                     İptal
                   </SketchButton>
 
                   <MovingBorderButton
-                    borderRadius="0.5rem"
+                    borderRadius="0.75rem"
                     duration={1800}
-                    containerClassName="h-9 px-4 cursor-pointer"
-                    className="font-bold text-xs"
+                    containerClassName="h-9 cursor-pointer"
+                    className="px-6 font-bold text-xs"
                     type="submit"
                     disabled={isSubmitting}
                   >
