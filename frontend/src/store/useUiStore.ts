@@ -3,15 +3,21 @@ import { create } from 'zustand'
 interface UiState {
   sidebarOpen: boolean
   theme: 'light' | 'dark'
+  activeProjectId?: number
+  projectOnboardingOpen: boolean
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   toggleTheme: () => void
   setTheme: (theme: 'light' | 'dark') => void
+  setActiveProjectId: (projectId?: number) => void
+  setProjectOnboardingOpen: (open: boolean) => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
   sidebarOpen: true,
   theme: 'light',
+  activeProjectId: undefined,
+  projectOnboardingOpen: false,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleTheme: () => set((state) => {
@@ -31,4 +37,6 @@ export const useUiStore = create<UiState>((set) => ({
     }
     set({ theme })
   },
+  setActiveProjectId: (activeProjectId) => set({ activeProjectId }),
+  setProjectOnboardingOpen: (projectOnboardingOpen) => set({ projectOnboardingOpen }),
 }))

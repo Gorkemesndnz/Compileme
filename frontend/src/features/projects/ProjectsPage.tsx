@@ -1,35 +1,59 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { toast } from 'sonner'
 import {
   ArrowUp,
   ArrowDown,
-  Braces,
   CalendarDays,
   Check,
   Clipboard,
   Code2,
   Copy,
+  Cpu,
   Database,
+  Download,
   FileArchive,
   FileCode,
   FileText,
   Folder,
   GitBranch,
+  Github,
   Layers3,
   Link as LinkIcon,
   ListChecks,
   Loader2,
+  MoreVertical,
+  Pencil,
   Plus,
-  RefreshCcw,
-  Search,
-  SquarePen,
   Trash2,
   Upload,
 } from 'lucide-react'
 import { PageHeader } from '../../components/PageHeader'
+import { OverviewPage } from './OverviewPage'
+import { PhasesManagerPage } from './PhasesManagerPage'
+import { PhaseDetailRoom } from './PhaseDetailRoom'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { GlassButton } from '../../components/ui/glass-button'
+import { Button as MovingBorderButton } from '../../components/ui/moving-border'
+import { SketchButton } from '../../components/ui/SketchButton'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/Dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../components/ui/DropdownMenu'
 import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
 import { cn } from '../../lib/utils'
@@ -77,6 +101,7 @@ import {
   useToggleTaskComplete,
 } from '../../api/tasks'
 import { useUploadFile } from '../../api/files'
+import { useUiStore } from '../../store/useUiStore'
 
 type ProjectTab = 'overview' | 'phases' | 'tasks' | 'stack' | 'schema' | 'documents' | 'snippets' | 'resources'
 type SchemaView = 'diagram' | 'code' | 'tables'
@@ -102,18 +127,29 @@ interface DbSchemaDocument {
   tables: DbTable[]
 }
 
+interface ProjectOnboardingForm extends ProjectRequest {
+  repositoryUrl: string
+}
+
 const STATUS_LABELS: Record<ProjectStatus, string> = {
   PLANNING: 'Planlama',
   ACTIVE: 'Aktif',
   PAUSED: 'Beklemede',
-  DONE: 'Tamamlandi',
+  DONE: 'Tamamlandı',
 }
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
   PLANNING: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
   ACTIVE: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
-  PAUSED: 'border-neutral-400/30 bg-neutral-400/10 text-neutral-300',
-  DONE: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300',
+  PAUSED: 'border-sky-400/30 bg-sky-400/10 text-sky-300',
+  DONE: 'border-violet-400/30 bg-violet-400/10 text-violet-300',
+}
+
+const STATUS_DOT_STYLES: Record<ProjectStatus, string> = {
+  PLANNING: 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.7)]',
+  ACTIVE: 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]',
+  PAUSED: 'bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.7)]',
+  DONE: 'bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.7)]',
 }
 
 const TECHNOLOGY_LABELS: Record<TechnologyCategory, string> = {
@@ -184,6 +220,15 @@ const emptySchema = (): DbSchemaDocument => ({
 
 function makeId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function emptyProjectOnboardingForm(): ProjectOnboardingForm {
+  return {
+    name: '',
+    description: '',
+    status: 'PLANNING',
+    repositoryUrl: '',
+  }
 }
 
 function todayString() {
@@ -264,15 +309,24 @@ function sortByOrder<T extends { orderIndex: number }>(items: T[]) {
 
 export const ProjectsPage: React.FC = () => {
   const today = todayString()
-  const [selectedProjectId, setSelectedProjectId] = useState<number>()
+  const shouldReduceMotion = useReducedMotion()
+  const {
+    activeProjectId: selectedProjectId,
+    projectOnboardingOpen,
+    setActiveProjectId: setSelectedProjectId,
+    setProjectOnboardingOpen,
+  } = useUiStore()
   const [activeTab, setActiveTab] = useState<ProjectTab>('overview')
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'ALL'>('ALL')
-  const [search, setSearch] = useState('')
+  const [activePhaseId, setActivePhaseId] = useState<number | null>(null)
   const [schemaView, setSchemaView] = useState<SchemaView>('diagram')
   const [schema, setSchema] = useState<DbSchemaDocument>(emptySchema)
 
-  const [projectForm, setProjectForm] = useState<ProjectRequest>({ name: '', description: '', status: 'PLANNING' })
+  const [projectForm, setProjectForm] = useState<ProjectOnboardingForm>(emptyProjectOnboardingForm)
+  const [isProvisioningProject, setIsProvisioningProject] = useState(false)
   const [editProjectForm, setEditProjectForm] = useState<ProjectRequest>({ name: '', description: '', status: 'PLANNING' })
+  const [editingField, setEditingField] = useState<'name' | 'description' | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const cancelledEditRef = useRef<'name' | 'description' | null>(null)
   const [phaseForm, setPhaseForm] = useState({ name: '', description: '', status: 'PLANNING' as ProjectStatus, startDate: '', endDate: '' })
   const [taskForm, setTaskForm] = useState({ title: '', notes: '', phaseId: '', scheduledDate: '', scheduledTime: '' })
   const [techForm, setTechForm] = useState({ category: 'FRONTEND' as TechnologyCategory, title: '', technology: '', notes: '' })
@@ -289,6 +343,10 @@ export const ProjectsPage: React.FC = () => {
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId),
     [projects, selectedProjectId]
+  )
+  const selectedPhase = useMemo(
+    () => phases.find((phase) => phase.id === activePhaseId),
+    [phases, activePhaseId]
   )
   const { data: phases = [] } = useProjectPhases(selectedProjectId)
   const { data: technologies = [] } = useProjectTechnologies(selectedProjectId)
@@ -325,30 +383,12 @@ export const ProjectsPage: React.FC = () => {
   const refactorDocs = documents.filter((document) => document.type === 'REFACTOR_PLAN')
   const mermaidCode = useMemo(() => generateMermaid(schema), [schema])
 
-  const filteredProjects = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return projects.filter((project) => {
-      const matchesStatus = statusFilter === 'ALL' || project.status === statusFilter
-      const matchesSearch =
-        !query ||
-        project.name.toLowerCase().includes(query) ||
-        (project.description || '').toLowerCase().includes(query)
-      return matchesStatus && matchesSearch
-    })
-  }, [projects, search, statusFilter])
-
   const technologiesByCategory = useMemo(() => {
     return (Object.keys(TECHNOLOGY_LABELS) as TechnologyCategory[]).map((category) => ({
       category,
       technologies: technologies.filter((technology) => technology.category === category),
     }))
   }, [technologies])
-
-  useEffect(() => {
-    if (!selectedProjectId && projects.length > 0) {
-      setSelectedProjectId(projects[0].id)
-    }
-  }, [projects, selectedProjectId])
 
   useEffect(() => {
     if (selectedProject) {
@@ -364,49 +404,198 @@ export const ProjectsPage: React.FC = () => {
     setSchema(parseSchemaDocument(dbSchemaDoc?.content))
   }, [dbSchemaDoc?.id, dbSchemaDoc?.content])
 
-  const handleCreateProject = (event: React.FormEvent) => {
+  useEffect(() => {
+    if (!projectsLoading && projects.length > 0 && !selectedProject && !projectOnboardingOpen) {
+      setSelectedProjectId(projects[0].id)
+    }
+  }, [projectsLoading, projects, selectedProject, projectOnboardingOpen, setSelectedProjectId])
+
+  const handleCreateProject = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!projectForm.name.trim()) return
-    createProjectMutation.mutate(
-      {
+    if (!projectForm.name.trim() || !projectForm.description?.trim() || isProvisioningProject) return
+
+    setIsProvisioningProject(true)
+    try {
+      const project = await createProjectMutation.mutateAsync({
         name: projectForm.name.trim(),
-        description: projectForm.description || undefined,
+        description: projectForm.description?.trim() || undefined,
         status: projectForm.status,
-      },
-      {
-        onSuccess: (project) => {
-          setProjectForm({ name: '', description: '', status: 'PLANNING' })
-          setSelectedProjectId(project.id)
-          toast.success('Proje olusturuldu.')
-        },
+      })
+
+      let repositoryFailed = false
+      if (projectForm.repositoryUrl.trim()) {
+        try {
+          await addLinkMutation.mutateAsync({
+            projectId: project.id,
+            request: {
+              title: 'GitHub Repository',
+              url: projectForm.repositoryUrl.trim(),
+              type: 'REPO',
+              category: 'OTHER',
+              orderIndex: 0,
+            },
+          })
+        } catch {
+          repositoryFailed = true
+        }
       }
-    )
+
+      setProjectForm(emptyProjectOnboardingForm())
+      setSelectedProjectId(project.id)
+      setProjectOnboardingOpen(false)
+      setActiveTab('overview')
+
+      if (repositoryFailed) {
+        toast.warning('Proje oluşturuldu; GitHub bağlantısı eklenemedi.')
+      } else {
+        toast.success('Project Control Room hazır.')
+      }
+    } catch {
+      toast.error('Proje oluşturulamadı. Bilgileri kontrol edip tekrar deneyin.')
+    } finally {
+      setIsProvisioningProject(false)
+    }
   }
 
-  const handleUpdateProject = (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!selectedProject || !editProjectForm.name.trim()) return
-    updateProjectMutation.mutate(
-      {
+  const cancelInlineEdit = (field: 'name' | 'description') => {
+    if (!selectedProject) return
+    cancelledEditRef.current = field
+    setEditProjectForm((form) => ({
+      ...form,
+      [field]: field === 'name' ? selectedProject.name : selectedProject.description || '',
+    }))
+    setEditingField(null)
+  }
+
+  const saveInlineField = async (field: 'name' | 'description') => {
+    if (!selectedProject) return
+    if (cancelledEditRef.current === field) {
+      cancelledEditRef.current = null
+      return
+    }
+
+    const nextName = editProjectForm.name.trim()
+    const nextDescription = editProjectForm.description?.trim() || ''
+    if (!nextName) {
+      toast.error('Proje adı boş bırakılamaz.')
+      cancelInlineEdit('name')
+      return
+    }
+
+    const previousValue = field === 'name' ? selectedProject.name : selectedProject.description || ''
+    const nextValue = field === 'name' ? nextName : nextDescription
+    setEditingField(null)
+    if (nextValue === previousValue) return
+
+    try {
+      const updatedProject = await updateProjectMutation.mutateAsync({
         id: selectedProject.id,
         request: {
-          name: editProjectForm.name.trim(),
-          description: editProjectForm.description || undefined,
+          name: nextName,
+          description: nextDescription || undefined,
           status: editProjectForm.status,
         },
-      },
-      { onSuccess: () => toast.success('Proje guncellendi.') }
-    )
+      })
+      setEditProjectForm({
+        name: updatedProject.name,
+        description: updatedProject.description || '',
+        status: updatedProject.status,
+      })
+      toast.success(field === 'name' ? 'Proje adı güncellendi.' : 'Proje açıklaması güncellendi.')
+    } catch {
+      setEditProjectForm((form) => ({ ...form, [field]: previousValue }))
+      toast.error('Değişiklik kaydedilemedi.')
+    }
   }
 
-  const handleDeleteProject = () => {
-    if (!selectedProject || !window.confirm(`${selectedProject.name} projesi silinsin mi?`)) return
-    deleteProjectMutation.mutate(selectedProject.id, {
-      onSuccess: () => {
-        setSelectedProjectId(undefined)
-        toast.success('Proje silindi.')
-      },
-    })
+  const handleStatusChange = async (status: ProjectStatus) => {
+    if (!selectedProject || status === selectedProject.status || updateProjectMutation.isPending || editingField) return
+    const previousStatus = selectedProject.status
+    setEditProjectForm((form) => ({ ...form, status }))
+
+    try {
+      await updateProjectMutation.mutateAsync({
+        id: selectedProject.id,
+        request: {
+          name: selectedProject.name,
+          description: selectedProject.description,
+          status,
+        },
+      })
+      toast.success(`Proje durumu: ${STATUS_LABELS[status]}`)
+    } catch {
+      setEditProjectForm((form) => ({ ...form, status: previousStatus }))
+      toast.error('Proje durumu güncellenemedi.')
+    }
+  }
+
+  const handleDeleteProject = async () => {
+    if (!selectedProject || deleteProjectMutation.isPending) return
+    try {
+      await deleteProjectMutation.mutateAsync(selectedProject.id)
+      setDeleteDialogOpen(false)
+      setSelectedProjectId(undefined)
+      toast.success('Proje silindi.')
+    } catch {
+      toast.error('Proje silinemedi.')
+    }
+  }
+
+  const handleExportMarkdown = () => {
+    if (!selectedProject) return
+    const completedTasks = projectTasks.filter((task) => task.status === 'DONE').length
+    const markdown = [
+      `# ${selectedProject.name}`,
+      '',
+      selectedProject.description || '_Proje açıklaması eklenmemiş._',
+      '',
+      `- Durum: ${STATUS_LABELS[selectedProject.status]}`,
+      `- Tamamlanma: %${completionPercent(projectTasks)}`,
+      `- Görevler: ${completedTasks}/${projectTasks.length}`,
+      '',
+      '## Fazlar',
+      '',
+      ...sortedPhases.flatMap((phase) => [
+        `### ${phase.name}`,
+        phase.description || '_Açıklama yok._',
+        `- Durum: ${STATUS_LABELS[phase.status]}`,
+        `- Tarih: ${phase.startDate || '-'} / ${phase.endDate || '-'}`,
+        '',
+      ]),
+      '## Teknoloji Stack',
+      '',
+      ...technologies.map((technology) => `- **${TECHNOLOGY_LABELS[technology.category]}:** ${technology.technology}${technology.notes ? ` — ${technology.notes}` : ''}`),
+      '',
+      '## Dokümanlar',
+      '',
+      ...documents.flatMap((document) => [
+        `### ${document.title} (${DOCUMENT_LABELS[document.type]})`,
+        document.content || '_İçerik yok._',
+        '',
+      ]),
+      '## Kod Parçacıkları',
+      '',
+      ...snippets.flatMap((snippet) => [
+        `### ${snippet.title}`,
+        snippet.description || '',
+        `\`\`\`${snippet.language || 'text'}`,
+        snippet.code,
+        '\`\`\`',
+        '',
+      ]),
+      '## Kaynaklar',
+      '',
+      ...links.map((link) => `- [${link.title}](${link.url}) — ${LINK_TYPE_LABELS[link.type]}`),
+      '',
+    ].join('\n')
+
+    const blobUrl = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }))
+    const anchor = document.createElement('a')
+    anchor.href = blobUrl
+    anchor.download = `${selectedProject.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'}-technical-memory.md`
+    anchor.click()
+    URL.revokeObjectURL(blobUrl)
+    toast.success('Teknik hafıza Markdown olarak indirildi.')
   }
 
   const handleAddPhase = (event: React.FormEvent) => {
@@ -458,6 +647,46 @@ export const ProjectsPage: React.FC = () => {
     reorderPhasesMutation.mutate(
       reordered.map((item, index) => ({ id: item.id, orderIndex: index })),
       { onSuccess: () => toast.success('Faz sirasi guncellendi.') }
+    )
+  }
+
+  const handleQuickAddTaskForToday = (title: string) => {
+    if (!selectedProjectId) return
+    createTaskMutation.mutate(
+      {
+        title: title.trim(),
+        status: 'TODO',
+        kind: 'PROJECT',
+        projectId: selectedProjectId,
+        scheduledDate: today,
+        planningBucket: 'DAY',
+      },
+      {
+        onSuccess: () => {
+          toast.success('Bugünkü proje görevi eklendi.')
+        },
+      }
+    )
+  }
+
+  const handleAddPhaseFromManager = async (req: {
+    name: string
+    description?: string
+    status: ProjectStatus
+    startDate?: string
+    endDate?: string
+    orderIndex: number
+  }) => {
+    await addPhaseMutation.mutateAsync(req)
+  }
+
+  const handleDeletePhaseFromManager = async (phaseId: number) => {
+    await deletePhaseMutation.mutateAsync(phaseId)
+  }
+
+  const handleReorderPhasesFromManager = (newPhases: ProjectPhase[]) => {
+    reorderPhasesMutation.mutate(
+      newPhases.map((item, index) => ({ id: item.id, orderIndex: index }))
     )
   }
 
@@ -696,228 +925,271 @@ export const ProjectsPage: React.FC = () => {
     }))
   }
 
-  const renderProjectList = () => (
-    <aside className="glass-panel rounded-2xl p-4 h-fit lg:sticky lg:top-8">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">Project Library</p>
-          <h2 className="text-lg font-black text-neutral-950 dark:text-white">Projeler</h2>
-        </div>
-        <Badge variant="outline">{projects.length}</Badge>
+  if (projectsLoading) {
+    return (
+      <div className="flex h-[50vh] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
       </div>
+    )
+  }
 
-      <div className="mt-4 space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Projelerde ara"
-            className="h-9 pl-9 bg-white/70 dark:bg-neutral-950/50"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as ProjectStatus | 'ALL')}
-          className="h-9 w-full rounded-lg border border-border bg-white/70 px-3 text-xs font-semibold text-neutral-900 outline-none dark:bg-neutral-950/50 dark:text-white"
-        >
-          <option value="ALL">Tum durumlar</option>
-          {(Object.keys(STATUS_LABELS) as ProjectStatus[]).map((status) => (
-            <option key={status} value={status}>
-              {STATUS_LABELS[status]}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <form onSubmit={handleCreateProject} className="mt-4 rounded-xl border border-cyan-400/15 bg-cyan-400/5 p-3 space-y-2">
-        <Input
-          value={projectForm.name}
-          onChange={(event) => setProjectForm((form) => ({ ...form, name: event.target.value }))}
-          placeholder="Yeni proje adi"
-          className="h-9 bg-neutral-950/50 text-white"
-        />
-        <Textarea
-          value={projectForm.description}
-          onChange={(event) => setProjectForm((form) => ({ ...form, description: event.target.value }))}
-          placeholder="Kisa not"
-          className="min-h-[62px] bg-neutral-950/50 text-white"
-        />
-        <GlassButton size="sm" contentClassName="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Proje ekle
-        </GlassButton>
-      </form>
-
-      <div className="mt-4 space-y-2 max-h-[58vh] overflow-y-auto pr-1">
-        {projectsLoading && <p className="text-xs text-neutral-400">Projeler yukleniyor...</p>}
-        {filteredProjects.map((project) => {
-          const isActive = project.id === selectedProjectId
-          const stack = technologies.filter((technology) => technology.projectId === project.id).slice(0, 3)
-          return (
-            <button
-              key={project.id}
-              onClick={() => {
-                setSelectedProjectId(project.id)
-                setActiveTab('overview')
-              }}
-              className={cn(
-                'w-full rounded-xl border p-3 text-left transition-all',
-                isActive
-                  ? 'border-cyan-400/50 bg-cyan-400/10 shadow-[0_0_24px_rgba(34,211,238,0.08)]'
-                  : 'border-white/10 bg-white/5 hover:border-cyan-400/25 hover:bg-white/10'
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-black text-neutral-950 dark:text-white">{project.name}</div>
-                  <p className="line-clamp-2 text-[11px] leading-4 text-neutral-500 dark:text-neutral-400">
-                    {project.description || 'Not eklenmedi.'}
-                  </p>
-                </div>
-                <span className={cn('rounded-full border px-2 py-0.5 text-[9px] font-bold', STATUS_STYLES[project.status])}>
-                  {STATUS_LABELS[project.status]}
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1">
-                {stack.length === 0 ? (
-                  <span className="text-[10px] text-neutral-500">Stack bekliyor</span>
-                ) : (
-                  stack.map((item) => (
-                    <span key={item.id} className="rounded-full bg-neutral-900/50 px-2 py-0.5 text-[9px] font-bold text-cyan-200">
-                      {item.technology}
-                    </span>
-                  ))
-                )}
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    </aside>
-  )
-
-  if (projects.length === 0 && !projectsLoading) {
+  if (projects.length === 0 || projectOnboardingOpen || !selectedProject) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Projeler" subtitle="Bir projenin teknik hafizasini, roadmap'ini ve gorevlerini tek yerden yonet." />
-        <div className="glass-panel mx-auto max-w-2xl rounded-2xl p-8 text-center">
-          <Folder className="mx-auto h-12 w-12 text-cyan-300" />
-          <h2 className="mt-4 text-2xl font-black text-neutral-950 dark:text-white">Ilk proje odani olustur</h2>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            Fazlar, DB semasi, teknoloji stack'i, refactor planlari ve kaynaklar bu odada toplanacak.
-          </p>
-          <form onSubmit={handleCreateProject} className="mt-6 space-y-3 text-left">
-            <Input
-              value={projectForm.name}
-              onChange={(event) => setProjectForm((form) => ({ ...form, name: event.target.value }))}
-              placeholder="Proje adi"
-              className="bg-neutral-950/50 text-white"
-            />
-            <Textarea
-              value={projectForm.description}
-              onChange={(event) => setProjectForm((form) => ({ ...form, description: event.target.value }))}
-              placeholder="Projenin amaci"
-              className="bg-neutral-950/50 text-white"
-            />
-            <GlassButton contentClassName="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Project Control Room ac
-            </GlassButton>
+        <PageHeader title="Projeler" titleClassName="text-neutral-950 dark:text-white" subtitle="Bir projenin teknik hafizasini, roadmap'ini ve gorevlerini tek yerden yonet." />
+        <section className="glass-panel mx-auto w-full max-w-3xl overflow-hidden rounded-3xl p-5 sm:p-8">
+          <div className="text-center">
+            <motion.div
+              animate={shouldReduceMotion ? undefined : { opacity: [0.72, 1, 0.72], scale: [1, 1.04, 1] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+              className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/25 bg-cyan-500/10 text-cyan-600 shadow-[0_0_30px_rgba(6,182,212,0.12)] dark:text-cyan-300"
+            >
+              <Cpu className="h-7 w-7" />
+            </motion.div>
+            <p className="mt-5 font-mono text-[10px] font-bold uppercase text-cyan-700 dark:text-cyan-300">
+              Control room initialization
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-neutral-950 sm:text-3xl dark:text-white">
+              İlk proje odanı kur
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+              Projenin adını, amacını ve varsa GitHub deposunu ekleyerek çalışma alanını oluştur.
+            </p>
+          </div>
+
+          <form onSubmit={handleCreateProject} className="mt-7 space-y-4 text-left">
+            <div className="space-y-2">
+              <label htmlFor="onboarding-project-name" className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                Proje adı <span className="text-cyan-600 dark:text-cyan-300">*</span>
+              </label>
+              <Input
+                id="onboarding-project-name"
+                required
+                autoFocus
+                autoComplete="off"
+                value={projectForm.name}
+                onChange={(event) => setProjectForm((form) => ({ ...form, name: event.target.value }))}
+                placeholder="Örn. IyonTree"
+                className="h-12 rounded-xl border-neutral-300 bg-white/70 text-neutral-950 placeholder:text-neutral-500 focus-visible:border-cyan-500/60 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="onboarding-project-description" className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                Projenin amacı <span className="text-cyan-600 dark:text-cyan-300">*</span>
+              </label>
+              <Textarea
+                id="onboarding-project-description"
+                required
+                value={projectForm.description}
+                onChange={(event) => setProjectForm((form) => ({ ...form, description: event.target.value }))}
+                placeholder="Ne inşa ediyorsun, hangi problemi çözüyor?"
+                className="min-h-[108px] rounded-xl border-neutral-300 bg-white/70 text-neutral-950 placeholder:text-neutral-500 focus-visible:border-cyan-500/60 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="onboarding-repository" className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                GitHub / Repo URL <span className="font-normal text-neutral-500 dark:text-neutral-400">(isteğe bağlı)</span>
+              </label>
+              <div className="relative">
+                <Github className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                <Input
+                  id="onboarding-repository"
+                  type="url"
+                  value={projectForm.repositoryUrl}
+                  onChange={(event) => setProjectForm((form) => ({ ...form, repositoryUrl: event.target.value }))}
+                  placeholder="https://github.com/kullanici/proje"
+                  className="h-12 rounded-xl border-neutral-300 bg-white/70 pl-10 text-neutral-950 placeholder:text-neutral-500 focus-visible:border-cyan-500/60 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
+                />
+              </div>
+            </div>
+
+            <MovingBorderButton
+              type="submit"
+              disabled={isProvisioningProject || !projectForm.name.trim() || !projectForm.description?.trim()}
+              borderRadius="0.875rem"
+              duration={2600}
+              containerClassName="h-12 w-full disabled:cursor-not-allowed disabled:opacity-50"
+              className="gap-2 border-neutral-200 font-bold text-neutral-950 dark:border-neutral-800 dark:text-white"
+            >
+              {isProvisioningProject ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cpu className="h-4 w-4" />}
+              {isProvisioningProject ? 'Control Room kuruluyor...' : 'Project Control Room Kur ve Giriş Yap'}
+            </MovingBorderButton>
           </form>
-        </div>
+        </section>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Projeler"
-        subtitle="Roadmap, teknik hafiza, proje gorevleri, DB semasi ve kaynaklar."
-        action={
-          <Badge variant="outline" className="border-cyan-400/30 bg-cyan-400/10 text-cyan-300">
-            FE-2 Control Room
-          </Badge>
-        }
-      />
+      <main className="w-full space-y-6">
+        <section className="glass-panel overflow-hidden rounded-2xl">
+          <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex-1 min-w-0 flex flex-col items-start gap-1">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">
+                Project Control Room
+              </p>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-        {renderProjectList()}
+              {editingField === 'name' ? (
+                <input
+                  autoFocus
+                  value={editProjectForm.name}
+                  onChange={(event) => setEditProjectForm((form) => ({ ...form, name: event.target.value }))}
+                  onBlur={() => void saveInlineField('name')}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      event.currentTarget.blur()
+                    }
+                    if (event.key === 'Escape') cancelInlineEdit('name')
+                  }}
+                  aria-label="Proje adını düzenle"
+                  className="mt-2 w-full border-none bg-transparent p-0 text-3xl font-black text-neutral-950 outline-none focus:ring-0 sm:text-4xl dark:text-white"
+                />
+              ) : (
+                <div className="group/name relative mt-2 inline-flex items-center gap-3">
+                  <h1 className="truncate text-3xl font-black text-neutral-950 sm:text-4xl dark:text-white">
+                    {selectedProject.name}
+                  </h1>
+                  <MovingBorderButton
+                    onClick={() => setEditingField('name')}
+                    borderRadius="0.5rem"
+                    duration={2000}
+                    containerClassName="h-8 w-8 shrink-0 translate-y-[2px] opacity-0 transition-all duration-200 group-hover/name:opacity-100"
+                    className="p-0"
+                    title="Proje adını düzenle"
+                  >
+                    <Pencil className="h-4 w-4 text-zinc-400" />
+                  </MovingBorderButton>
+                </div>
+              )}
 
-        {selectedProject ? (
-          <main className="space-y-6">
-            <section className="glass-panel rounded-2xl p-5">
-              <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
-                <form onSubmit={handleUpdateProject} className="space-y-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-black', STATUS_STYLES[selectedProject.status])}>
-                          {STATUS_LABELS[selectedProject.status]}
-                        </span>
-                        <span className="rounded-full border border-white/10 bg-neutral-950/40 px-2.5 py-1 text-[10px] font-bold text-neutral-300">
-                          {technologies.length} teknoloji
-                        </span>
-                        <span className="rounded-full border border-white/10 bg-neutral-950/40 px-2.5 py-1 text-[10px] font-bold text-neutral-300">
-                          {documents.length} dokuman
-                        </span>
-                      </div>
-                      <Input
-                        value={editProjectForm.name}
-                        onChange={(event) => setEditProjectForm((form) => ({ ...form, name: event.target.value }))}
-                        className="h-auto border-transparent bg-transparent px-0 text-3xl font-black tracking-tight text-neutral-950 shadow-none focus-visible:ring-0 dark:text-white"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <select
-                        value={editProjectForm.status}
-                        onChange={(event) => setEditProjectForm((form) => ({ ...form, status: event.target.value as ProjectStatus }))}
-                        className="h-9 rounded-lg border border-border bg-neutral-950/50 px-3 text-xs font-bold text-white outline-none"
-                      >
-                        {(Object.keys(STATUS_LABELS) as ProjectStatus[]).map((status) => (
-                          <option key={status} value={status}>
-                            {STATUS_LABELS[status]}
-                          </option>
-                        ))}
-                      </select>
-                      <Button type="submit" size="sm" variant="outline">
-                        <SquarePen className="mr-2 h-3.5 w-3.5" />
-                        Kaydet
-                      </Button>
-                      <Button type="button" size="sm" variant="destructive" onClick={handleDeleteProject}>
-                        <Trash2 className="mr-2 h-3.5 w-3.5" />
-                        Sil
-                      </Button>
-                    </div>
-                  </div>
-                  <Textarea
-                    value={editProjectForm.description}
-                    onChange={(event) => setEditProjectForm((form) => ({ ...form, description: event.target.value }))}
-                    placeholder="Proje notlari, amaci, kapsam disi kararlar..."
-                    className="min-h-[96px] bg-neutral-950/40 text-white"
-                  />
-                </form>
+              {editingField === 'description' ? (
+                <textarea
+                  autoFocus
+                  value={editProjectForm.description || ''}
+                  onChange={(event) => setEditProjectForm((form) => ({ ...form, description: event.target.value }))}
+                  onBlur={() => void saveInlineField('description')}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault()
+                      event.currentTarget.blur()
+                    }
+                    if (event.key === 'Escape') cancelInlineEdit('description')
+                  }}
+                  aria-label="Proje açıklamasını düzenle"
+                  rows={3}
+                  className="mt-3 w-full resize-none border-none bg-transparent p-0 text-sm leading-6 text-neutral-700 outline-none focus:ring-0 dark:text-neutral-300"
+                />
+              ) : (
+                <div className="group/desc relative mt-2.5 flex items-start gap-3">
+                  <span className="text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+                    {selectedProject.description || 'Proje açıklaması eklenmemiş.'}
+                  </span>
+                  <MovingBorderButton
+                    onClick={() => setEditingField('description')}
+                    borderRadius="0.5rem"
+                    duration={2000}
+                    containerClassName="h-7 w-7 shrink-0 opacity-0 transition-all duration-200 group-hover/desc:opacity-100"
+                    className="p-0"
+                    title="Proje açıklamasını düzenle"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-zinc-400" />
+                  </MovingBorderButton>
+                </div>
+              )}
+            </div>
 
-                <aside className="rounded-2xl border border-white/10 bg-neutral-950/35 p-4">
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-cyan-300">Hafiza Paneli</p>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <SummaryTile label="Bugun" value={`${todayTasks.length}`} icon={CalendarDays} />
-                    <SummaryTile label="Aktif Faz" value={activePhase?.name || '-'} icon={GitBranch} />
-                    <SummaryTile label="Progress" value={`%${completionPercent(projectTasks)}`} icon={RefreshCcw} />
-                    <SummaryTile label="Refactor" value={`${refactorDocs.length}`} icon={Braces} />
-                  </div>
-                </aside>
-              </div>
-            </section>
+            <div className="flex shrink-0 items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  disabled={updateProjectMutation.isPending || !!editingField}
+                  className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <MovingBorderButton
+                    as="div"
+                    borderRadius="0.75rem"
+                    duration={2600}
+                    containerClassName="h-10 min-w-[142px]"
+                    className="gap-2 px-4 font-bold"
+                  >
+                    <span className={cn('h-2.5 w-2.5 rounded-full', STATUS_DOT_STYLES[editProjectForm.status || selectedProject.status])} />
+                    {STATUS_LABELS[editProjectForm.status || selectedProject.status]}
+                  </MovingBorderButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={8} className="w-52 rounded-xl border-border/70 bg-popover/90 p-1.5 shadow-2xl backdrop-blur-xl">
+                  <DropdownMenuRadioGroup value={editProjectForm.status} onValueChange={(value) => void handleStatusChange(value as ProjectStatus)}>
+                    {(Object.keys(STATUS_LABELS) as ProjectStatus[]).map((status) => (
+                      <DropdownMenuRadioItem key={status} value={status} className="rounded-lg py-2.5 font-semibold">
+                        <span className={cn('mr-2 h-2.5 w-2.5 rounded-full', STATUS_DOT_STYLES[status])} />
+                        {STATUS_LABELS[status]}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <MetricCard title="Bugun" value={`${todayTasks.length} gorev`} icon={CalendarDays} accent="text-emerald-300" />
-              <MetricCard title="Aktif Faz" value={activePhase?.name || 'Yok'} icon={GitBranch} accent="text-cyan-300" />
-              <MetricCard title="Teknik Hafiza" value={`${documents.length + snippets.length + links.length} oge`} icon={FileArchive} accent="text-violet-300" />
-              <MetricCard title="Tamamlanma" value={`%${completionPercent(projectTasks)}`} icon={Check} accent="text-amber-300" />
-            </section>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger
+                  disabled={updateProjectMutation.isPending || !!editingField}
+                  className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Proje ayarları"
+                >
+                  <MovingBorderButton
+                    as="div"
+                    borderRadius="0.75rem"
+                    duration={2600}
+                    containerClassName="h-10 w-10"
+                    className="p-0"
+                  >
+                    <MoreVertical className="h-4 w-4 text-neutral-600 dark:text-neutral-300" />
+                  </MovingBorderButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={8} className="w-60 rounded-xl border-border/70 bg-popover/90 p-1.5 shadow-2xl backdrop-blur-xl">
+                  <DropdownMenuItem onSelect={handleExportMarkdown} className="rounded-lg py-2.5">
+                    <Download className="mr-2 h-4 w-4 text-cyan-600 dark:text-cyan-300" />
+                    Markdown olarak dışa aktar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="rounded-lg py-2.5 text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-300">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Projeyi sil
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
 
+          <div className="grid grid-cols-2 border-t border-border/60 md:grid-cols-4 md:divide-x md:divide-border/60">
+            <HeaderMetric label="Bugün" value={`${todayTasks.length} görev`} icon={CalendarDays} accent="text-emerald-500" />
+            <HeaderMetric label="Aktif Faz" value={activePhase?.name || 'Yok'} icon={GitBranch} accent="text-cyan-500" />
+            <HeaderMetric
+              label="Teknik Hafıza"
+              value={`${documents.length + snippets.length + links.length} öğe`}
+              detail={`${refactorDocs.length} refactor planı`}
+              icon={FileArchive}
+              accent="text-violet-500"
+            />
+            <HeaderMetric label="Tamamlanma" value={`%${completionPercent(projectTasks)}`} icon={Check} accent="text-amber-500" />
+          </div>
+          <div className="h-1 bg-neutral-200/70 dark:bg-neutral-900/80">
+            <motion.div
+              initial={false}
+              animate={{ width: `${completionPercent(projectTasks)}%` }}
+              transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.45, ease: 'easeOut' }}
+              className="h-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.75)]"
+            />
+          </div>
+        </section>
+
+        {selectedPhase ? (
+          <PhaseDetailRoom
+            project={selectedProject}
+            phase={selectedPhase}
+            onClose={() => setActivePhaseId(null)}
+          />
+        ) : (
+          <>
             <section className="glass-panel rounded-2xl p-3">
               <div className="flex gap-2 overflow-x-auto">
                 {tabs.map((tab) => {
@@ -942,82 +1214,27 @@ export const ProjectsPage: React.FC = () => {
             </section>
 
             {activeTab === 'overview' && (
-              <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
-                <Panel title="Roadmap" icon={GitBranch}>
-                  <div className="space-y-3">
-                    {sortedPhases.slice(0, 4).map((phase, index) => (
-                      <PhaseRoadmapCard key={phase.id} phase={phase} index={index} tasks={projectTasks.filter((task) => task.phaseId === phase.id)} />
-                    ))}
-                    {sortedPhases.length === 0 && <EmptyLine text="Faz eklenince proje yolculugu burada gorunecek." />}
-                  </div>
-                </Panel>
-                <Panel title="Bugunku Proje Isleri" icon={ListChecks}>
-                  <TaskList tasks={todayTasks} onToggle={(id) => toggleTaskMutation.mutate(id)} onDelete={(id) => deleteTaskMutation.mutate(id)} />
-                </Panel>
-              </div>
+              <OverviewPage
+                project={selectedProject}
+                phases={sortedPhases}
+                projectTasks={projectTasks}
+                todayTasks={todayTasks}
+                onTaskStatusChange={(id) => toggleTaskMutation.mutate(id)}
+                onAddTask={handleQuickAddTaskForToday}
+                onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
+              />
             )}
 
             {activeTab === 'phases' && (
-              <Panel title="Fazlar ve Roadmap" icon={GitBranch}>
-                <form onSubmit={handleAddPhase} className="grid gap-3 rounded-xl border border-cyan-400/15 bg-cyan-400/5 p-3 lg:grid-cols-[1fr_1fr_140px_140px_auto]">
-                  <Input value={phaseForm.name} onChange={(event) => setPhaseForm((form) => ({ ...form, name: event.target.value }))} placeholder="Faz adi" className="bg-neutral-950/50 text-white" />
-                  <Input value={phaseForm.description} onChange={(event) => setPhaseForm((form) => ({ ...form, description: event.target.value }))} placeholder="Detay" className="bg-neutral-950/50 text-white" />
-                  <Input type="date" value={phaseForm.startDate} onChange={(event) => setPhaseForm((form) => ({ ...form, startDate: event.target.value }))} className="bg-neutral-950/50 text-white" />
-                  <Input type="date" value={phaseForm.endDate} onChange={(event) => setPhaseForm((form) => ({ ...form, endDate: event.target.value }))} className="bg-neutral-950/50 text-white" />
-                  <GlassButton size="sm" contentClassName="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Ekle
-                  </GlassButton>
-                </form>
-                <div className="mt-6 space-y-4">
-                  {sortedPhases.map((phase, index) => {
-                    const phaseTasks = projectTasks.filter((task) => task.phaseId === phase.id)
-                    return (
-                      <div key={phase.id} className="relative rounded-2xl border border-white/10 bg-neutral-950/35 p-4 shadow-xl" style={{ marginLeft: `${Math.min(index, 4) * 14}px` }}>
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-xs font-black text-cyan-300">{String(index + 1).padStart(2, '0')}</span>
-                              <Badge className={STATUS_STYLES[phase.status]}>{STATUS_LABELS[phase.status]}</Badge>
-                              <span className="text-[10px] text-neutral-400">{phaseTasks.length} gorev</span>
-                            </div>
-                            <h3 className="mt-2 text-xl font-black text-neutral-950 dark:text-white">{phase.name}</h3>
-                            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{phase.description || 'Faz detayi eklenmedi.'}</p>
-                            <p className="mt-2 text-[11px] font-semibold text-neutral-500">
-                              {phase.startDate || 'baslangic yok'} - {phase.endDate || 'bitis yok'}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <select
-                              value={phase.status}
-                              onChange={(event) => handleUpdatePhaseStatus(phase, event.target.value as ProjectStatus)}
-                              className="h-8 rounded-lg border border-border bg-neutral-950/50 px-2 text-xs text-white outline-none"
-                            >
-                              {(Object.keys(STATUS_LABELS) as ProjectStatus[]).map((status) => (
-                                <option key={status} value={status}>
-                                  {STATUS_LABELS[status]}
-                                </option>
-                              ))}
-                            </select>
-                            <Button type="button" size="icon" variant="ghost" onClick={() => handleMovePhase(phase, -1)} disabled={index === 0}>
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                            <Button type="button" size="icon" variant="ghost" onClick={() => handleMovePhase(phase, 1)} disabled={index === sortedPhases.length - 1}>
-                              <ArrowDown className="h-4 w-4" />
-                            </Button>
-                            <Button type="button" size="icon" variant="destructive" onClick={() => deletePhaseMutation.mutate(phase.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <TaskList tasks={phaseTasks} onToggle={(id) => toggleTaskMutation.mutate(id)} onDelete={(id) => deleteTaskMutation.mutate(id)} dense />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </Panel>
+              <PhasesManagerPage
+                project={selectedProject}
+                phases={sortedPhases}
+                projectTasks={projectTasks}
+                onEnterRoom={(id) => setActivePhaseId(id)}
+                onAddPhase={handleAddPhaseFromManager}
+                onDeletePhase={handleDeletePhaseFromManager}
+                onReorderPhases={handleReorderPhasesFromManager}
+              />
             )}
 
             {activeTab === 'tasks' && (
@@ -1236,14 +1453,29 @@ export const ProjectsPage: React.FC = () => {
                 </div>
               </Panel>
             )}
-          </main>
-        ) : (
-          <div className="glass-panel rounded-2xl p-8 text-center">
-            <Folder className="mx-auto h-10 w-10 text-cyan-300" />
-            <p className="mt-3 text-sm text-neutral-400">Bir proje sec veya yeni proje olustur.</p>
-          </div>
+          </>
         )}
-      </div>
+      </main>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-red-500/20">
+          <DialogHeader>
+            <DialogTitle>Projeyi kalıcı olarak sil</DialogTitle>
+            <DialogDescription className="pt-2 leading-6">
+              <strong className="text-foreground">{selectedProject.name}</strong> ve projeye bağlı fazlar, teknik notlar ve kaynaklar silinecek. Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-3 gap-3 sm:space-x-0">
+            <Button type="button" variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+              İptal et
+            </Button>
+            <SketchButton type="button" tone="destructive" disabled={deleteProjectMutation.isPending} onClick={() => void handleDeleteProject()}>
+              {deleteProjectMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Evet, projeyi sil
+            </SketchButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -1266,50 +1498,26 @@ const Panel: React.FC<{
   </section>
 )
 
-const MetricCard: React.FC<{
-  title: string
+const HeaderMetric: React.FC<{
+  label: string
   value: string
+  detail?: string
   icon: React.ElementType
   accent: string
-}> = ({ title, value, icon: Icon, accent }) => (
-  <div className="glass-panel rounded-2xl p-4">
+}> = ({ label, value, detail, icon: Icon, accent }) => (
+  <div className="min-w-0 border-b border-border/60 p-4 odd:border-r [&:nth-child(3)]:border-b-0 last:border-b-0 md:border-b-0 md:odd:border-r-0">
     <div className="flex items-center justify-between gap-3">
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{title}</p>
-        <p className="mt-1 truncate text-lg font-black text-neutral-950 dark:text-white">{value}</p>
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">{label}</p>
+        <p className="mt-1 truncate text-base font-black text-neutral-950 dark:text-white">{value}</p>
+        {detail && <p className="mt-0.5 truncate text-[10px] font-semibold text-neutral-500">{detail}</p>}
       </div>
       <Icon className={cn('h-5 w-5', accent)} />
     </div>
   </div>
 )
 
-const SummaryTile: React.FC<{
-  label: string
-  value: string
-  icon: React.ElementType
-}> = ({ label, value, icon: Icon }) => (
-  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-    <Icon className="h-4 w-4 text-cyan-300" />
-    <p className="mt-2 text-[10px] font-black uppercase tracking-wider text-neutral-500">{label}</p>
-    <p className="truncate text-sm font-black text-white">{value}</p>
-  </div>
-)
 
-const PhaseRoadmapCard: React.FC<{ phase: ProjectPhase; index: number; tasks: Task[] }> = ({ phase, index, tasks }) => (
-  <div className="rounded-2xl border border-white/10 bg-neutral-950/35 p-4" style={{ transform: `translateX(${Math.min(index, 3) * 8}px)` }}>
-    <div className="flex items-center justify-between gap-3">
-      <div>
-        <p className="text-[10px] font-black text-cyan-300">FAZ {String(index + 1).padStart(2, '0')}</p>
-        <h3 className="font-black text-white">{phase.name}</h3>
-      </div>
-      <Badge className={STATUS_STYLES[phase.status]}>{STATUS_LABELS[phase.status]}</Badge>
-    </div>
-    <p className="mt-2 line-clamp-2 text-xs text-neutral-400">{phase.description || 'Detay bekliyor.'}</p>
-    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-neutral-800">
-      <div className="h-full rounded-full bg-cyan-400" style={{ width: `${completionPercent(tasks)}%` }} />
-    </div>
-  </div>
-)
 
 const TaskList: React.FC<{
   tasks: Task[]

@@ -1022,7 +1022,7 @@ export const DashboardPage: React.FC = () => {
                 borderRadius="1rem"
                 onClick={() => setShowAddFormFocused(true)}
                 containerClassName="w-full h-10"
-                className="bg-white/80 dark:bg-slate-900/80 text-black dark:text-white border-neutral-200 dark:border-slate-800 text-xs font-semibold backdrop-blur-sm shadow-sm"
+                className="border-neutral-200 text-xs font-semibold shadow-sm dark:border-neutral-800"
               >
                 + Görev Ekle
               </MovingBorderButton>
@@ -1160,7 +1160,7 @@ export const DashboardPage: React.FC = () => {
                 borderRadius="1rem"
                 onClick={() => setShowAddFormTomorrow(true)}
                 containerClassName="w-full h-10"
-                className="bg-white/80 dark:bg-slate-900/80 text-black dark:text-white border-neutral-200 dark:border-slate-800 text-xs font-semibold backdrop-blur-sm shadow-sm"
+                className="border-neutral-200 text-xs font-semibold shadow-sm dark:border-neutral-800"
               >
                 + Görev Ekle
               </MovingBorderButton>
@@ -1327,7 +1327,7 @@ export const DashboardPage: React.FC = () => {
                 borderRadius="1rem"
                 onClick={() => setShowAddFormMonth(true)}
                 containerClassName="w-full h-10"
-                className="bg-white/80 dark:bg-slate-900/80 text-black dark:text-white border-neutral-200 dark:border-slate-800 text-xs font-semibold backdrop-blur-sm shadow-sm"
+                className="border-neutral-200 text-xs font-semibold shadow-sm dark:border-neutral-800"
               >
                 + Görev Ekle
               </MovingBorderButton>

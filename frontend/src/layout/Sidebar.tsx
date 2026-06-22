@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/ScrollArea'
 import { motion } from 'framer-motion'
-import { Badge } from '@/components/ui/Badge'
 import {
   LayoutDashboard,
   Folder,
@@ -17,11 +16,13 @@ import {
   ChevronsUpDown,
   UserCog,
   Blocks,
+  ChevronDown,
   Plus,
   Sun,
   Moon
 } from 'lucide-react'
 import { useUiStore } from '@/store/useUiStore'
+import { ProjectStatus, useProjects } from '@/api/projects'
 import { Avatar, AvatarFallback } from '@/components/ui/Avatar'
 import {
   DropdownMenu,
@@ -30,7 +31,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu'
-import { Separator } from '@/components/ui/Separator'
+
+const PROJECT_STATUS_DOT: Record<ProjectStatus, string> = {
+  PLANNING: 'bg-amber-400 shadow-[0_0_7px_rgba(251,191,36,0.65)]',
+  ACTIVE: 'bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,0.65)]',
+  PAUSED: 'bg-neutral-400 shadow-[0_0_6px_rgba(163,163,163,0.45)]',
+  DONE: 'bg-cyan-400 shadow-[0_0_7px_rgba(34,211,238,0.6)]',
+}
 
 const sidebarVariants = {
   open: {
@@ -78,9 +85,30 @@ const staggerVariants = {
 
 export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [isProjectListOpen, setIsProjectListOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
   const pathname = location.pathname
-  const { theme, toggleTheme } = useUiStore()
+  const {
+    theme,
+    toggleTheme,
+    activeProjectId,
+    setActiveProjectId,
+    setProjectOnboardingOpen,
+  } = useUiStore()
+  const { data: projects = [] } = useProjects()
+
+  const openProject = (projectId: number) => {
+    setActiveProjectId(projectId)
+    setProjectOnboardingOpen(false)
+    navigate('/projects')
+  }
+
+  const openProjectOnboarding = () => {
+    setActiveProjectId(undefined)
+    setProjectOnboardingOpen(true)
+    navigate('/projects')
+  }
 
   const navItems = [
     { to: '/', label: 'Anasayfa', icon: LayoutDashboard },
@@ -156,6 +184,77 @@ export const Sidebar: React.FC = () => {
                     {navItems.map((item) => {
                       const Icon = item.icon
                       const isActive = pathname === item.to || (item.to !== '/' && pathname.startsWith(item.to))
+
+                      if (item.to === '/projects') {
+                        return (
+                          <div key={item.to}>
+                            <div className="relative">
+                              <Link
+                                to={item.to}
+                                onClick={() => setProjectOnboardingOpen(false)}
+                                className={cn(
+                                  "flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-slate-700 transition-all duration-200 hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground",
+                                  isActive && "border-l-2 border-primary bg-primary/10 font-semibold text-primary shadow-[0_0_15px_rgba(0,255,255,0.05)]",
+                                )}
+                              >
+                                <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
+                                {!isCollapsed && (
+                                  <motion.span variants={variants} className="ml-3.5 truncate text-sm">
+                                    {item.label}
+                                  </motion.span>
+                                )}
+                              </Link>
+
+                              {!isCollapsed && (
+                                <motion.div variants={variants} className="absolute inset-y-0 right-1.5 my-auto flex h-7 items-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={openProjectOnboarding}
+                                    aria-label="Yeni proje oluştur"
+                                    title="Yeni proje"
+                                    className="flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-slate-500 transition-all hover:border-cyan-500/25 hover:bg-cyan-500/10 hover:text-cyan-700 hover:shadow-[0_0_12px_rgba(6,182,212,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:text-neutral-400 dark:hover:text-cyan-300"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsProjectListOpen((open) => !open)}
+                                    aria-label={isProjectListOpen ? 'Proje listesini kapat' : 'Proje listesini aç'}
+                                    aria-expanded={isProjectListOpen}
+                                    title={isProjectListOpen ? 'Projeleri gizle' : 'Projeleri göster'}
+                                    className="flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-slate-500 transition-all hover:border-zinc-500/20 hover:bg-zinc-500/10 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:text-neutral-400 dark:hover:bg-zinc-800/50 dark:hover:text-white"
+                                  >
+                                    <ChevronDown className={cn('h-3.5 w-3.5 transition-transform duration-200', !isProjectListOpen && '-rotate-90')} />
+                                  </button>
+                                </motion.div>
+                              )}
+                            </div>
+
+                            {!isCollapsed && isProjectListOpen && projects.length > 0 && (
+                              <motion.div variants={variants} className="mt-2 space-y-1 pl-4 font-mono text-xs md:text-sm">
+                                {projects.map((project) => {
+                                  const isSelected = project.id === activeProjectId && pathname.startsWith('/projects')
+                                  return (
+                                    <button
+                                      key={project.id}
+                                      type="button"
+                                      onClick={() => openProject(project.id)}
+                                      title={project.name}
+                                      className={cn(
+                                        'flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-slate-600 transition-all hover:bg-zinc-500/10 hover:text-slate-950 dark:text-neutral-400 dark:hover:bg-zinc-800/40 dark:hover:text-white',
+                                        isSelected && 'bg-zinc-500/10 font-semibold text-slate-950 dark:bg-zinc-800/50 dark:text-white'
+                                      )}
+                                    >
+                                      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PROJECT_STATUS_DOT[project.status])} />
+                                      <span className="truncate">{project.name}</span>
+                                    </button>
+                                  )
+                                })}
+                              </motion.div>
+                            )}
+                          </div>
+                        )
+                      }
                       
                       return (
                         <Link

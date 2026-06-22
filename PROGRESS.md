@@ -12,10 +12,10 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** FE-1 — Anasayfa + Su takibi (Frontend) (Mikro Widget Cila)
-- **Çalışıyor mu:** Evet (Tüm backend modülleri, testler, FE-0 altyapısı, FE-1 anasayfa/su takibi ve FE-2 projeler control room tamamlandı. Mikro Su Takibi Widget'ı sağ üst köşeye entegre edildi.)
+- **Aktif faz:** FE-2 — Projeler (Frontend) arayüz cilası
+- **Çalışıyor mu:** Evet (Proje geçişi ortak sidebar üzerinden yapılıyor; aktif proje çalışma alanı tam genişlikte açılıyor.)
 - **Sırada:** FE-3 — Eğitimler (Frontend)
-- **Son güncelleme:** 21.06.2026
+- **Son güncelleme:** 22.06.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
@@ -41,6 +41,87 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-22 · Proje Sayfası Siyah Ekran Hatası Düzeltmesi (Bugfix)
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `ProjectsPage.tsx` bileşeninde `projectsLoading` durumunun ele alınmaması nedeniyle, ilk yüklemede (proje verileri henüz gelmemişken) `selectedProject`'in `undefined` olmasına bağlı olarak oluşan TypeError (Cannot read properties of undefined (reading 'name')) ve dolayısıyla oluşan siyah ekran hatası giderildi.
+  - Yükleme durumunda bir yükleniyor animasyonu (`Loader2` spinner'ı) gösteren `projectsLoading` kontrolü eklendi.
+  - Sayfaya direkt girildiğinde (veya bir proje silindiğinde) eğer veritabanında projeler mevcutsa, ilk projeyi otomatik olarak seçen ve "İlk proje odasını kur" onboarding ekranının gereksiz yere çıkmasını engelleyen otomatik proje seçme `useEffect` mekanizması entegre edildi.
+- Kararlar:
+  - İlk yüklemedeki null pointer/undefined referans çökmelerini önlemek için React render akışından önce veri yüklenme durumları (`projectsLoading`) kontrol altına alındı.
+- Kabul kriteri: `npm run build` hatasız tamamlandı.
+
+### 2026-06-22 · Faz FE-2 — Faz Yönetimi & Faza Özel Alt Komuta Odası Entegrasyonu
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Üst katman faz listeleme, sürükle-bırak sıralama (`Reorder.Group` / Framer Motion) ve sağdan kayan drawer (`AnimatePresence`) ile faz oluşturmayı sunan `PhasesManagerPage.tsx` bileşeni yazıldı.
+  - Tıklanan faza özel derin çalışma alanı sunan, genel sekmeleri gizleyen `PhaseDetailRoom.tsx` bileşeni yazıldı.
+  - Faza özel alt odada:
+    - Türkçe ve standart tarihleri otomatik çözebilen (`parseDatePart`) kompakt görev çizelgesi, göreve özel genişleyebilir mühendislik notları / bulgular alanı.
+    - Şık ve faza izole DB Schema Studio modülü: tabloları yöneten editor, Mermaid ER diyagramı çizicisi. Şemayı JSON formatında `document_type='DB_SCHEMA'` ve `title='DB_SCHEMA_PHASE_{id}'` olarak backend'e kaydeder.
+    - Faza özel referans linkleri ve snippets teknik hafıza paneli.
+    - Tüm faz hafızasını (amaç, görevler, notlar, DB şeması) tek tıkla kopyalayan `Faz Hafızasını Kopyala (AI Context Copy)` Markdown export butonu.
+  - Bileşenler `ProjectsPage.tsx` ana dosyasına entegre edilerek eski faz listesinin yerine bağlandı.
+- Kararlar:
+  - Snippets, documents ve links tablolarında `phaseId` kolonu bulunmadığı için, faza özel referans kaynakları `[Faz: phaseId]` başlık önekiyle izole edildi ve frontend seviyesinde otomatik filtrelendi.
+- Kabul kriteri: `npm run build` hatasız tamamlandı.
+
+### 2026-06-22 · Faz FE-2 — OverviewPage Bileşeni ve Mimarisi Entegrasyonu
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Spagetti kod yapısını önleyen, API çağrısı ve karmaşık iç state barındırmayan saf sunum katmanı `OverviewPage.tsx` bileşeni yazıldı.
+  - Sol tarafta dikey siber-yeşil/mavi timeline hattı ve metro haritası şeklinde hizalanmış, faz durumunu ve ilerlemesini dinamik gösteren faz kartları kodlandı.
+  - Sağ tarafta monospace fontlu Bugünkü Proje Görevleri kontrol listesi ile `localStorage` destekli otomatik kaydedilen Karalama Defteri (Scratchpad) textarea'sı oluşturuldu.
+  - Hızlı görev ekleme formu için `MovingBorderButton`, görev silme butonu için `SketchButton` stilleri uygulandı.
+  - Bileşen `ProjectsPage.tsx` ana dosyasına import edilerek 'overview' sekmesi altındaki eski karmaşık yapının yerini aldı.
+- Kararlar:
+  - `OverviewPage` içerisinde faz görevlerinin tamamlanma yüzdelerini dinamik hesaplayabilmek için `projectTasks` props olarak eklendi.
+- Kabul kriteri: `npm run build` hatasız tamamlandı.
+
+### 2026-06-22 · Faz FE-2 — Project Name & Description Inline Edit Pürüzsüzleştirme
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Proje adı ve açıklama alanları için dikey yerleşim (`flex flex-col items-start gap-1`) düzenine geçilerek açıklama kesin bir şekilde başlığın altına konumlandırıldı.
+  - Yanlışlıkla tıklamaları ve hatalı düzenlemeleri önlemek için doğrudan metinlere tıklanarak düzenlenen mekanizma kaldırıldı; metinler statikleştirildi.
+  - Bağımsız hover alanları (`group/name` ve `group/desc`) tanımlandı. İlgili alana gelindiğinde sağ köşede beliren edit butonları ve sağ taraftaki üç nokta ayarlar menüsü tetikleyicisi, projenin durum seçimi bileşeninde kullanılan premium, etrafı ışıklı/hareketli kenarlıklı `MovingBorderButton` bileşenine dönüştürüldü.
+  - Aktifleşen `input` ve `textarea` alanlarının edit modunda sade, kenarlıksız ve ikonsuz saf bir görünüm sunması sağlandı.
+- Kararlar:
+  - Metinlerin arka planındaki kapsül görünümü kaldırılarak sade, MovingBorderButton tetiklemeli minimal ve tutarlı bir tasarıma geçildi.
+- Kabul kriteri: `npm run build` hatasız tamamlandı.
+
+### 2026-06-22 · Faz FE-2 — Project Control Header revizyonu
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Tekrarlanan PageHeader, düzenleme formu, Hafıza Paneli ve metrik kartları tek kompakt glass header içinde birleştirildi.
+  - Proje adı ve açıklaması klavye destekli inline düzenlemeye geçirildi; native durum seçici Radix menüyle değiştirildi.
+  - Markdown dışa aktarma ve modal tabanlı güvenli proje silme akışları eklendi.
+  - Silme onayı için ortak `SketchButton` bileşeni oluşturuldu.
+- Kararlar: `PAUSED` arayüzde “Beklemede” olarak gösterildi; backend desteği olmayan arşiv aksiyonu eklenmedi.
+- Kabul kriteri: TypeScript kontrolü, production build ve `git diff --check` başarıyla tamamlandı.
+- Açık konular / sıradaki: FE-2 alt panel light/dark tema cilasına devam edilecek.
+
+### 2026-06-22 · Faz FE-2 — Aktif proje çalışma alanı sadeleştirmesi
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Aktif proje ekranındaki yerel `Project Library` arama, filtreleme ve oluşturma paneli kaldırıldı.
+  - Sayfa başlığı ve alt başlığı seçili projenin adı ve açıklamasıyla dinamik hale getirildi.
+  - `FE-2 Control Room` etiketi kaldırıldı ve ana çalışma alanı tam genişliğe açıldı.
+- Kararlar: Proje seçimi ve yeni proje tetikleme sorumluluğu ortak uygulama sidebar'ında bırakıldı.
+- Kabul kriteri: `npm.cmd run build` ve `git diff --check` başarıyla tamamlandı; `/projects` HTTP 200 döndü.
+- Açık konular / sıradaki: Aktif proje panelinin açık/koyu tema görsel cilasına devam edilecek.
 
 ### 2026-06-21 · Faz FE-0/FE-1 — GlassFooter Redesign (efferd/footer-section)
 - Ajan: Antigravity
