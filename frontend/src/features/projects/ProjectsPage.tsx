@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { toast } from 'sonner'
 import {
   ArrowUp,
@@ -1022,9 +1022,33 @@ export const ProjectsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <main className="w-full space-y-6">
-        {!selectedPhase && (
-          <section className="glass-panel overflow-hidden rounded-2xl">
+      <main className="w-full">
+        <AnimatePresence mode="wait">
+          {selectedPhase ? (
+            <motion.div
+              key="phase-control-room"
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              className="space-y-6"
+            >
+              <PhaseDetailRoom
+                project={selectedProject}
+                phase={selectedPhase}
+                onClose={() => setActivePhaseId(null)}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="project-dashboard"
+              initial={{ opacity: 0, y: -20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              className="space-y-6"
+            >
+              <section className="glass-panel overflow-hidden rounded-2xl">
           <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex-1 min-w-0 flex flex-col items-start gap-1">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">
@@ -1182,16 +1206,7 @@ export const ProjectsPage: React.FC = () => {
             />
           </div>
         </section>
-        )}
 
-        {selectedPhase ? (
-          <PhaseDetailRoom
-            project={selectedProject}
-            phase={selectedPhase}
-            onClose={() => setActivePhaseId(null)}
-          />
-        ) : (
-          <>
             <section className="glass-panel rounded-2xl p-3">
               <div className="flex gap-2 overflow-x-auto">
                 {tabs.map((tab) => {
@@ -1455,9 +1470,10 @@ export const ProjectsPage: React.FC = () => {
                 </div>
               </Panel>
             )}
-          </>
+          </motion.div>
         )}
-      </main>
+      </AnimatePresence>
+    </main>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl border-red-500/20">
