@@ -344,11 +344,11 @@ export const ProjectsPage: React.FC = () => {
     () => projects.find((project) => project.id === selectedProjectId),
     [projects, selectedProjectId]
   )
+  const { data: phases = [] } = useProjectPhases(selectedProjectId)
   const selectedPhase = useMemo(
     () => phases.find((phase) => phase.id === activePhaseId),
     [phases, activePhaseId]
   )
-  const { data: phases = [] } = useProjectPhases(selectedProjectId)
   const { data: technologies = [] } = useProjectTechnologies(selectedProjectId)
   const { data: snippets = [] } = useProjectSnippets(selectedProjectId)
   const { data: links = [] } = useProjectLinks(selectedProjectId)
