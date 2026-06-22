@@ -12,7 +12,7 @@ export const SketchButton = React.forwardRef<HTMLButtonElement, SketchButtonProp
       className={cn(
         'inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-semibold transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer',
         tone === 'destructive'
-          ? 'border-red-950 bg-red-500 text-white dark:border-red-800 hover:scale-105 active:scale-95 hover:bg-red-600 dark:hover:bg-red-600'
+          ? 'border-red-950 bg-red-500 text-white dark:border-red-800 shadow-[4px_4px_0px_0px_rgba(0,0,0)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 hover:bg-red-600 dark:hover:bg-red-600'
           : 'border-black bg-white text-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-white hover:shadow-[4px_4px_0px_0px_rgba(0,0,0)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] active:translate-y-[2px] active:shadow-none',
         className
       )}
