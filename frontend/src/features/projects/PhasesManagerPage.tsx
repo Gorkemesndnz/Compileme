@@ -18,6 +18,7 @@ import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
 import { Badge } from '../../components/ui/Badge'
 import { cn } from '../../lib/utils'
+import { DateTimePicker } from '../dashboard/DateTimePicker'
 
 interface PhasesManagerPageProps {
   project: Project
@@ -63,9 +64,16 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
   const [localPhases, setLocalPhases] = useState<ProjectPhase[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string
+    description: string
+    status: ProjectStatus
+    startDate: string
+    endDate: string
+  }>({
     name: '',
     description: '',
+    status: 'PLANNING',
     startDate: '',
     endDate: '',
   })
@@ -90,12 +98,12 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
       await onAddPhase({
         name: form.name.trim(),
         description: form.description.trim() || undefined,
-        status: 'PLANNING',
+        status: form.status,
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
         orderIndex: phases.length,
       })
-      setForm({ name: '', description: '', startDate: '', endDate: '' })
+      setForm({ name: '', description: '', status: 'PLANNING', startDate: '', endDate: '' })
       setDrawerOpen(false)
       toast.success('Yeni proje fazı başarıyla oluşturuldu.')
     } catch {
@@ -249,10 +257,10 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
             {/* Backdrop overlay */}
             <motion.div
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 z-40 bg-black/40 dark:bg-black/60 backdrop-blur-[4px]"
+              className="fixed inset-0 z-50 bg-zinc-950/20 backdrop-blur-sm transition-opacity duration-300"
             />
 
             {/* Sliding Drawer Container */}
@@ -311,17 +319,32 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
                   />
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
+                    Faz Durumu
+                  </label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value as ProjectStatus })}
+                    disabled={isSubmitting}
+                    className="w-full h-11 bg-white/40 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 text-neutral-950 dark:text-white rounded-xl px-3 text-sm outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(6,182,212,0.12)] cursor-pointer font-bold"
+                  >
+                    <option value="PLANNING" className="bg-white dark:bg-neutral-900 text-amber-500 font-bold">🟡 Planlama</option>
+                    <option value="ACTIVE" className="bg-white dark:bg-neutral-900 text-emerald-500 font-bold">🟢 Aktif</option>
+                    <option value="PAUSED" className="bg-white dark:bg-neutral-900 text-sky-500 font-bold">🔵 Beklemede</option>
+                    <option value="DONE" className="bg-white dark:bg-neutral-900 text-violet-500 font-bold">🟣 Tamamlandı</option>
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
                       Başlangıç Tarihi
                     </label>
-                    <Input
-                      type="date"
-                      value={form.startDate}
-                      onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                      disabled={isSubmitting}
-                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
+                    <DateTimePicker
+                      date={form.startDate}
+                      onDateChange={(date) => setForm((f) => ({ ...f, startDate: date }))}
+                      showTime={false}
                     />
                   </div>
                   
@@ -329,12 +352,10 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
                     <label className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 dark:text-zinc-500 block mb-1">
                       Bitiş Tarihi
                     </label>
-                    <Input
-                      type="date"
-                      value={form.endDate}
-                      onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                      disabled={isSubmitting}
-                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
+                    <DateTimePicker
+                      date={form.endDate}
+                      onDateChange={(date) => setForm((f) => ({ ...f, endDate: date }))}
+                      showTime={false}
                     />
                   </div>
                 </div>

@@ -10,9 +10,10 @@ import { cn } from '../../lib/utils'
 
 interface DateTimePickerProps {
   date: string
-  time: string
+  time?: string
   onDateChange: (date: string) => void
-  onTimeChange: (time: string) => void
+  onTimeChange?: (time: string) => void
+  showTime?: boolean
 }
 
 const WEEKDAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pa']
@@ -34,9 +35,10 @@ const parseDateValue = (value: string) => {
 
 export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   date,
-  time,
+  time = '00:00',
   onDateChange,
-  onTimeChange,
+  onTimeChange = () => {},
+  showTime = true,
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isTimeWheelOpen, setIsTimeWheelOpen] = useState(false)
@@ -104,6 +106,9 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const selectDay = (day: number) => {
     const nextDate = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day)
     onDateChange(toDateValue(nextDate))
+    if (!showTime) {
+      setIsOpen(false)
+    }
   }
 
   const [selectedHour = '', selectedMinute = ''] = time.split(':')
@@ -184,11 +189,15 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <CalendarDays className="h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-400" />
           <span className="truncate text-xs font-bold">{triggerDate}</span>
         </span>
-        <span className="h-4 w-px bg-neutral-300 dark:bg-zinc-700" />
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 dark:text-zinc-400">
-          <Clock3 className="h-3.5 w-3.5" />
-          {time || 'Saat'}
-        </span>
+        {showTime && (
+          <>
+            <span className="h-4 w-px bg-neutral-300 dark:bg-zinc-700" />
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 dark:text-zinc-400">
+              <Clock3 className="h-3.5 w-3.5" />
+              {time || 'Saat'}
+            </span>
+          </>
+        )}
       </button>
 
       {isOpen && (
@@ -328,41 +337,43 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             })}
           </div>
 
-          <div className="relative mt-3 border-t border-neutral-200 pt-3 dark:border-zinc-700">
-            <label className="mb-1.5 flex items-center gap-2 text-[10px] font-extrabold uppercase text-neutral-600 dark:text-zinc-300">
-              <Clock3 className="h-3.5 w-3.5" /> Saat
-            </label>
+          {showTime && (
+            <div className="relative mt-3 border-t border-neutral-200 pt-3 dark:border-zinc-700">
+              <label className="mb-1.5 flex items-center gap-2 text-[10px] font-extrabold uppercase text-neutral-600 dark:text-zinc-300">
+                <Clock3 className="h-3.5 w-3.5" /> Saat
+              </label>
 
-            <div className="flex items-center gap-2 w-full">
-              <button
-                type="button"
-                onClick={() => setIsTimeWheelOpen((prev) => !prev)}
-                className={cn(
-                  'flex h-10 flex-grow items-center justify-center rounded-xl border px-3 text-sm font-extrabold transition-all outline-none',
-                  'border-neutral-300 bg-neutral-50 text-neutral-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white',
-                  isTimeWheelOpen && 'border-cyan-500 ring-2 ring-cyan-500/15 dark:border-cyan-400',
-                )}
-              >
-                <span className="flex items-center justify-center gap-1 font-mono text-base tracking-wide">
-                  <span>{selectedHour || '00'}</span>
-                  <span className={cn("text-neutral-400 dark:text-zinc-500", isTimeWheelOpen && "animate-pulse")}>:</span>
-                  <span>{selectedMinute || '00'}</span>
-                </span>
-              </button>
+              <div className="flex items-center gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={() => setIsTimeWheelOpen((prev) => !prev)}
+                  className={cn(
+                    'flex h-10 flex-grow items-center justify-center rounded-xl border px-3 text-sm font-extrabold transition-all outline-none',
+                    'border-neutral-300 bg-neutral-50 text-neutral-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white',
+                    isTimeWheelOpen && 'border-cyan-500 ring-2 ring-cyan-500/15 dark:border-cyan-400',
+                  )}
+                >
+                  <span className="flex items-center justify-center gap-1 font-mono text-base tracking-wide">
+                    <span>{selectedHour || '00'}</span>
+                    <span className={cn("text-neutral-400 dark:text-zinc-500", isTimeWheelOpen && "animate-pulse")}>:</span>
+                    <span>{selectedMinute || '00'}</span>
+                  </span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsTimeWheelOpen(false)
-                  setIsOpen(false)
-                }}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-950 text-white outline-none transition-colors hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-cyan-500/30 active:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
-                title="Seçimi tamamla"
-              >
-                <Check className="h-4 w-4" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTimeWheelOpen(false)
+                    setIsOpen(false)
+                  }}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-950 text-white outline-none transition-colors hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-cyan-500/30 active:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
+                  title="Seçimi tamamla"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
