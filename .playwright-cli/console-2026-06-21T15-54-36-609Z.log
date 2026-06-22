@@ -1,0 +1,65 @@
+[    2455ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:21550
+[    2866ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=a82527f7:4426
+[    2868ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=a82527f7:4426
+[13259193ms] ReferenceError: handleAddWater is not defined
+    at DashboardPage (http://127.0.0.1:5173/src/features/dashboard/DashboardPage.tsx?t=1782070532594:962:23)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:11548:26)
+    at mountIndeterminateComponent (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:14926:21)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:15914:22)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:3674:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:3699:24)
+    at invokeGuardedCallback (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:3733:39)
+    at beginWork$1 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19765:15)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19198:20)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19137:13)
+[13259247ms] ReferenceError: handleAddWater is not defined
+    at DashboardPage (http://127.0.0.1:5173/src/features/dashboard/DashboardPage.tsx?t=1782070532594:962:23)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:11548:26)
+    at mountIndeterminateComponent (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:14926:21)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:15914:22)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:3674:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:3699:24)
+    at invokeGuardedCallback (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:3733:39)
+    at beginWork$1 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19765:15)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19198:20)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19137:13)
+[13259080ms] [ERROR] The above error occurred in the <DashboardPage> component:
+
+    at DashboardPage (http://127.0.0.1:5173/src/features/dashboard/DashboardPage.tsx?t=1782070532594:61:23)
+    at RenderedRoute (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=a82527f7:4122:5)
+    at Outlet (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=a82527f7:4528:26)
+    at div
+    at main
+    at div
+    at AppLayout (http://127.0.0.1:5173/src/layout/AppLayout.tsx?t=1782052214373:22:20)
+    at RenderedRoute (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=a82527f7:4122:5)
+    at Routes (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=a82527f7:4592:5)
+    at Router (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=a82527f7:4535:15)
+    at BrowserRouter (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=a82527f7:5273:5)
+    at QueryClientProvider (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=a82527f7:3235:3)
+    at App (http://127.0.0.1:5173/src/App.tsx?t=1782057143691:60:47)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:14031
+[13259248ms] ReferenceError: handleAddWater is not defined
+    at DashboardPage (http://127.0.0.1:5173/src/features/dashboard/DashboardPage.tsx?t=1782070532594:962:23)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:11548:26)
+    at mountIndeterminateComponent (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:14926:21)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:15914:22)
+    at beginWork$1 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19753:22)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19198:20)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19137:13)
+    at renderRootSync (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:19116:15)
+    at recoverFromConcurrentError (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:18736:28)
+    at performSyncWorkOnRoot (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=a82527f7:18879:28)
+[13463195ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:5173/src/features/dashboard/DashboardPage.tsx?t=1782070738819:0
+[13463222ms] [ERROR] [hmr] Failed to reload /src/features/dashboard/DashboardPage.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:5173/@vite/client:175
+[16533612ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=9d5a3856:21550
+[16534454ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=9d5a3856:4426
+[16534460ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=9d5a3856:4426
+[17502089ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:5173/src/components/CinematicFooter.tsx?t=1782074778634:0
+[17502091ms] [ERROR] [hmr] Failed to reload /src/components/CinematicFooter.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:5173/@vite/client:175
+[27878035ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=3a312fbe:21550
+[27883930ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UZOKQUDP.js?v=3a312fbe:21550
+[27884544ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=3a312fbe:4426
+[27884547ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=3a312fbe:4426
