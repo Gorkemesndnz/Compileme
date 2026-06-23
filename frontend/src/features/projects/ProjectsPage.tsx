@@ -708,7 +708,7 @@ export const ProjectsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         <PageHeader title="Projeler" titleClassName="text-neutral-950 dark:text-white" subtitle="Bir projenin teknik hafizasini, roadmap'ini ve gorevlerini tek yerden yonet." />
-        <section className="glass-panel mx-auto w-full max-w-3xl overflow-hidden rounded-3xl p-5 sm:p-8">
+        <section className="glass-panel mx-auto w-full max-w-3xl rounded-3xl p-5 sm:p-8">
           <div className="text-center">
             <motion.div
               animate={shouldReduceMotion ? undefined : { opacity: [0.72, 1, 0.72], scale: [1, 1.04, 1] }}
@@ -824,7 +824,7 @@ export const ProjectsPage: React.FC = () => {
               transition={{ duration: 0.22, ease: 'easeInOut' }}
               className="space-y-6"
             >
-              <section className="glass-panel overflow-hidden rounded-2xl">
+              <section className="glass-panel rounded-2xl">
           <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex-1 min-w-0 flex flex-col items-start gap-1">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">
