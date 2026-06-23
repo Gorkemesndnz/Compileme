@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   CalendarDays,
   Check,
@@ -52,14 +53,56 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   })
   
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
   const hourScrollRef = useRef<HTMLDivElement>(null)
   const minuteScrollRef = useRef<HTMLDivElement>(null)
+
+  // Portal positioning
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({})
+
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    const style: React.CSSProperties = {
+      position: 'fixed',
+      zIndex: 9999,
+    }
+    // Vertical
+    if (alignY === 'top') {
+      style.bottom = window.innerHeight - rect.top + 8
+    } else {
+      style.top = rect.bottom + 8
+    }
+    // Horizontal
+    if (align === 'left') {
+      style.left = rect.left
+    } else {
+      style.right = window.innerWidth - rect.right
+    }
+    setPopoverStyle(style)
+  }, [align, alignY])
+
+  useEffect(() => {
+    if (!isOpen) return
+    updatePosition()
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
+    }
+  }, [isOpen, updatePosition])
 
   useEffect(() => {
     if (!isOpen) return
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node
+      if (
+        !rootRef.current?.contains(target) &&
+        !popoverRef.current?.contains(target)
+      ) {
         setIsOpen(false)
         setIsTimeWheelOpen(false)
       }
@@ -175,6 +218,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   return (
     <div ref={rootRef} className="relative w-full sm:w-auto">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => {
           setIsOpen((open) => !open)
@@ -204,15 +248,13 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         )}
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <div
+          ref={popoverRef}
           role="dialog"
           aria-label="Tarih ve saat seç"
-          className={cn(
-            "absolute z-[80] w-[min(20rem,calc(100vw-5.5rem))] rounded-xl border border-neutral-200 bg-white p-3 text-neutral-900 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-[0_18px_50px_rgba(0,0,0,0.5)]",
-            align === 'left' ? 'left-0' : 'right-0',
-            alignY === 'top' ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]'
-          )}
+          style={popoverStyle}
+          className="w-[min(20rem,calc(100vw-5.5rem))] rounded-xl border border-neutral-200 bg-white p-3 text-neutral-900 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-[0_18px_50px_rgba(0,0,0,0.5)]"
         >
           {/* Wheel Picker overlay on top of calendar grid */}
           {isTimeWheelOpen && (
@@ -382,7 +424,8 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
               </div>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
