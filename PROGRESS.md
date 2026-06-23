@@ -42,6 +42,23 @@
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
 
+### 2026-06-23 · Faz FE-2 — Görev Ekleme Formu Konum ve Stil Refaktörleri (Refactoring)
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `OverviewPage.tsx` bileşeninden `TaskCreationForm` kaldırıldı.
+  - `ProjectsPage.tsx` üzerinde **Gorevler** sekmesinde yer alan eski ilkel form kaldırıldı ve yerine `TaskCreationForm` entegre edildi.
+  - `TaskCreationForm.tsx` içerisindeki native tarih/saat seçici girdileri kaldırılarak premium `DateTimePicker` bileşeni yerleştirildi.
+  - Formun girdileri, dropdown'ları ve option alanları açık ve koyu temalara tam uyumlu hale getirilerek okunabilirlik ve kontrast sorunları giderildi. Yazı renkleri `text-slate-800 dark:text-zinc-100` olarak güncellendi.
+  - `EmptyLine` ve `TaskList` bileşenlerinin stil sınıfları düzenlenerek, açık ve koyu temalarla tam uyumlu, göz yormayan, premium cam görünümlü (frosted glass) ve yüksek kontrastlı renk düzeni uygulandı.
+  - Tarih seçicinin açıldığında formun altındaki elemanların arkasında kalması sorunu, ilk satıra `relative z-20` eklenerek çözüldü.
+  - Faz ve Alt Faz seçim alanlarındaki native `<select>` elemanları kaldırılarak yerine `framer-motion` animasyonlu, `useRef` ile dışarı tıklayınca kapanma özellikli özel (custom) açılır dropdown menüleri entegre edildi.
+- Kabul kriteri: `npx tsc --noEmit` hatasız tamamlandı.
+
+
+
+
 ### 2026-06-22 · Faz FE-2 — Tarih Seçici Taşma Hatası, Faz Durumu Dropdown & Backdrop Blur Entegrasyonu (Bugfix & UI Improvement)
 - Ajan: Antigravity
 - Branch / commit: master / (commit bekliyor)

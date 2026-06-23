@@ -84,8 +84,9 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
       
-      {/* A) Sol Geniş Alan (2 Kutu Kaplayacak): Roadmap */}
+      {/* A) Sol Geniş Alan (2 Kutu Kaplayacak): Roadmap & Task Creation */}
       <div className="lg:col-span-2 space-y-6">
+        {/* Proje Yol Haritası */}
         <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-border/40 backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-6">
             <div className="flex items-center gap-2.5">
@@ -202,7 +203,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
                 value={quickTaskTitle}
                 onChange={(e) => setQuickTaskTitle(e.target.value)}
                 placeholder="Bugün için hızlı görev ekle..."
-                className="flex-1 rounded-xl border border-border/80 bg-neutral-50 dark:bg-neutral-900/50 px-3 py-2 text-xs text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none focus:border-cyan-500/50 transition-colors"
+                className="flex-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-black/30 backdrop-blur-sm px-3 py-2 text-xs text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
               />
               <MovingBorderButton
                 borderRadius="0.75rem"
