@@ -64,35 +64,60 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
+    const popoverWidth = popoverRef.current ? popoverRef.current.offsetWidth : 320
+    const popoverHeight = popoverRef.current ? popoverRef.current.offsetHeight : 380
+
     const style: React.CSSProperties = {
       position: 'fixed',
       zIndex: 9999,
     }
-    // Vertical
-    if (alignY === 'top') {
-      style.bottom = window.innerHeight - rect.top + 8
-    } else {
-      style.top = rect.bottom + 8
+
+    // Vertical positioning: default to bottom, but use top if space is tight at bottom
+    let top = rect.bottom + 8
+    if (alignY === 'top' || (rect.bottom + 8 + popoverHeight > window.innerHeight && rect.top - 8 - popoverHeight > 0)) {
+      top = rect.top - 8 - popoverHeight
     }
-    // Horizontal
-    if (align === 'left') {
-      style.left = rect.left
-    } else {
-      style.right = window.innerWidth - rect.right
+
+    // Clamp vertical position inside viewport bounds with padding
+    if (top < 8) {
+      top = 8
+    } else if (top + popoverHeight > window.innerHeight - 8) {
+      top = Math.max(8, window.innerHeight - 8 - popoverHeight)
     }
+    style.top = top
+
+    // Horizontal positioning: default align left or right relative to trigger
+    let left = rect.left
+    if (align === 'right') {
+      left = rect.right - popoverWidth
+    }
+
+    // Clamp horizontal position inside viewport bounds with padding
+    if (left < 8) {
+      left = 8
+    } else if (left + popoverWidth > window.innerWidth - 8) {
+      left = window.innerWidth - 8 - popoverWidth
+    }
+    style.left = left
+
     setPopoverStyle(style)
   }, [align, alignY])
 
   useEffect(() => {
     if (!isOpen) return
     updatePosition()
+    
+    // Request animation frame to ensure popover is mounted and measured accurately
+    const rafId = requestAnimationFrame(updatePosition)
+
     window.addEventListener('scroll', updatePosition, true)
     window.addEventListener('resize', updatePosition)
     return () => {
+      cancelAnimationFrame(rafId)
       window.removeEventListener('scroll', updatePosition, true)
       window.removeEventListener('resize', updatePosition)
     }
-  }, [isOpen, updatePosition])
+  }, [isOpen, isTimeWheelOpen, updatePosition])
 
   useEffect(() => {
     if (!isOpen) return
