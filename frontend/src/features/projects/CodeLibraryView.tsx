@@ -19,6 +19,7 @@ interface CodeLibraryViewProps {
 const CATEGORY_OPTIONS = [
   { label: 'Frontend', value: 'FRONTEND' as SnippetCategory },
   { label: 'Backend', value: 'BACKEND' as SnippetCategory },
+  { label: 'Veritabanı', value: 'DATABASE' as SnippetCategory },
   { label: 'Diğer', value: 'OTHER' as SnippetCategory },
 ]
 

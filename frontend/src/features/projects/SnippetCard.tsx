@@ -49,11 +49,11 @@ export const SnippetCard: React.FC<SnippetCardProps> = ({
   const getCategoryBadge = (category: SnippetCategory, language?: string) => {
     const lang = (language || '').toLowerCase().trim()
     
-    // Check if SQL
-    if (lang === 'sql') {
+    // Check if SQL or category is DATABASE
+    if (lang === 'sql' || category === 'DATABASE') {
       return (
         <span className="bg-amber-100/60 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 px-2.5 py-0.5 rounded-md text-xs font-bold border border-amber-200/20">
-          SQL
+          Veritabanı
         </span>
       )
     }

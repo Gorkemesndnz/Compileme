@@ -4,7 +4,7 @@ import { BaseEntity } from './types'
 
 export type ProjectStatus = 'PLANNING' | 'ACTIVE' | 'PAUSED' | 'DONE'
 export type TechnologyCategory = 'BACKEND' | 'FRONTEND' | 'MOBILE' | 'DATABASE' | 'DEVOPS' | 'OTHER'
-export type SnippetCategory = 'FRONTEND' | 'BACKEND' | 'OTHER'
+export type SnippetCategory = 'FRONTEND' | 'BACKEND' | 'DATABASE' | 'OTHER'
 export type LinkType = 'DESIGN' | 'REFERENCE' | 'REPO' | 'OTHER'
 export type LinkCategory = 'FRONTEND' | 'BACKEND' | 'OTHER'
 export type DocumentType = 'DB_SCHEMA' | 'REFACTOR_PLAN' | 'FUTURE_FEATURES' | 'TECH_DOC' | 'GENERAL'
