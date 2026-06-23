@@ -102,10 +102,10 @@ export function GlassFooter() {
                   Compile<span className="text-cyan-600 dark:text-cyan-400">me</span>
                 </span>
               </div>
-              <p className="mt-3 max-w-sm text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+              <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                 Bilgisayar mühendisleri ve geliştiriciler için tasarlanmış kişisel üretkenlik ve planlama merkezi.
               </p>
-              <div className="mt-4 flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-500">
+              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span>Derle, Planla, Uygula.</span>
               </div>
             </AnimatedContainer>
@@ -115,7 +115,7 @@ export function GlassFooter() {
               {footerLinks.map((section, index) => (
                 <AnimatedContainer key={section.label} delay={0.1 + index * 0.1}>
                   <div>
-                    <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-neutral-800 dark:text-neutral-300">
+                    <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-700 dark:text-slate-350">
                       {section.label}
                     </h3>
                     <ul className="space-y-3 text-sm">
@@ -126,17 +126,17 @@ export function GlassFooter() {
                               href={link.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="group inline-flex items-center gap-2 text-neutral-600 transition-colors duration-200 hover:text-cyan-700 dark:text-neutral-400 dark:hover:text-cyan-400"
+                              className="group inline-flex items-center gap-2 text-slate-500 transition-colors duration-200 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
                             >
-                              {link.icon && <link.icon className="h-4 w-4 text-neutral-500 transition-colors group-hover:text-cyan-700 dark:group-hover:text-cyan-400" />}
+                              {link.icon && <link.icon className="h-4 w-4 text-slate-500 transition-colors group-hover:text-slate-800 dark:group-hover:text-slate-100" />}
                               <span>{link.title}</span>
                             </a>
                           ) : (
                             <Link
                               to={link.href}
-                              className="group inline-flex items-center gap-2 text-neutral-600 transition-colors duration-200 hover:text-cyan-700 dark:text-neutral-400 dark:hover:text-cyan-400"
+                              className="group inline-flex items-center gap-2 text-slate-500 transition-colors duration-200 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
                             >
-                              {link.icon && <link.icon className="h-4 w-4 text-neutral-500 transition-colors group-hover:text-cyan-700 dark:group-hover:text-cyan-400" />}
+                              {link.icon && <link.icon className="h-4 w-4 text-slate-500 transition-colors group-hover:text-slate-800 dark:group-hover:text-slate-100" />}
                               <span>{link.title}</span>
                             </Link>
                           )}
@@ -153,7 +153,7 @@ export function GlassFooter() {
           <div className="my-8 h-px w-full bg-neutral-900/10 md:my-10 dark:bg-white/5" />
 
           {/* Bottom Bar */}
-          <div className="flex flex-col items-center justify-between gap-6 text-xs text-neutral-600 md:flex-row dark:text-neutral-500">
+          <div className="flex flex-col items-center justify-between gap-6 text-xs text-slate-500 md:flex-row dark:text-slate-400">
             <div className="order-2 md:order-1 tracking-wide">
               © {new Date().getFullYear()} Compileme. Tüm hakları saklıdır.
             </div>
@@ -162,7 +162,7 @@ export function GlassFooter() {
               <span className="font-medium">Built with</span>
               <span className="text-rose-500 animate-heartbeat">❤</span>
               <span className="font-medium">by</span>
-              <span className="font-semibold text-neutral-900 dark:text-neutral-300">Görkem</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">Görkem</span>
             </div>
 
             <button

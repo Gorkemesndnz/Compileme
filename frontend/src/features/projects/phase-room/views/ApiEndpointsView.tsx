@@ -12,6 +12,7 @@ import { Input } from '../../../../components/ui/Input'
 import { Textarea } from '../../../../components/ui/Textarea'
 import { cn } from '../../../../lib/utils'
 import { SketchButton } from '../../../../components/ui/SketchButton'
+import { Select } from '../../../../components/ui/Select'
 
 export interface ApiEndpoint {
   id: string
@@ -22,6 +23,13 @@ export interface ApiEndpoint {
   responseBody: string
   notes: string
 }
+
+const METHOD_OPTIONS = [
+  { label: 'GET', value: 'GET', badgeClass: 'bg-emerald-100/60 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/20' },
+  { label: 'POST', value: 'POST', badgeClass: 'bg-blue-100/60 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/20' },
+  { label: 'PUT', value: 'PUT', badgeClass: 'bg-amber-100/60 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/20' },
+  { label: 'DELETE', value: 'DELETE', badgeClass: 'bg-rose-100/60 text-rose-700 dark:bg-rose-950/30 dark:text-rose-450 border border-rose-200/20' },
+]
 
 interface ApiEndpointsViewProps {
   project: Project
@@ -272,20 +280,15 @@ export const ApiEndpointsView: React.FC<ApiEndpointsViewProps> = ({
                 <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
                   HTTP Method
                 </label>
-                <select
+                <Select
                   value={selectedEndpoint.method}
-                  onChange={(e) =>
+                  onChange={(val) =>
                     handleUpdateField(selectedEndpoint.id, {
-                      method: e.target.value as ApiEndpoint['method'],
+                      method: val as ApiEndpoint['method'],
                     })
                   }
-                  className="w-full bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all font-black text-slate-800 dark:text-slate-200"
-                >
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                  <option value="PUT">PUT</option>
-                  <option value="DELETE">DELETE</option>
-                </select>
+                  options={METHOD_OPTIONS}
+                />
               </div>
 
               <div className="md:col-span-4">

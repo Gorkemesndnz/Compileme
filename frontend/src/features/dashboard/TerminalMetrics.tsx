@@ -3,6 +3,7 @@ import { cn } from '../../lib/utils'
 import { Project } from '../../api/projects'
 import { Education } from '../../api/education'
 import { IdeaResponse } from '../../api/ideas'
+import { Task } from '../../api/tasks'
 
 interface TerminalMetricsProps {
   completedTodayCount: number
@@ -12,6 +13,7 @@ interface TerminalMetricsProps {
   completedMonthCount: number
   totalMonthCount: number
   activeProjects: Project[]
+  projectTasks: Task[]
   educations: Education[]
   ideas: IdeaResponse[]
 }
@@ -78,6 +80,7 @@ export const TerminalMetrics: React.FC<TerminalMetricsProps> = ({
   completedMonthCount,
   totalMonthCount,
   activeProjects,
+  projectTasks,
   educations,
   ideas,
 }) => {
@@ -115,7 +118,11 @@ export const TerminalMetrics: React.FC<TerminalMetricsProps> = ({
   // 2. Active Projects Progress
   const activeProjectsList = activeProjects.slice(0, 2).map((p, idx) => ({
     name: p.name,
-    percent: (p.id * 13) % 40 + 20, // simulate a consistent percentage based on project id e.g. between 20% and 60%
+    percent: (() => {
+      const tasks = projectTasks.filter((task) => task.projectId === p.id)
+      if (tasks.length === 0) return 0
+      return Math.round((tasks.filter((task) => task.status === 'DONE').length / tasks.length) * 100)
+    })(),
   }))
 
   // 3. Education JSON serialization

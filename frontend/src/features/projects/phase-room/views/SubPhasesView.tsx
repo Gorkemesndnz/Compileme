@@ -37,11 +37,19 @@ import { Input } from '../../../../components/ui/Input'
 import { Textarea } from '../../../../components/ui/Textarea'
 import { cn } from '../../../../lib/utils'
 import { SketchButton } from '../../../../components/ui/SketchButton'
+import { Select } from '../../../../components/ui/Select'
 
 const SUB_PREFIX = (phaseId: number) => `[PHASE:${phaseId}:SUB:`
 const SUB_REGEX = /^\[PHASE:(\d+):SUB:(\d+)(?::STATUS:(\w+))?\]\s*(.*)$/
 const SUB_PHASE_STATUSES = ['PLANNING', 'DEVELOPMENT', 'TEST', 'COMPLETED'] as const
 type SubPhaseStatus = (typeof SUB_PHASE_STATUSES)[number]
+
+const STATUS_OPTIONS = [
+  { label: 'Planlama', value: 'PLANNING', badgeClass: 'bg-amber-100/60 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/20' },
+  { label: 'Geliştirme', value: 'DEVELOPMENT', badgeClass: 'bg-sky-100/60 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400 border border-sky-200/20' },
+  { label: 'Test', value: 'TEST', badgeClass: 'bg-purple-100/60 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-200/20' },
+  { label: 'Tamamlandı', value: 'COMPLETED', badgeClass: 'bg-emerald-100/60 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/20' },
+]
 
 const STATUS_COLORS: Record<SubPhaseStatus, string> = {
   PLANNING: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]',
@@ -548,23 +556,13 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                     Alt Modül - Faz {phaseIndex + 1}.{selectedSub.subIndex}
                   </span>
 
-                  {/* B) Alt Faz Yaşam Döngüsü (Status Selector) */}
-                  <select
+                  <Select
                     value={selectedSub.status || 'PLANNING'}
-                    onChange={(e) => handleUpdateSubPhaseStatus(e.target.value)}
-                    className={cn(
-                      "text-[10px] font-bold px-2.5 py-1 rounded-lg border focus:outline-none transition-all cursor-pointer",
-                      (selectedSub.status === 'PLANNING' || !selectedSub.status) && "border-amber-400/30 bg-amber-400/10 text-amber-500 dark:text-amber-400",
-                      selectedSub.status === 'DEVELOPMENT' && "border-sky-400/30 bg-sky-400/10 text-sky-600 dark:text-sky-400",
-                      selectedSub.status === 'TEST' && "border-violet-400/30 bg-violet-400/10 text-violet-600 dark:text-violet-400",
-                      selectedSub.status === 'COMPLETED' && "border-emerald-400/30 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400"
-                    )}
-                  >
-                    <option value="PLANNING" className="dark:bg-zinc-900 text-amber-500">Planlama</option>
-                    <option value="DEVELOPMENT" className="dark:bg-zinc-900 text-sky-500">Geliştirme</option>
-                    <option value="TEST" className="dark:bg-zinc-900 text-violet-500">Test</option>
-                    <option value="COMPLETED" className="dark:bg-zinc-900 text-emerald-500">Tamamlandı</option>
-                  </select>
+                    onChange={(val) => handleUpdateSubPhaseStatus(val)}
+                    options={STATUS_OPTIONS}
+                    className="max-w-[140px]"
+                    triggerClassName="py-0.5 min-h-[28px] rounded-lg text-[10px]"
+                  />
                 </div>
               </div>
 

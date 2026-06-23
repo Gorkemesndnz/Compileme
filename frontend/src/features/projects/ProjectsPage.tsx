@@ -28,7 +28,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../components/PageHeader'
 import { OverviewPage } from './OverviewPage'
 import { TaskCreationForm } from './TaskCreationForm'
@@ -36,8 +36,9 @@ import { PhasesManagerPage } from './PhasesManagerPage'
 import { PhaseDetailRoom } from './PhaseDetailRoom'
 import { ProjectTechStack } from '../../components/dashboard/ProjectTechStack'
 import { DbSchemaStudio } from './DbSchemaStudio'
-import { DocumentsView } from './DocumentsView'
+import { MasterResourceVault } from './MasterResourceVault'
 import { CodeLibraryView } from './CodeLibraryView'
+import { ProjectsHub } from './ProjectsHub'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { GlassButton } from '../../components/ui/glass-button'
@@ -167,9 +168,8 @@ const tabs: Array<{ id: ProjectTab; label: string; icon: React.ElementType }> = 
   { id: 'tasks', label: 'Gorevler', icon: ListChecks },
   { id: 'stack', label: 'Stack', icon: Layers3 },
   { id: 'schema', label: 'DB Semasi', icon: Database },
-  { id: 'documents', label: 'Dokumanlar', icon: FileText },
+  { id: 'documents', label: 'Resource Vault', icon: FileText },
   { id: 'snippets', label: 'Kodlar', icon: Code2 },
-  { id: 'resources', label: 'Kaynaklar', icon: LinkIcon },
 ]
 
 
@@ -200,6 +200,44 @@ function completionPercent(tasks: Task[]) {
   return Math.round((tasks.filter((task) => task.status === 'DONE').length / tasks.length) * 100)
 }
 
+const DOC_METADATA_REGEX = /<!-- CM_METADATA: ({.*?}) -->\s*/g
+
+function cleanDocumentContent(content?: string) {
+  return (content || '').replace(DOC_METADATA_REGEX, '').trim()
+}
+
+function isInternalExportDocument(document: ProjectDocument) {
+  return (
+    document.title.startsWith('DOC_SUBPHASE_') ||
+    document.title.startsWith('TECH_STACK_ADR_PHASE_') ||
+    document.title.startsWith('[PHASE:')
+  )
+}
+
+function parseSubPhaseMetadata(content?: string): { phaseIndex: number; subIndex: number } | null {
+  if (!content) return null
+  const match = content.match(/<!-- CM_METADATA: ({.*?}) -->/)
+  if (!match) return null
+  try {
+    const metadata = JSON.parse(match[1]) as { phaseIndex?: number; subIndex?: number }
+    if (typeof metadata.phaseIndex === 'number' && typeof metadata.subIndex === 'number') {
+      return { phaseIndex: metadata.phaseIndex, subIndex: metadata.subIndex }
+    }
+  } catch {
+    // ignore invalid metadata
+  }
+  return null
+}
+
+function slugifyFilename(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'project'
+}
+
 function sortByOrder<T extends { orderIndex: number }>(items: T[]) {
   return [...items].sort((a, b) => a.orderIndex - b.orderIndex)
 }
@@ -209,6 +247,7 @@ export const ProjectsPage: React.FC = () => {
   const shouldReduceMotion = useReducedMotion()
   const { id: urlProjectId, phaseId: urlPhaseId } = useParams<{ id?: string; phaseId?: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const {
     activeProjectId: selectedProjectId,
     projectOnboardingOpen,
@@ -218,12 +257,23 @@ export const ProjectsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ProjectTab>('overview')
   const [activePhaseId, setActivePhaseId] = useState<number | null>(null)
 
+  const handleNavigateToDoc = (docId: number) => {
+    setActiveTab('documents')
+    setSearchParams({ docId: docId.toString() })
+  }
+
   useEffect(() => {
     if (urlProjectId) {
       const parsedId = parseInt(urlProjectId, 10)
-      if (!isNaN(parsedId) && selectedProjectId !== parsedId) {
-        setSelectedProjectId(parsedId)
+      if (!isNaN(parsedId)) {
+        if (selectedProjectId !== parsedId) {
+          setSelectedProjectId(parsedId)
+        }
+      } else {
+        setSelectedProjectId(undefined)
       }
+    } else {
+      setSelectedProjectId(undefined)
     }
   }, [urlProjectId, selectedProjectId, setSelectedProjectId])
 
@@ -248,8 +298,6 @@ export const ProjectsPage: React.FC = () => {
   const [phaseForm, setPhaseForm] = useState({ name: '', description: '', status: 'PLANNING' as ProjectStatus, startDate: '', endDate: '' })
   const [techForm, setTechForm] = useState({ category: 'FRONTEND' as TechnologyCategory, title: '', technology: '', notes: '' })
 
-
-  const [linkForm, setLinkForm] = useState({ title: '', url: '', type: 'REFERENCE' as LinkType, category: 'OTHER' as LinkCategory, notes: '' })
 
   const { data: projects = [], isLoading: projectsLoading } = useProjects()
   const selectedProject = useMemo(
@@ -287,7 +335,6 @@ export const ProjectsPage: React.FC = () => {
   const deleteSnippetMutation = useDeleteProjectSnippet(selectedProjectId)
   const addLinkMutation = useAddProjectLink()
   const deleteLinkMutation = useDeleteProjectLink(selectedProjectId)
-  const uploadFileMutation = useUploadFile()
 
   const sortedPhases = useMemo(() => sortByOrder(phases), [phases])
   const activePhase = getActivePhase(sortedPhases)
@@ -312,11 +359,7 @@ export const ProjectsPage: React.FC = () => {
 
 
 
-  useEffect(() => {
-    if (!urlProjectId && !projectsLoading && projects.length > 0 && !selectedProject && !projectOnboardingOpen) {
-      setSelectedProjectId(projects[0].id)
-    }
-  }, [urlProjectId, projectsLoading, projects, selectedProject, projectOnboardingOpen, setSelectedProjectId])
+  // Auto-selection of first project removed so we can show ProjectsHub on empty id
 
   const handleCreateProject = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -443,6 +486,7 @@ export const ProjectsPage: React.FC = () => {
       await deleteProjectMutation.mutateAsync(selectedProject.id)
       setDeleteDialogOpen(false)
       setSelectedProjectId(undefined)
+      navigate('/projects')
       toast.success('Proje silindi.')
     } catch {
       toast.error('Proje silinemedi.')
@@ -452,6 +496,15 @@ export const ProjectsPage: React.FC = () => {
   const handleExportMarkdown = () => {
     if (!selectedProject) return
     const completedTasks = projectTasks.filter((task) => task.status === 'DONE').length
+    const exportDocuments = documents.filter((document) => !isInternalExportDocument(document))
+    const subPhaseDocuments = documents
+      .filter((document) => document.title.startsWith('DOC_SUBPHASE_'))
+      .map((document) => ({
+        document,
+        metadata: parseSubPhaseMetadata(document.content),
+        content: cleanDocumentContent(document.content),
+      }))
+      .filter((item) => item.content)
     const markdown = [
       `# ${selectedProject.name}`,
       '',
@@ -476,11 +529,24 @@ export const ProjectsPage: React.FC = () => {
       '',
       '## Dokümanlar',
       '',
-      ...documents.flatMap((document) => [
+      ...exportDocuments.flatMap((document) => [
         `### ${document.title} (${DOCUMENT_LABELS[document.type]})`,
-        document.content || '_İçerik yok._',
+        cleanDocumentContent(document.content) || '_İçerik yok._',
         '',
       ]),
+      ...(subPhaseDocuments.length > 0
+        ? [
+            '## Alt Faz Notları',
+            '',
+            ...subPhaseDocuments.flatMap(({ document, metadata, content }) => [
+              metadata
+                ? `### Faz ${metadata.phaseIndex + 1}.${metadata.subIndex}`
+                : `### ${document.title.replace('DOC_SUBPHASE_', 'Alt Faz ')}`,
+              content,
+              '',
+            ]),
+          ]
+        : []),
       '## Kod Parçacıkları',
       '',
       ...snippets.flatMap((snippet) => [
@@ -500,7 +566,7 @@ export const ProjectsPage: React.FC = () => {
     const blobUrl = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }))
     const anchor = document.createElement('a')
     anchor.href = blobUrl
-    anchor.download = `${selectedProject.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'}-technical-memory.md`
+    anchor.download = `${slugifyFilename(selectedProject.name)}-technical-memory.md`
     anchor.click()
     URL.revokeObjectURL(blobUrl)
     toast.success('Teknik hafıza Markdown olarak indirildi.')
@@ -628,50 +694,7 @@ export const ProjectsPage: React.FC = () => {
 
 
 
-  const handleAddLink = (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!selectedProjectId || !linkForm.title.trim() || !linkForm.url.trim()) return
-    addLinkMutation.mutate(
-      {
-        projectId: selectedProjectId,
-        request: {
-          title: linkForm.title.trim(),
-          url: linkForm.url.trim(),
-          type: linkForm.type,
-          category: linkForm.category,
-          notes: linkForm.notes || undefined,
-          orderIndex: links.length,
-        },
-      },
-      {
-        onSuccess: () => {
-          setLinkForm({ title: '', url: '', type: 'REFERENCE', category: 'OTHER', notes: '' })
-          toast.success('Kaynak eklendi.')
-        },
-      }
-    )
-  }
 
-  const handleUploadFile = async (file?: File) => {
-    if (!selectedProjectId || !file) return
-    try {
-      const uploaded = await uploadFileMutation.mutateAsync(file)
-      await addLinkMutation.mutateAsync({
-        projectId: selectedProjectId,
-        request: {
-          title: uploaded.originalName,
-          url: uploaded.downloadUrl,
-          type: 'REFERENCE',
-          category: 'OTHER',
-          notes: `${uploaded.contentType || 'file'} - ${Math.round(uploaded.fileSize / 1024)} KB`,
-          orderIndex: links.length,
-        },
-      })
-      toast.success('Dosya yuklendi ve proje kaynagi olarak eklendi.')
-    } catch {
-      toast.error('Dosya yuklenemedi.')
-    }
-  }
 
   if (projectsLoading) {
     return (
@@ -681,7 +704,7 @@ export const ProjectsPage: React.FC = () => {
     )
   }
 
-  if (projects.length === 0 || projectOnboardingOpen || !selectedProject) {
+  if (projects.length === 0 || projectOnboardingOpen) {
     return (
       <div className="space-y-6">
         <PageHeader title="Projeler" titleClassName="text-neutral-950 dark:text-white" subtitle="Bir projenin teknik hafizasini, roadmap'ini ve gorevlerini tek yerden yonet." />
@@ -718,7 +741,7 @@ export const ProjectsPage: React.FC = () => {
                 value={projectForm.name}
                 onChange={(event) => setProjectForm((form) => ({ ...form, name: event.target.value }))}
                 placeholder="Örn. IyonTree"
-                className="h-12 rounded-xl border-neutral-300 bg-white/70 text-neutral-950 placeholder:text-neutral-500 focus-visible:border-cyan-500/60 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
+                className="h-12 rounded-xl border-neutral-300 bg-white/70 text-neutral-950 placeholder:text-neutral-500 focus:border-cyan-500/60 focus:ring-0 focus:ring-offset-0 focus:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
               />
             </div>
             <div className="space-y-2">
@@ -731,7 +754,7 @@ export const ProjectsPage: React.FC = () => {
                 value={projectForm.description}
                 onChange={(event) => setProjectForm((form) => ({ ...form, description: event.target.value }))}
                 placeholder="Ne inşa ediyorsun, hangi problemi çözüyor?"
-                className="min-h-[108px] rounded-xl border-neutral-300 bg-white/70 text-neutral-950 placeholder:text-neutral-500 focus-visible:border-cyan-500/60 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
+                className="min-h-[108px] rounded-xl border-neutral-300 bg-white/70 text-neutral-950 placeholder:text-neutral-500 focus:border-cyan-500/60 focus:ring-0 focus:ring-offset-0 focus:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
               />
             </div>
             <div className="space-y-2">
@@ -746,7 +769,7 @@ export const ProjectsPage: React.FC = () => {
                   value={projectForm.repositoryUrl}
                   onChange={(event) => setProjectForm((form) => ({ ...form, repositoryUrl: event.target.value }))}
                   placeholder="https://github.com/kullanici/proje"
-                  className="h-12 rounded-xl border-neutral-300 bg-white/70 pl-10 text-neutral-950 placeholder:text-neutral-500 focus-visible:border-cyan-500/60 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
+                  className="h-12 rounded-xl border-neutral-300 bg-white/70 pl-10 text-neutral-950 placeholder:text-neutral-500 focus:border-cyan-500/60 focus:ring-0 focus:ring-offset-0 focus:shadow-[0_0_18px_rgba(6,182,212,0.16)] dark:border-neutral-800 dark:bg-neutral-950/65 dark:text-white dark:placeholder:text-neutral-500"
                 />
               </div>
             </div>
@@ -766,6 +789,10 @@ export const ProjectsPage: React.FC = () => {
         </section>
       </div>
     )
+  }
+
+  if (!selectedProject) {
+    return <ProjectsHub />
   }
 
   return (
@@ -935,8 +962,20 @@ export const ProjectsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 border-t border-border/60 md:grid-cols-4 md:divide-x md:divide-border/60">
-            <HeaderMetric label="Bugün" value={`${todayTasks.length} görev`} icon={CalendarDays} accent="text-emerald-500" />
-            <HeaderMetric label="Aktif Faz" value={activePhase?.name || 'Yok'} icon={GitBranch} accent="text-cyan-500" />
+            <HeaderMetric 
+              label="Bugün" 
+              value={`${todayTasks.length} görev`} 
+              detail={`${todayTasks.filter(t => t.status === 'DONE').length}/${todayTasks.length} tamamlandı`}
+              icon={CalendarDays} 
+              accent="text-emerald-500" 
+            />
+            <HeaderMetric 
+              label="Aktif Faz" 
+              value={activePhase?.name || 'Yok'} 
+              detail={activePhase ? 'Yürütülüyor' : 'Planlama aşamasında'}
+              icon={GitBranch} 
+              accent="text-cyan-500" 
+            />
             <HeaderMetric
               label="Teknik Hafıza"
               value={`${documents.length + snippets.length + links.length} öğe`}
@@ -944,7 +983,13 @@ export const ProjectsPage: React.FC = () => {
               icon={FileArchive}
               accent="text-violet-500"
             />
-            <HeaderMetric label="Tamamlanma" value={`%${completionPercent(projectTasks)}`} icon={Check} accent="text-amber-500" />
+            <HeaderMetric 
+              label="Tamamlanma" 
+              value={`%${completionPercent(projectTasks)}`} 
+              detail={`${projectTasks.filter(t => t.status === 'DONE').length}/${projectTasks.length} görev tamamlandı`}
+              icon={Check} 
+              accent="text-amber-500" 
+            />
           </div>
           <div className="h-1 bg-neutral-200/70 dark:bg-neutral-900/80">
             <motion.div
@@ -1011,11 +1056,11 @@ export const ProjectsPage: React.FC = () => {
             )}
 
             {activeTab === 'tasks' && (
-              <div className="space-y-6">
+              <div className="flex flex-col gap-8">
                 <TaskCreationForm project={selectedProject} phases={sortedPhases} />
                 <Panel title="Proje Görevleri" icon={ListChecks}>
                   <div className="mt-2">
-                    <TaskList tasks={projectTasks} onToggle={(id) => toggleTaskMutation.mutate(id)} onDelete={(id) => deleteTaskMutation.mutate(id)} />
+                    <TaskList tasks={projectTasks} onToggle={(id) => toggleTaskMutation.mutate(id)} onDelete={(id) => deleteTaskMutation.mutate(id)} documents={documents} onNavigateToDoc={handleNavigateToDoc} />
                   </div>
                 </Panel>
               </div>
@@ -1030,56 +1075,11 @@ export const ProjectsPage: React.FC = () => {
             )}
 
             {activeTab === 'documents' && (
-              <DocumentsView project={selectedProject} />
+              <MasterResourceVault project={selectedProject} />
             )}
 
             {activeTab === 'snippets' && (
               <CodeLibraryView project={selectedProject} />
-            )}
-
-            {activeTab === 'resources' && (
-              <Panel title="Linkler ve Dosyalar" icon={LinkIcon}>
-                <form onSubmit={handleAddLink} className="grid gap-3 rounded-xl border border-cyan-400/15 bg-cyan-400/5 p-3 lg:grid-cols-[150px_1fr_1fr_auto]">
-                  <select value={linkForm.type} onChange={(event) => setLinkForm((form) => ({ ...form, type: event.target.value as LinkType }))} className="h-10 rounded-lg border border-border bg-neutral-950/50 px-3 text-sm text-white outline-none">
-                    {(Object.keys(LINK_TYPE_LABELS) as LinkType[]).map((type) => (
-                      <option key={type} value={type}>{LINK_TYPE_LABELS[type]}</option>
-                    ))}
-                  </select>
-                  <Input value={linkForm.title} onChange={(event) => setLinkForm((form) => ({ ...form, title: event.target.value }))} placeholder="Baslik" className="bg-neutral-950/50 text-white" />
-                  <Input value={linkForm.url} onChange={(event) => setLinkForm((form) => ({ ...form, url: event.target.value }))} placeholder="URL" className="bg-neutral-950/50 text-white" />
-                  <GlassButton size="sm">Ekle</GlassButton>
-                  <Textarea value={linkForm.notes} onChange={(event) => setLinkForm((form) => ({ ...form, notes: event.target.value }))} placeholder="Not" className="lg:col-span-4 bg-neutral-950/50 text-white" />
-                </form>
-                <div className="mt-4 rounded-xl border border-dashed border-cyan-400/20 bg-neutral-950/35 p-4">
-                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 text-center text-sm text-neutral-400">
-                    {uploadFileMutation.isPending ? <Loader2 className="h-6 w-6 animate-spin text-cyan-300" /> : <Upload className="h-6 w-6 text-cyan-300" />}
-                    Dosya yukle; kaynak linki olarak projeye baglanir.
-                    <input type="file" className="hidden" onChange={(event) => handleUploadFile(event.target.files?.[0])} />
-                  </label>
-                </div>
-                <div className="mt-5 grid gap-3 xl:grid-cols-2">
-                  {links.map((link) => (
-                    <div key={link.id} className="rounded-2xl border border-white/10 bg-neutral-950/35 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <a href={link.url} target="_blank" rel="noreferrer" className="font-black text-cyan-200 hover:underline">
-                            {link.title}
-                          </a>
-                          <p className="truncate text-xs text-neutral-500">{link.url}</p>
-                        </div>
-                        <Button size="icon" variant="destructive" onClick={() => deleteLinkMutation.mutate(link.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Badge variant="outline">{LINK_TYPE_LABELS[link.type]}</Badge>
-                        {link.category && <Badge variant="outline">{link.category}</Badge>}
-                      </div>
-                      {link.notes && <p className="mt-2 text-xs text-neutral-400">{link.notes}</p>}
-                    </div>
-                  ))}
-                </div>
-              </Panel>
             )}
           </motion.div>
         )}
@@ -1095,9 +1095,9 @@ export const ProjectsPage: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-3 gap-3 sm:space-x-0">
-            <Button type="button" variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+            <SketchButton type="button" tone="default" onClick={() => setDeleteDialogOpen(false)}>
               İptal et
-            </Button>
+            </SketchButton>
             <SketchButton type="button" tone="destructive" disabled={deleteProjectMutation.isPending} onClick={() => void handleDeleteProject()}>
               {deleteProjectMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
               Evet, projeyi sil
@@ -1153,37 +1153,54 @@ const TaskList: React.FC<{
   onToggle: (id: number) => void
   onDelete: (id: number) => void
   dense?: boolean
-}> = ({ tasks, onToggle, onDelete, dense = false }) => {
+  documents?: any[]
+  onNavigateToDoc?: (docId: number) => void
+}> = ({ tasks, onToggle, onDelete, dense = false, documents = [], onNavigateToDoc }) => {
   if (tasks.length === 0) return <EmptyLine text="Gorev yok." />
   return (
     <div className="space-y-2">
-      {tasks.map((task) => (
-        <div key={task.id} className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/40 bg-white/50 dark:bg-black/30 backdrop-blur-sm p-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <button
-              onClick={() => onToggle(task.id)}
-              className={cn(
-                'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all duration-200',
-                task.status === 'DONE' ? 'border-emerald-500 bg-emerald-500 text-white dark:text-black' : 'border-zinc-350 dark:border-zinc-700 hover:border-cyan-550 dark:hover:border-cyan-400'
-              )}
-            >
-              {task.status === 'DONE' && <Check className="h-3.5 w-3.5" />}
-            </button>
-            <div className="min-w-0">
-              <p className={cn('truncate font-bold', dense ? 'text-xs' : 'text-sm', task.status === 'DONE' ? 'text-zinc-400 dark:text-zinc-550 line-through' : 'text-slate-800 dark:text-zinc-100')}>
-                {task.title}
-              </p>
-              <p className="text-[10px] text-zinc-400 dark:text-zinc-550">
-                {task.scheduledDate || 'backlog'} {task.scheduledTime || ''}
-              </p>
-              {task.notes && <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-450">{task.notes}</p>}
+      {tasks.map((task) => {
+        const docMatch = task.title.match(/\[DOC_REF:(\d+)\]/)
+        const linkedDocId = docMatch ? parseInt(docMatch[1], 10) : null
+        const linkedDoc = linkedDocId ? documents.find((d) => d.id === linkedDocId) : null
+        const cleanTaskTitle = task.title.replace(/\[DOC_REF:\d+\]\s*/g, '')
+
+        return (
+          <div key={task.id} className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/40 bg-white/50 dark:bg-black/30 backdrop-blur-sm p-3">
+            <div className="flex min-w-0 items-start gap-3 w-full">
+              <button
+                onClick={() => onToggle(task.id)}
+                className={cn(
+                  'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all duration-200',
+                  task.status === 'DONE' ? 'border-emerald-500 bg-emerald-500 text-white dark:text-black' : 'border-zinc-350 dark:border-zinc-700 hover:border-cyan-550 dark:hover:border-cyan-400'
+                )}
+              >
+                {task.status === 'DONE' && <Check className="h-3.5 w-3.5" />}
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className={cn('font-bold flex items-center flex-wrap gap-1.5', dense ? 'text-xs' : 'text-sm', task.status === 'DONE' ? 'text-zinc-400 dark:text-zinc-550 line-through' : 'text-slate-800 dark:text-zinc-100')}>
+                  <span>{cleanTaskTitle}</span>
+                  {linkedDoc && onNavigateToDoc && (
+                    <button
+                      onClick={() => onNavigateToDoc(linkedDoc.id)}
+                      className="px-1.5 py-0.5 rounded bg-cyan-100/60 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 border border-cyan-200/20 text-[9px] font-black hover:underline cursor-pointer tracking-wider"
+                    >
+                      [Döküman: {linkedDoc.title.replace(/\[(PHASE_REF|SUBPHASE_REF):\d+\]\s*/g, '').replace(/DOC_SUBPHASE_\d+/, 'Alt Faz Notu')}]
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-555 mt-0.5">
+                  {task.scheduledDate || 'backlog'} {task.scheduledTime || ''}
+                </p>
+                {task.notes && <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-455">{task.notes}</p>}
+              </div>
             </div>
+            <button onClick={() => onDelete(task.id)} className="text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 shrink-0">
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
-          <button onClick={() => onDelete(task.id)} className="text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200">
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

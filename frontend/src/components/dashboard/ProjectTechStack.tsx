@@ -26,6 +26,7 @@ import {
 import { Input } from '../ui/Input'
 import { Textarea } from '../ui/Textarea'
 import { cn } from '../../lib/utils'
+import { Select } from '../ui/Select'
 
 // Category labels mapping
 const CATEGORY_LABELS: Record<TechnologyCategory, string> = {
@@ -36,6 +37,15 @@ const CATEGORY_LABELS: Record<TechnologyCategory, string> = {
   DEVOPS: 'DevOps',
   OTHER: 'Other',
 }
+
+const TECH_CATEGORY_OPTIONS = [
+  { label: 'Frontend', value: 'FRONTEND' as TechnologyCategory, badgeClass: 'bg-blue-100/60 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/20' },
+  { label: 'Backend', value: 'BACKEND' as TechnologyCategory, badgeClass: 'bg-purple-100/60 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-200/20' },
+  { label: 'Mobile', value: 'MOBILE' as TechnologyCategory, badgeClass: 'bg-indigo-100/60 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-200/20' },
+  { label: 'Database', value: 'DATABASE' as TechnologyCategory, badgeClass: 'bg-amber-100/60 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/20' },
+  { label: 'DevOps', value: 'DEVOPS' as TechnologyCategory, badgeClass: 'bg-emerald-100/60 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/20' },
+  { label: 'Other', value: 'OTHER' as TechnologyCategory, badgeClass: 'bg-slate-100/70 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300 border border-slate-200/30' },
+]
 
 // Category icons mapping
 const CATEGORY_ICONS: Record<TechnologyCategory, React.ComponentType<{ className?: string }>> = {
@@ -210,19 +220,13 @@ export const ProjectTechStack: React.FC<ProjectTechStackProps> = ({ project }) =
         <form onSubmit={handleAddTechnology} className="space-y-3.5">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
             <div className="md:col-span-3">
-              <select
+              <Select
                 value={techForm.category}
-                onChange={(e) =>
-                  setTechForm((form) => ({ ...form, category: e.target.value as TechnologyCategory }))
+                onChange={(val) =>
+                  setTechForm((form) => ({ ...form, category: val as TechnologyCategory }))
                 }
-                className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all font-bold"
-              >
-                {(Object.keys(CATEGORY_LABELS) as TechnologyCategory[]).map((category) => (
-                  <option key={category} value={category} className="dark:bg-zinc-900">
-                    {CATEGORY_LABELS[category]}
-                  </option>
-                ))}
-              </select>
+                options={TECH_CATEGORY_OPTIONS}
+              />
             </div>
             <div className="md:col-span-4">
               <Input

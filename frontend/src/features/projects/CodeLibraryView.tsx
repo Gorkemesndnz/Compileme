@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react'
-import { FileCode, Plus, Copy, Check, ChevronDown } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { FileCode, Plus, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Project,
@@ -10,6 +10,7 @@ import {
 } from '../../api/projects'
 import { SnippetCard } from './SnippetCard'
 import { cn } from '../../lib/utils'
+import { Select } from '../../components/ui/Select'
 
 interface CodeLibraryViewProps {
   project: Project
@@ -17,10 +18,10 @@ interface CodeLibraryViewProps {
 
 
 const CATEGORY_OPTIONS = [
-  { label: 'Frontend', value: 'FRONTEND' as SnippetCategory },
-  { label: 'Backend', value: 'BACKEND' as SnippetCategory },
-  { label: 'Veritabanı', value: 'DATABASE' as SnippetCategory },
-  { label: 'Diğer', value: 'OTHER' as SnippetCategory },
+  { label: 'Frontend', value: 'FRONTEND' as SnippetCategory, badgeClass: 'bg-blue-100/60 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/20' },
+  { label: 'Backend', value: 'BACKEND' as SnippetCategory, badgeClass: 'bg-purple-100/60 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-200/20' },
+  { label: 'Veritabanı', value: 'DATABASE' as SnippetCategory, badgeClass: 'bg-amber-100/60 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/20' },
+  { label: 'Diğer', value: 'OTHER' as SnippetCategory, badgeClass: 'bg-slate-100/70 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300 border border-slate-200/30' },
 ]
 
 export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => {
@@ -37,21 +38,8 @@ export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => 
   const [code, setCode] = useState('')
 
   const [isAdding, setIsAdding] = useState(false)
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isFormCodeCopied, setIsFormCodeCopied] = useState(false)
-  
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const handleCopyFormCode = () => {
     if (!code) return
@@ -100,11 +88,9 @@ export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => 
       await deleteSnippetMutation.mutateAsync(id)
       toast.success('Kod parçacığı silindi.')
     } catch {
-      toast.error('Silinemedi.')
+      toast.error('Kod parçacığı silinirken hata oluştu.')
     }
   }
-
-  const selectedCategoryLabel = CATEGORY_OPTIONS.find((o) => o.value === category)?.label || 'Backend'
 
   const isDevOpsLang = useMemo(() => {
     const lang = (language || '').toLowerCase().trim()
@@ -128,47 +114,15 @@ export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => 
           {/* Top Row Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Custom Category Dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+            <div>
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-widest mb-1.5">
                 Kategori
               </label>
-              <button
-                type="button"
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 w-full flex items-center justify-between text-slate-950 dark:text-slate-100 text-xs font-bold transition-all hover:bg-white/75 dark:hover:bg-black/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-              >
-                <span>{selectedCategoryLabel}</span>
-                <ChevronDown
-                  className={cn(
-                    'h-4 w-4 text-slate-500 transition-transform duration-200',
-                    isDropdownOpen && 'transform rotate-180'
-                  )}
-                />
-              </button>
-
-              {isDropdownOpen && (
-                <div className="absolute z-50 mt-2 w-full bg-white/90 dark:bg-slate-950/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl p-1 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        setCategory(opt.value)
-                        setIsDropdownOpen(false)
-                      }}
-                      className={cn(
-                        'w-full flex items-center justify-between px-3 py-2 text-xs text-left rounded-lg transition-colors cursor-pointer',
-                        category === opt.value
-                          ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-black'
-                          : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-white/5 font-semibold'
-                      )}
-                    >
-                      <span>{opt.label}</span>
-                      {category === opt.value && <Check className="h-3.5 w-3.5 text-cyan-500" />}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <Select
+                value={category}
+                onChange={(val) => setCategory(val as SnippetCategory)}
+                options={CATEGORY_OPTIONS}
+              />
             </div>
 
             {/* Language Girdisi */}

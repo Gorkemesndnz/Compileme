@@ -153,7 +153,7 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
   const isFormValid = title.trim() !== '' && notes.trim() !== ''
 
   return (
-    <div className="glass-panel p-6 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/40 backdrop-blur-xl space-y-6">
+    <div className="glass-panel p-6 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/40 backdrop-blur-xl flex flex-col gap-6">
       <div>
         <h3 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
           <Sparkles className="h-4.5 w-4.5 text-cyan-500" />
@@ -164,11 +164,11 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Row 1: Grid for Title, Phase, Sub-Phase, Date/Time */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 relative z-20">
-          {/* Görev Başlığı */}
-          <div className="md:col-span-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {/* ── Row 1: Başlık (5) + Faz (3) + Tarih&Saat (4) — sabit 3 sütun ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end relative" style={{ zIndex: 30 }}>
+          {/* Görev Başlığı — lg:col-span-5 */}
+          <div className="lg:col-span-5">
             <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
               Görev Başlığı <span className="text-red-500">*</span>
             </label>
@@ -176,19 +176,19 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: Auth controller testlerini yaz"
-              className="h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-slate-800 rounded-xl px-4 text-xs focus:ring-2 focus:ring-cyan-500/50 text-slate-800 dark:text-zinc-100"
+              className="h-11 bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-4 text-xs focus:ring-2 focus:ring-cyan-500/50 text-slate-950 dark:text-slate-100"
             />
           </div>
 
-          {/* Faz Seçimi */}
-          <div ref={phaseRef} className={cn("md:col-span-3 relative", selectedPhaseId ? "md:col-span-2" : "md:col-span-3")}>
+          {/* Faz Seçimi — lg:col-span-3 (sabit) */}
+          <div ref={phaseRef} className="lg:col-span-3 relative">
             <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-              Faz Seçimi (Opsiyonel)
+              Faz Seçimi
             </label>
             <button
               type="button"
               onClick={() => setIsPhaseOpen((prev) => !prev)}
-              className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border bg-white/50 dark:bg-black/30 border-slate-200 dark:border-slate-800 px-4 text-xs font-bold text-slate-800 dark:text-zinc-200 focus:ring-2 focus:ring-cyan-500/50 outline-none text-left"
+              className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border bg-white/50 dark:bg-black/20 backdrop-blur-sm border-slate-200 dark:border-slate-800 px-4 text-xs font-bold text-slate-950 dark:text-slate-100 focus:ring-2 focus:ring-cyan-500/50 outline-none text-left transition-all"
             >
               <span className="truncate">
                 {selectedPhaseId
@@ -197,7 +197,7 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
                     }`
                   : 'Faz Yok'}
               </span>
-              <ChevronDown className={cn("h-4 w-4 text-zinc-400 dark:text-zinc-555 transition-transform shrink-0", isPhaseOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 text-zinc-400 dark:text-zinc-500 transition-transform shrink-0", isPhaseOpen && "rotate-180")} />
             </button>
 
             <AnimatePresence>
@@ -212,13 +212,10 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
                   <div className="flex flex-col gap-1">
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedPhaseId(null)
-                        setIsPhaseOpen(false)
-                      }}
+                      onClick={() => { setSelectedPhaseId(null); setIsPhaseOpen(false) }}
                       className={cn(
                         "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
-                        "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:text-zinc-300 dark:hover:bg-zinc-850 dark:hover:text-white",
+                        "text-neutral-700 hover:bg-neutral-100 dark:text-zinc-300 dark:hover:bg-zinc-850 dark:hover:text-white",
                         !selectedPhaseId && "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300"
                       )}
                     >
@@ -231,13 +228,10 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
                         <button
                           key={ph.id}
                           type="button"
-                          onClick={() => {
-                            setSelectedPhaseId(ph.id)
-                            setIsPhaseOpen(false)
-                          }}
+                          onClick={() => { setSelectedPhaseId(ph.id); setIsPhaseOpen(false) }}
                           className={cn(
                             "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
-                            "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:text-zinc-300 dark:hover:bg-zinc-855 dark:hover:text-white",
+                            "text-neutral-700 hover:bg-neutral-100 dark:text-zinc-300 dark:hover:bg-zinc-855 dark:hover:text-white",
                             isSelected && "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300"
                           )}
                         >
@@ -252,110 +246,102 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
             </AnimatePresence>
           </div>
 
-          {/* Alt Faz Seçimi (Conditional dropdown) */}
-          {selectedPhaseId && (
-            <div ref={subPhaseRef} className="md:col-span-2 relative animate-in fade-in slide-in-from-left-2 duration-300">
-              <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-                Alt Faz Seçimi
-              </label>
-              <button
-                type="button"
-                onClick={() => setIsSubPhaseOpen((prev) => !prev)}
-                className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border bg-white/50 dark:bg-black/30 border-slate-200 dark:border-slate-800 px-4 text-xs font-bold text-slate-800 dark:text-zinc-200 focus:ring-2 focus:ring-cyan-500/50 outline-none text-left"
-              >
-                <span className="truncate">
-                  {selectedSubPhaseId
-                    ? subPhases.find((sp) => sp.id === selectedSubPhaseId)?.label || 'Alt Faz Yok'
-                    : 'Alt Faz Yok'}
-                </span>
-                <ChevronDown className={cn("h-4 w-4 text-zinc-400 dark:text-zinc-555 transition-transform shrink-0", isSubPhaseOpen && "rotate-180")} />
-              </button>
-
-              <AnimatePresence>
-                {isSubPhaseOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute top-[calc(100%+0.5rem)] left-0 right-0 z-[60] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_18px_50px_rgba(0,0,0,0.5)] max-h-60 overflow-y-auto"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedSubPhaseId(null)
-                          setIsSubPhaseOpen(false)
-                        }}
-                        className={cn(
-                          "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
-                          "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white",
-                          !selectedSubPhaseId && "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300"
-                        )}
-                      >
-                        <span>Alt Faz Yok</span>
-                        {!selectedSubPhaseId && <Check className="h-3.5 w-3.5" />}
-                      </button>
-                      {subPhases.map((sp) => {
-                        const isSelected = selectedSubPhaseId === sp.id
-                        return (
-                          <button
-                            key={sp.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedSubPhaseId(sp.id)
-                              setIsSubPhaseOpen(false)
-                            }}
-                            className={cn(
-                              "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
-                              "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white",
-                              isSelected && "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300"
-                            )}
-                          >
-                            <span className="truncate">Alt Faz {sp.subIndex}: {sp.label}</span>
-                            {isSelected && <Check className="h-3.5 w-3.5" />}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* Tarih & Saat Planlama */}
-          <div className={cn(selectedPhaseId ? "md:col-span-4" : "md:col-span-5")}>
+          {/* Planlanan Tarih & Saat — lg:col-span-4 */}
+          <div className="lg:col-span-4">
             <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-zinc-400" /> Planlanan Tarih & Saat
+              <Calendar className="h-3 w-3 text-cyan-500" /> Tarih & Saat
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <DateTimePicker
                 date={scheduledDate}
                 time={scheduledTime}
                 onDateChange={setScheduledDate}
                 onTimeChange={setScheduledTime}
-                showTime={!!scheduledDate}
+                showTime={true}
                 align="right"
+                alignY="bottom"
               />
               {scheduledDate && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setScheduledDate('')
-                    setScheduledTime('')
-                  }}
-                  className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 hover:text-red-500 transition-colors"
+                  onClick={() => { setScheduledDate(''); setScheduledTime('') }}
+                  className="text-[10px] font-bold text-zinc-400 hover:text-red-500 transition-colors whitespace-nowrap"
                 >
-                  Tarihi Temizle
+                  Temizle
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Row 2: Textarea for Notes */}
-        <div>
+        {/* ── Alt Faz Seçimi (Faz seçilince ayrı satırda görünür) ── */}
+        {selectedPhaseId && (
+          <div ref={subPhaseRef} className="relative max-w-xs animate-in fade-in slide-in-from-left-2 duration-300" style={{ zIndex: 25 }}>
+            <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+              Alt Faz Seçimi
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsSubPhaseOpen((prev) => !prev)}
+              className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border bg-white/50 dark:bg-black/20 backdrop-blur-sm border-slate-200 dark:border-slate-800 px-4 text-xs font-bold text-slate-950 dark:text-slate-100 focus:ring-2 focus:ring-cyan-500/50 outline-none text-left transition-all"
+            >
+              <span className="truncate">
+                {selectedSubPhaseId
+                  ? subPhases.find((sp) => sp.id === selectedSubPhaseId)?.label || 'Alt Faz Yok'
+                  : 'Alt Faz Yok'}
+              </span>
+              <ChevronDown className={cn("h-4 w-4 text-zinc-400 dark:text-zinc-500 transition-transform shrink-0", isSubPhaseOpen && "rotate-180")} />
+            </button>
+
+            <AnimatePresence>
+              {isSubPhaseOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-[calc(100%+0.5rem)] left-0 right-0 z-[60] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_18px_50px_rgba(0,0,0,0.5)] max-h-60 overflow-y-auto"
+                >
+                  <div className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedSubPhaseId(null); setIsSubPhaseOpen(false) }}
+                      className={cn(
+                        "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
+                        "text-neutral-700 hover:bg-neutral-100 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white",
+                        !selectedSubPhaseId && "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300"
+                      )}
+                    >
+                      <span>Alt Faz Yok</span>
+                      {!selectedSubPhaseId && <Check className="h-3.5 w-3.5" />}
+                    </button>
+                    {subPhases.map((sp) => {
+                      const isSelected = selectedSubPhaseId === sp.id
+                      return (
+                        <button
+                          key={sp.id}
+                          type="button"
+                          onClick={() => { setSelectedSubPhaseId(sp.id); setIsSubPhaseOpen(false) }}
+                          className={cn(
+                            "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
+                            "text-neutral-700 hover:bg-neutral-100 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white",
+                            isSelected && "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300"
+                          )}
+                        >
+                          <span className="truncate">Alt Faz {sp.subIndex}: {sp.label}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* ── Row 3: Detaylar / Görev Notu ── */}
+        <div className="relative" style={{ zIndex: 10 }}>
           <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
             Detaylar / Görev Notu <span className="text-red-500">*</span>
           </label>
@@ -363,14 +349,14 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Görevle ilgili teknik notlar, hedefler, alt maddeler..."
-            className="min-h-[110px] bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-xs focus:ring-2 focus:ring-cyan-500/50 text-slate-800 dark:text-zinc-100"
+            className="min-h-[110px] bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-xs focus:ring-2 focus:ring-cyan-500/50 text-slate-900 dark:text-slate-100"
           />
         </div>
 
-        {/* Row 3: Bottom Bar containing Priority, Categories, and Submit Button */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-2 border-t border-zinc-150 dark:border-zinc-900">
+        {/* ── Row 4: Etiketler + Öncelik + Gönder ── */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-3 border-t border-zinc-200/60 dark:border-zinc-800/40">
           
-          {/* 3.1. Chip selectors (Categories) */}
+          {/* Chip selectors (Categories) */}
           <div className="space-y-2">
             <span className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
               Konu Seçimi (Etiketler)

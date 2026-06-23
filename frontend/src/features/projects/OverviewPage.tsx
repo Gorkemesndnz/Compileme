@@ -16,6 +16,7 @@ import { Button as MovingBorderButton } from '../../components/ui/moving-border'
 import { SketchButton } from '../../components/ui/SketchButton'
 import { cn } from '../../lib/utils'
 
+
 interface OverviewPageProps {
   project: Project
   phases: ProjectPhase[]
@@ -60,6 +61,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
     return localStorage.getItem(`project_notes_${project.id}`) || ''
   })
   const [quickTaskTitle, setQuickTaskTitle] = useState('')
+
 
   // Sync notes when project changes
   useEffect(() => {
@@ -190,7 +192,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
                 Bugünkü Proje İşleri
               </h2>
             </div>
-            <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-450">
               {todayTasks.filter(t => t.status === 'DONE').length}/{todayTasks.length} Done
             </span>
           </div>

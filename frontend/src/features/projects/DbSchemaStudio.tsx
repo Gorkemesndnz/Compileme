@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
 import { cn } from '../../lib/utils'
 import { SketchButton } from '../../components/ui/SketchButton'
+import { Select } from '../../components/ui/Select'
 import {
   Project,
   useProjectDocuments,
@@ -844,50 +845,44 @@ export const DbSchemaStudio: React.FC<DbSchemaStudioProps> = ({ project }) => {
                         {/* Akıllı FK Seçimi (Cascading Dropdowns) */}
                         {column.isForeign && (
                           <div className="md:col-span-2">
-                            <select
+                            <Select
                               value={column.referencesTable || ''}
-                              onChange={(e) => {
-                                const refTab = e.target.value
-                                const targetTableObj = schemaData.tables.find((t) => t.name === refTab)
+                              onChange={(val) => {
+                                const targetTableObj = schemaData.tables.find((t) => t.name === val)
                                 const firstCol =
                                   targetTableObj && targetTableObj.columns.length > 0
                                     ? targetTableObj.columns[0].name
                                     : 'id'
                                 updateColumn(table.id, column.id, {
-                                  referencesTable: refTab,
+                                  referencesTable: val,
                                   referencesColumn: firstCol,
                                 })
                               }}
-                              className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-950 dark:text-slate-200 font-bold focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
-                            >
-                              <option value="" className="dark:bg-zinc-900">-- Hedef Tablo --</option>
-                              {schemaData.tables.map((t) => (
-                                <option key={t.id} value={t.name} className="dark:bg-zinc-900">
-                                  {t.name}
-                                </option>
-                              ))}
-                            </select>
+                              options={[
+                                { label: '-- Hedef Tablo --', value: '' },
+                                ...schemaData.tables.map((t) => ({ label: t.name, value: t.name })),
+                              ]}
+                              triggerClassName="py-1 min-h-[32px] rounded-lg"
+                            />
                           </div>
                         )}
 
                         {column.isForeign && (
                           <div className="md:col-span-2">
-                            <select
+                            <Select
                               value={column.referencesColumn || ''}
-                              onChange={(e) => updateColumn(table.id, column.id, { referencesColumn: e.target.value })}
-                              className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-950 dark:text-slate-200 font-bold focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
+                              onChange={(val) => updateColumn(table.id, column.id, { referencesColumn: val })}
                               disabled={!column.referencesTable}
-                            >
-                              <option value="" className="dark:bg-zinc-900">-- Hedef Kolon --</option>
-                              {column.referencesTable &&
-                                schemaData.tables
-                                  .find((t) => t.name === column.referencesTable)
-                                  ?.columns.map((c) => (
-                                    <option key={c.id} value={c.name} className="dark:bg-zinc-900">
-                                      {c.name}
-                                    </option>
-                                  ))}
-                            </select>
+                              options={[
+                                { label: '-- Hedef Kolon --', value: '' },
+                                ...(column.referencesTable
+                                  ? (schemaData.tables
+                                      .find((t) => t.name === column.referencesTable)
+                                      ?.columns.map((c) => ({ label: c.name, value: c.name })) || [])
+                                  : []),
+                              ]}
+                              triggerClassName="py-1 min-h-[32px] rounded-lg"
+                            />
                           </div>
                         )}
 

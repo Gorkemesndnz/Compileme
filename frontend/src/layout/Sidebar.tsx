@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/ScrollArea'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
   Folder,
@@ -17,12 +17,13 @@ import {
   UserCog,
   Blocks,
   ChevronDown,
+  ChevronRight,
   Plus,
   Sun,
   Moon
 } from 'lucide-react'
 import { useUiStore } from '@/store/useUiStore'
-import { ProjectStatus, useProjects } from '@/api/projects'
+import { ProjectStatus, useProjects, useProjectPhases, useProjectDocuments, Project } from '@/api/projects'
 import { Avatar, AvatarFallback } from '@/components/ui/Avatar'
 import {
   DropdownMenu,
@@ -83,12 +84,240 @@ const staggerVariants = {
   },
 }
 
+const SUB_REGEX = /^\[PHASE:(\d+):SUB:(\d+)(?::STATUS:(\w+))?\]\s*(.*)$/
+
+function decodeSubTitle(title: string) {
+  const match = title.match(SUB_REGEX)
+  if (!match) return null
+  return {
+    phaseId: parseInt(match[1], 10),
+    subIndex: parseInt(match[2], 10),
+    status: match[3] || 'PLANNING',
+    label: match[4],
+  }
+}
+
+const SUB_PHASE_STATUS_COLORS: Record<string, string> = {
+  PLANNING: 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]',
+  DEVELOPMENT: 'bg-sky-400 shadow-[0_0_5px_rgba(56,189,248,0.5)]',
+  TEST: 'bg-violet-400 shadow-[0_0_5px_rgba(167,139,250,0.5)]',
+  COMPLETED: 'bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.5)]',
+}
+
+interface SidebarProjectNodeProps {
+  project: Project
+  activeProjectId: number | undefined
+  pathname: string
+  searchParams: URLSearchParams
+  openProject: (projectId: number) => void
+  isCollapsed: boolean
+  variants: any
+}
+
+const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
+  project,
+  activeProjectId,
+  pathname,
+  searchParams,
+  openProject,
+  isCollapsed,
+  variants
+}) => {
+  const navigate = useNavigate()
+  const { data: phases = [] } = useProjectPhases(project.id)
+  const { data: documents = [] } = useProjectDocuments(project.id)
+
+  const [isExpanded, setIsExpanded] = React.useState(project.id === activeProjectId)
+  const [expandedPhases, setExpandedPhases] = React.useState<Record<number, boolean>>({})
+
+  const isProjectActive = project.id === activeProjectId && pathname.startsWith('/projects')
+  const isProjectExactlyActive = pathname === `/projects/${project.id}`
+  const activeSubPhaseId = searchParams.get('subPhaseId')
+
+  React.useEffect(() => {
+    if (project.id === activeProjectId) {
+      setIsExpanded(true)
+    }
+  }, [activeProjectId, project.id])
+
+  React.useEffect(() => {
+    phases.forEach((phase) => {
+      const isPhaseActive = pathname.startsWith(`/projects/${project.id}/phases/${phase.id}`)
+      if (isPhaseActive) {
+        setExpandedPhases((prev) => ({ ...prev, [phase.id]: true }))
+      }
+    })
+  }, [pathname, phases, project.id])
+
+  const toggleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsExpanded((prev) => !prev)
+  }
+
+  const togglePhaseExpand = (phaseId: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setExpandedPhases((prev) => ({ ...prev, [phaseId]: !prev[phaseId] }))
+  }
+
+  const subPhasesByPhase = React.useMemo(() => {
+    const map: Record<number, Array<{ subIndex: number; status: string; label: string; docId: number }>> = {}
+    documents.forEach((doc) => {
+      const decoded = decodeSubTitle(doc.title)
+      if (decoded) {
+        if (!map[decoded.phaseId]) {
+          map[decoded.phaseId] = []
+        }
+        map[decoded.phaseId].push({
+          subIndex: decoded.subIndex,
+          status: decoded.status,
+          label: decoded.label,
+          docId: doc.id
+        })
+      }
+    })
+    Object.keys(map).forEach((phaseId) => {
+      map[parseInt(phaseId, 10)].sort((a, b) => a.subIndex - b.subIndex)
+    })
+    return map
+  }, [documents])
+
+  return (
+    <div className="flex flex-col w-full">
+      {/* Lvl 2: Project Row */}
+      <div
+        className={cn(
+          'group/project flex h-8 w-full items-center justify-between rounded-md px-2 text-left text-slate-650 transition-all hover:bg-zinc-500/10 hover:text-slate-950 dark:text-neutral-400 dark:hover:bg-zinc-800/40 dark:hover:text-white',
+          isProjectExactlyActive && 'bg-zinc-500/10 font-bold text-slate-950 dark:bg-zinc-800/50 dark:text-white',
+          isProjectActive && !isProjectExactlyActive && 'bg-zinc-500/5 text-slate-900 dark:bg-zinc-800/20 dark:text-zinc-250'
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => openProject(project.id)}
+          className="flex flex-1 items-center gap-2 text-left min-w-0 h-full"
+        >
+          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PROJECT_STATUS_DOT[project.status])} />
+          <span className="truncate text-xs md:text-sm font-mono">{project.name}</span>
+        </button>
+
+        {phases.length > 0 && (
+          <button
+            type="button"
+            onClick={toggleExpand}
+            className="flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-slate-500 hover:bg-zinc-500/10 hover:text-slate-900 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-zinc-800/50 dark:hover:text-white"
+          >
+            <ChevronRight
+              className={cn(
+                'h-3.5 w-3.5 transition-transform duration-200',
+                isExpanded && 'rotate-90'
+              )}
+            />
+          </button>
+        )}
+      </div>
+
+      {/* Lvl 3: Phases list */}
+      <AnimatePresence initial={false}>
+        {isExpanded && phases.length > 0 && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden flex flex-col mt-0.5"
+          >
+            {phases.map((phase) => {
+              const isPhaseActive = pathname.startsWith(`/projects/${project.id}/phases/${phase.id}`)
+              const isPhaseExactlyActive = isPhaseActive && !activeSubPhaseId
+              const phaseSubPhases = subPhasesByPhase[phase.id] || []
+              const isPhaseExpanded = !!expandedPhases[phase.id]
+
+              return (
+                <div key={phase.id} className="flex flex-col w-full pl-2 ml-2 border-l border-zinc-200/50 dark:border-zinc-800/40">
+                  <div
+                    className={cn(
+                      'group/phase flex h-8 w-full items-center justify-between rounded-md px-1.5 text-left text-slate-550 transition-all hover:bg-zinc-500/5 hover:text-slate-900 dark:text-neutral-500 dark:hover:bg-zinc-800/20 dark:hover:text-zinc-300',
+                      isPhaseExactlyActive && 'bg-zinc-500/10 font-bold text-slate-950 dark:bg-zinc-800/40 dark:text-white',
+                      isPhaseActive && !isPhaseExactlyActive && 'bg-zinc-500/5 text-slate-800 dark:bg-zinc-800/10 dark:text-zinc-300'
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/projects/${project.id}/phases/${phase.id}`)}
+                      className="flex flex-1 items-center gap-1.5 text-left min-w-0 h-full text-xs font-mono"
+                    >
+                      <span className={cn(
+                        'h-1.5 w-1.5 shrink-0 rounded-sm',
+                        phase.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400 dark:bg-zinc-650'
+                      )} />
+                      <span className="truncate">{phase.name}</span>
+                    </button>
+
+                    {phaseSubPhases.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => togglePhaseExpand(phase.id, e)}
+                        className="flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:bg-zinc-500/10 hover:text-slate-900 focus-visible:outline-none dark:text-neutral-500 dark:hover:bg-zinc-850/50 dark:hover:text-white"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            'h-3 w-3 transition-transform duration-200',
+                            isPhaseExpanded && 'rotate-90'
+                          )}
+                        />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Lvl 4: Subphases List */}
+                  <AnimatePresence initial={false}>
+                    {isPhaseExpanded && phaseSubPhases.length > 0 && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden flex flex-col mt-0.5"
+                      >
+                        {phaseSubPhases.map((sub) => {
+                          const isSubActive = isPhaseActive && activeSubPhaseId === sub.subIndex.toString()
+                          const subDotColor = SUB_PHASE_STATUS_COLORS[sub.status] || SUB_PHASE_STATUS_COLORS.PLANNING
+
+                          return (
+                            <button
+                              key={`${phase.id}-sub-${sub.subIndex}`}
+                              type="button"
+                              onClick={() => navigate(`/projects/${project.id}/phases/${phase.id}?subPhaseId=${sub.subIndex}`)}
+                              className={cn(
+                                'flex h-7 w-full items-center gap-1.5 rounded-md pl-2 pr-1.5 ml-2 border-l border-zinc-200/50 dark:border-zinc-800/40 text-left text-[11px] font-mono text-slate-500 transition-all hover:bg-zinc-500/5 hover:text-slate-800 dark:text-neutral-500 dark:hover:bg-zinc-800/20 dark:hover:text-zinc-300',
+                                isSubActive && 'bg-zinc-500/10 font-bold text-slate-950 dark:bg-zinc-800/40 dark:text-white border-l-cyan-500'
+                              )}
+                            >
+                              <span className={cn('h-1 w-1 shrink-0 rounded-full', subDotColor)} />
+                              <span className="truncate">{sub.label}</span>
+                            </button>
+                          )
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [isProjectListOpen, setIsProjectListOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const pathname = location.pathname
+  const searchParams = new URLSearchParams(location.search)
   const {
     theme,
     toggleTheme,
@@ -101,7 +330,7 @@ export const Sidebar: React.FC = () => {
   const openProject = (projectId: number) => {
     setActiveProjectId(projectId)
     setProjectOnboardingOpen(false)
-    navigate('/projects')
+    navigate(`/projects/${projectId}`)
   }
 
   const openProjectOnboarding = () => {
@@ -231,25 +460,19 @@ export const Sidebar: React.FC = () => {
                             </div>
 
                             {!isCollapsed && isProjectListOpen && projects.length > 0 && (
-                              <motion.div variants={variants} className="mt-2 space-y-1 pl-4 font-mono text-xs md:text-sm">
-                                {projects.map((project) => {
-                                  const isSelected = project.id === activeProjectId && pathname.startsWith('/projects')
-                                  return (
-                                    <button
-                                      key={project.id}
-                                      type="button"
-                                      onClick={() => openProject(project.id)}
-                                      title={project.name}
-                                      className={cn(
-                                        'flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-slate-600 transition-all hover:bg-zinc-500/10 hover:text-slate-950 dark:text-neutral-400 dark:hover:bg-zinc-800/40 dark:hover:text-white',
-                                        isSelected && 'bg-zinc-500/10 font-semibold text-slate-950 dark:bg-zinc-800/50 dark:text-white'
-                                      )}
-                                    >
-                                      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PROJECT_STATUS_DOT[project.status])} />
-                                      <span className="truncate">{project.name}</span>
-                                    </button>
-                                  )
-                                })}
+                              <motion.div variants={variants} className="mt-2 space-y-1 pl-3 font-mono text-xs md:text-sm">
+                                {projects.map((project) => (
+                                  <SidebarProjectNode
+                                    key={project.id}
+                                    project={project}
+                                    activeProjectId={activeProjectId}
+                                    pathname={pathname}
+                                    searchParams={searchParams}
+                                    openProject={openProject}
+                                    isCollapsed={isCollapsed}
+                                    variants={variants}
+                                  />
+                                ))}
                               </motion.div>
                             )}
                           </div>

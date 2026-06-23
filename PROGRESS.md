@@ -12,10 +12,10 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** FE-2 — Projeler (Frontend) arayüz cilası
-- **Çalışıyor mu:** Evet (Proje geçişi ortak sidebar üzerinden yapılıyor; aktif proje çalışma alanı tam genişlikte açılıyor.)
+- **Aktif faz:** FE-3 — Eğitimler (Frontend)
+- **Çalışıyor mu:** Evet (Proje komuta merkezi terminal görünümüyle ve 4 katmanlı akordeon sidebar ağacıyla çalışıyor.)
 - **Sırada:** FE-3 — Eğitimler (Frontend)
-- **Son güncelleme:** 22.06.2026
+- **Son güncelleme:** 24.06.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
@@ -41,6 +41,18 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-24 · Faz FE-2 — Sidebar Akordeon Ağacı ve Terminal Kartlı Proje Hub Entegrasyonu
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `/projects/:id` rotası `App.tsx` içerisine eklenerek yönlendirme altyapısı güncellendi.
+  - `Sidebar.tsx` içerisinde standardı bozmadan `SidebarProjectNode` bileşeni kodlandı; bu sayede hook kurallarına uygun olarak projeler, fazlar ve alt fazlar (project documents içinden regex ile ayıklanarak) 4 katmanlı akıllı akordeon yapısıyla sunuldu.
+  - Akordeon açılışları ve chevron rotasyonları Framer Motion ve `AnimatePresence` ile süzülerek açılacak hale getirildi.
+  - `/projects` kök dizininde yer alan ilk projeyi otomatik seçen `useEffect` kaldırılarak, projelerin listelendiği macOS terminal simülasyonu içeren `ProjectsHub.tsx` komuta merkezi entegre edildi.
+  - Terminal kartlarında `cat info.txt` ve `npm run check-status` komutları simüle edildi, dinamik faz ismi, tamamlanan görev yüzdesi ve ASCII ilerleme barı parlayan renklerle yazdırıldı.
+- Kabul kriteri: `npx tsc --noEmit` hatasız tamamlandı.
 
 ### 2026-06-23 · Faz FE-2 — Görev Ekleme Formu Konum ve Stil Refaktörleri (Refactoring)
 - Ajan: Antigravity

@@ -15,6 +15,7 @@ interface DateTimePickerProps {
   onTimeChange?: (time: string) => void
   showTime?: boolean
   align?: 'left' | 'right'
+  alignY?: 'top' | 'bottom'
 }
 
 const WEEKDAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pa']
@@ -41,6 +42,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   onTimeChange = () => {},
   showTime = true,
   align = 'right',
+  alignY = 'bottom',
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isTimeWheelOpen, setIsTimeWheelOpen] = useState(false)
@@ -207,8 +209,9 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           role="dialog"
           aria-label="Tarih ve saat seç"
           className={cn(
-            "absolute top-[calc(100%+0.5rem)] z-[80] w-[min(20rem,calc(100vw-5.5rem))] rounded-xl border border-neutral-200 bg-white p-3 text-neutral-900 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-[0_18px_50px_rgba(0,0,0,0.5)] overflow-hidden",
-            align === 'left' ? 'left-0' : 'right-0'
+            "absolute z-[80] w-[min(20rem,calc(100vw-5.5rem))] rounded-xl border border-neutral-200 bg-white p-3 text-neutral-900 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-[0_18px_50px_rgba(0,0,0,0.5)] overflow-hidden",
+            align === 'left' ? 'left-0' : 'right-0',
+            alignY === 'top' ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]'
           )}
         >
           {/* Wheel Picker overlay on top of calendar grid */}

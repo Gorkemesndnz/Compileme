@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { toast } from 'sonner'
 import { PageHeader } from '../../components/PageHeader'
 import { 
@@ -46,6 +46,7 @@ import { Input } from '../../components/ui/Input'
 import { Badge } from '../../components/ui/Badge'
 import { cn } from '../../lib/utils'
 import { DateTimePicker } from './DateTimePicker'
+import { Select } from '../../components/ui/Select'
 import { IdeaTaskToggle } from './IdeaTaskToggle'
 import { TerminalMetrics } from './TerminalMetrics'
 import { useSettings } from '../../api/settings'
@@ -168,17 +169,51 @@ export const DashboardPage: React.FC = () => {
   const monthRange = getMonthRange()
 
   // API Queries
-  const { data: focusedTasks = [], isLoading: loadingFocused } = useTasks({ date: focusedDate })
-  const { data: tomorrowTasks = [], isLoading: loadingTomorrow } = useTasks({ date: tomorrow })
-  const { data: monthPlanTasks = [], isLoading: loadingMonthPlan } = useTasks({ bucket: 'MONTH' })
-  const { data: weekTasks = [] } = useTasks({ from: weekRange.start, to: weekRange.end })
-  const { data: monthTasks = [] } = useTasks({ from: monthRange.start, to: monthRange.end })
-  const { data: projects = [] } = useProjects()
-  const { data: educations = [] } = useEducations()
-  const { data: ideas = [] } = useIdeas()
+  const { data: rawFocusedTasks, isLoading: loadingFocused } = useTasks({ date: focusedDate })
+  const { data: rawTomorrowTasks, isLoading: loadingTomorrow } = useTasks({ date: tomorrow })
+  const { data: rawMonthPlanTasks, isLoading: loadingMonthPlan } = useTasks({ bucket: 'MONTH' })
+  const { data: rawWeekTasks } = useTasks({ from: weekRange.start, to: weekRange.end })
+  const { data: rawMonthTasks } = useTasks({ from: monthRange.start, to: monthRange.end })
+  const { data: rawProjectTasks } = useTasks({ kind: 'PROJECT' })
+  const { data: rawProjects } = useProjects()
+  const { data: rawEducations } = useEducations()
+  const { data: rawIdeas } = useIdeas()
+
+  const focusedTasks = rawFocusedTasks || []
+  const tomorrowTasks = rawTomorrowTasks || []
+  const monthPlanTasks = rawMonthPlanTasks || []
+  const weekTasks = rawWeekTasks || []
+  const monthTasks = rawMonthTasks || []
+  const projectTasks = rawProjectTasks || []
+  const projects = rawProjects || []
+  const educations = rawEducations || []
+  const ideas = rawIdeas || []
   const { data: waterSummary } = useWaterSummary(today)
   const { data: settings } = useSettings()
   const { data: weatherData } = useWeather(settings?.weatherCity || 'İstanbul')
+
+  const projectOptions = useMemo(() => {
+    return [
+      { label: 'Proje İlişkilendirme Yok', value: '' },
+      ...projects.map((p) => ({ label: p.name, value: String(p.id) })),
+    ]
+  }, [projects])
+
+  const educationOptions = useMemo(() => {
+    return [
+      { label: 'Eğitim İlişkilendirme Yok', value: '' },
+      ...educations.map((edu) => ({ label: edu.title, value: String(edu.id) })),
+    ]
+  }, [educations])
+
+  const kindOptions = useMemo(() => {
+    return [
+      { label: 'Genel Görev', value: 'GENERAL', badgeClass: 'bg-slate-105 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300 border border-slate-200/30' },
+      { label: 'Proje Görevi', value: 'PROJECT', badgeClass: 'bg-blue-100/60 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/20' },
+      { label: 'Eğitim Görevi', value: 'EDUCATION', badgeClass: 'bg-purple-100/60 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-200/20' },
+      { label: 'Refaktör Görevi', value: 'REFACTOR', badgeClass: 'bg-amber-100/60 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/20' },
+    ]
+  }, [])
   
   // Mutations
   const createTaskMutation = useCreateTask()
@@ -601,62 +636,53 @@ export const DashboardPage: React.FC = () => {
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                className="flex-grow bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-cyan-500/50"
+                className="flex-grow bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                 placeholder="Görev başlığı..."
               />
               <input
                 type="time"
                 value={editTime}
                 onChange={(e) => setEditTime(e.target.value)}
-                className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-cyan-500/50 cursor-pointer"
+                className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold cursor-pointer"
               />
             </div>
             
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2 items-center">
               <input
                 type="number"
                 value={editDuration}
                 onChange={(e) => setEditDuration(e.target.value)}
-                className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-cyan-500/50"
+                className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                 placeholder="Süre (dk)"
               />
-              <select
+              <Select
                 value={editProj}
-                onChange={(e) => setEditProj(e.target.value)}
-                className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-cyan-500/50"
-              >
-                <option value="">Proje Yok</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <select
+                onChange={(val) => setEditProj(val)}
+                options={projectOptions}
+                placeholder="Proje Seçin"
+                triggerClassName="py-1 min-h-[32px] rounded-lg"
+              />
+              <Select
                 value={editEdu}
-                onChange={(e) => setEditEdu(e.target.value)}
-                className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-cyan-500/50"
-              >
-                <option value="">Eğitim Yok</option>
-                {educations.map(edu => (
-                  <option key={edu.id} value={edu.id}>{edu.title}</option>
-                ))}
-              </select>
+                onChange={(val) => setEditEdu(val)}
+                options={educationOptions}
+                placeholder="Eğitim Seçin"
+                triggerClassName="py-1 min-h-[32px] rounded-lg"
+              />
             </div>
 
-            <div className="flex gap-2">
-              <select
+            <div className="flex gap-2 items-center">
+              <Select
                 value={editKind}
-                onChange={(e) => setEditKind(e.target.value as any)}
-                className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs outline-none"
-              >
-                <option value="GENERAL">GENEL</option>
-                <option value="PROJECT">PROJE</option>
-                <option value="EDUCATION">EĞİTİM</option>
-                <option value="REFACTOR">REFAKTÖR</option>
-              </select>
+                onChange={(val) => setEditKind(val as any)}
+                options={kindOptions}
+                className="max-w-[130px]"
+                triggerClassName="py-1 min-h-[32px] rounded-lg"
+              />
               <textarea
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
-                className="flex-grow bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg p-2 text-xs outline-none focus:border-cyan-500/50 min-h-[40px] resize-y font-mono"
+                className="flex-grow bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all min-h-[40px] resize-y font-semibold"
                 placeholder="Not ekle (markdown)..."
               />
             </div>
@@ -830,7 +856,7 @@ export const DashboardPage: React.FC = () => {
         {/* Input Bar Form */}
         <form onSubmit={handleQuickAddSubmit} className="flex w-full min-w-0 flex-grow flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div className="flex h-10 min-w-0 flex-grow items-center px-2">
-            <Input
+            <input
               ref={quickAddInputRef}
               value={quickAddText}
               onChange={(e) => setQuickAddText(e.target.value)}
@@ -876,6 +902,7 @@ export const DashboardPage: React.FC = () => {
         completedMonthCount={completedMonthCount}
         totalMonthCount={totalMonthCount}
         activeProjects={projects}
+        projectTasks={projectTasks}
         educations={educations}
         ideas={ideas}
       />
@@ -939,7 +966,7 @@ export const DashboardPage: React.FC = () => {
                     value={focusedFormTitle}
                     onChange={(e) => setFocusedFormTitle(e.target.value)}
                     placeholder="Görev adı..."
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-cyan-500"
+                    className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                   />
                   <div className="w-full">
                     <DateTimePicker
@@ -949,53 +976,43 @@ export const DashboardPage: React.FC = () => {
                       onTimeChange={setFocusedFormTime}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 items-center">
                     <input
                       type="number"
                       value={focusedFormDuration}
                       onChange={(e) => setFocusedFormDuration(e.target.value)}
                       placeholder="Süre (dk)"
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                      className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                     />
-                    <select
+                    <Select
                       value={focusedFormProj}
-                      onChange={(e) => setFocusedFormProj(e.target.value)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    >
-                      <option value="">Proje İlişkilendir</option>
-                      {projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setFocusedFormProj(val)}
+                      options={projectOptions}
+                      placeholder="Proje İlişkilendir"
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Select
                       value={focusedFormEdu}
-                      onChange={(e) => setFocusedFormEdu(e.target.value)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    >
-                      <option value="">Eğitim İlişkilendir</option>
-                      {educations.map(edu => (
-                        <option key={edu.id} value={edu.id}>{edu.title}</option>
-                      ))}
-                    </select>
-                    <select
+                      onChange={(val) => setFocusedFormEdu(val)}
+                      options={educationOptions}
+                      placeholder="Eğitim İlişkilendir"
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
+                    <Select
                       value={focusedFormKind}
-                      onChange={(e) => setFocusedFormKind(e.target.value as any)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs outline-none shrink-0"
-                    >
-                      <option value="GENERAL">GENEL</option>
-                      <option value="PROJECT">PROJE</option>
-                      <option value="EDUCATION">EĞİTİM</option>
-                      <option value="REFACTOR">REFAKTÖR</option>
-                    </select>
+                      onChange={(val) => setFocusedFormKind(val as any)}
+                      options={kindOptions}
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
                   </div>
                   <input
                     type="text"
                     value={focusedFormNotes}
                     onChange={(e) => setFocusedFormNotes(e.target.value)}
                     placeholder="Not ekle (markdown)..."
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                    className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                   />
                 </div>
 
@@ -1077,7 +1094,7 @@ export const DashboardPage: React.FC = () => {
                     value={tomorrowFormTitle}
                     onChange={(e) => setTomorrowFormTitle(e.target.value)}
                     placeholder="Görev adı..."
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-cyan-500"
+                    className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                   />
                   <div className="w-full">
                     <DateTimePicker
@@ -1087,53 +1104,43 @@ export const DashboardPage: React.FC = () => {
                       onTimeChange={setTomorrowFormTime}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 items-center">
                     <input
                       type="number"
                       value={tomorrowFormDuration}
                       onChange={(e) => setTomorrowFormDuration(e.target.value)}
                       placeholder="Süre (dk)"
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                      className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                     />
-                    <select
+                    <Select
                       value={tomorrowFormProj}
-                      onChange={(e) => setTomorrowFormProj(e.target.value)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    >
-                      <option value="">Proje İlişkilendir</option>
-                      {projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setTomorrowFormProj(val)}
+                      options={projectOptions}
+                      placeholder="Proje İlişkilendir"
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Select
                       value={tomorrowFormEdu}
-                      onChange={(e) => setTomorrowFormEdu(e.target.value)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    >
-                      <option value="">Eğitim İlişkilendir</option>
-                      {educations.map(edu => (
-                        <option key={edu.id} value={edu.id}>{edu.title}</option>
-                      ))}
-                    </select>
-                    <select
+                      onChange={(val) => setTomorrowFormEdu(val)}
+                      options={educationOptions}
+                      placeholder="Eğitim İlişkilendir"
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
+                    <Select
                       value={tomorrowFormKind}
-                      onChange={(e) => setTomorrowFormKind(e.target.value as any)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs outline-none shrink-0"
-                    >
-                      <option value="GENERAL">GENEL</option>
-                      <option value="PROJECT">PROJE</option>
-                      <option value="EDUCATION">EĞİTİM</option>
-                      <option value="REFACTOR">REFAKTÖR</option>
-                    </select>
+                      onChange={(val) => setTomorrowFormKind(val as any)}
+                      options={kindOptions}
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
                   </div>
                   <input
                     type="text"
                     value={tomorrowFormNotes}
                     onChange={(e) => setTomorrowFormNotes(e.target.value)}
                     placeholder="Not ekle (markdown)..."
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                    className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                   />
                 </div>
 
@@ -1244,7 +1251,7 @@ export const DashboardPage: React.FC = () => {
                     value={monthFormTitle}
                     onChange={(e) => setMonthFormTitle(e.target.value)}
                     placeholder="Görev adı..."
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-cyan-500"
+                    className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                   />
                   <div className="w-full">
                     <DateTimePicker
@@ -1254,53 +1261,43 @@ export const DashboardPage: React.FC = () => {
                       onTimeChange={setMonthFormTime}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 items-center">
                     <input
                       type="number"
                       value={monthFormDuration}
                       onChange={(e) => setMonthFormDuration(e.target.value)}
                       placeholder="Süre (dk)"
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                      className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                     />
-                    <select
+                    <Select
                       value={monthFormProj}
-                      onChange={(e) => setMonthFormProj(e.target.value)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    >
-                      <option value="">Proje İlişkilendir</option>
-                      {projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setMonthFormProj(val)}
+                      options={projectOptions}
+                      placeholder="Proje İlişkilendir"
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Select
                       value={monthFormEdu}
-                      onChange={(e) => setMonthFormEdu(e.target.value)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    >
-                      <option value="">Eğitim İlişkilendir</option>
-                      {educations.map(edu => (
-                        <option key={edu.id} value={edu.id}>{edu.title}</option>
-                      ))}
-                    </select>
-                    <select
+                      onChange={(val) => setMonthFormEdu(val)}
+                      options={educationOptions}
+                      placeholder="Eğitim İlişkilendir"
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
+                    <Select
                       value={monthFormKind}
-                      onChange={(e) => setMonthFormKind(e.target.value as any)}
-                      className="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs outline-none shrink-0"
-                    >
-                      <option value="GENERAL">GENEL</option>
-                      <option value="PROJECT">PROJE</option>
-                      <option value="EDUCATION">EĞİTİM</option>
-                      <option value="REFACTOR">REFAKTÖR</option>
-                    </select>
+                      onChange={(val) => setMonthFormKind(val as any)}
+                      options={kindOptions}
+                      triggerClassName="py-1 min-h-[32px] rounded-lg"
+                    />
                   </div>
                   <input
                     type="text"
                     value={monthFormNotes}
                     onChange={(e) => setMonthFormNotes(e.target.value)}
                     placeholder="Not ekle (markdown)..."
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-none"
+                    className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                   />
                 </div>
 
