@@ -283,7 +283,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         >
           {/* Wheel Picker overlay on top of calendar grid */}
           {isTimeWheelOpen && (
-            <div className="absolute inset-x-0 top-0 bottom-[68px] z-20 bg-white dark:bg-zinc-900 p-4 rounded-t-xl flex flex-col justify-center select-none">
+            <div className="absolute inset-x-0 top-0 bottom-[80px] z-20 bg-white dark:bg-zinc-900 p-4 rounded-t-xl flex flex-col justify-center select-none">
               <style dangerouslySetInnerHTML={{ __html: `
                 .scrollbar-none::-webkit-scrollbar {
                   display: none;
