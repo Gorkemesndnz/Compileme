@@ -25,6 +25,8 @@ import {
 import { useUiStore } from '@/store/useUiStore'
 import { ProjectStatus, useProjects, useProjectPhases, useProjectDocuments, Project } from '@/api/projects'
 import { Avatar, AvatarFallback } from '@/components/ui/Avatar'
+import { groupEducationsByType, mockEducations } from '@/features/education/mockEducationData'
+import { EducationType } from '@/features/education/types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -314,6 +316,12 @@ const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
 export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [isProjectListOpen, setIsProjectListOpen] = useState(false)
+  const [isEducationTreeOpen, setIsEducationTreeOpen] = useState(false)
+  const [expandedEducationCategories, setExpandedEducationCategories] = useState<Record<EducationType, boolean>>({
+    PROGRAMMING: true,
+    LANGUAGE: false,
+    OTHER: false,
+  })
   const location = useLocation()
   const navigate = useNavigate()
   const pathname = location.pathname
@@ -326,6 +334,23 @@ export const Sidebar: React.FC = () => {
     setProjectOnboardingOpen,
   } = useUiStore()
   const { data: projects = [] } = useProjects()
+  const educationGroups = React.useMemo(() => groupEducationsByType(mockEducations), [])
+  const activeEducationId = React.useMemo(() => {
+    const match = pathname.match(/^\/education\/(\d+)/)
+    return match ? Number(match[1]) : undefined
+  }, [pathname])
+
+  React.useEffect(() => {
+    if (!pathname.startsWith('/education')) {
+      return
+    }
+
+    setIsEducationTreeOpen(true)
+    const activeEducation = mockEducations.find((education) => education.id === activeEducationId)
+    if (activeEducation) {
+      setExpandedEducationCategories((prev) => ({ ...prev, [activeEducation.type]: true }))
+    }
+  }, [activeEducationId, pathname])
 
   const openProject = (projectId: number) => {
     setActiveProjectId(projectId)
@@ -337,6 +362,16 @@ export const Sidebar: React.FC = () => {
     setActiveProjectId(undefined)
     setProjectOnboardingOpen(true)
     navigate('/projects')
+  }
+
+  const toggleEducationTree = (event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsEducationTreeOpen((open) => !open)
+  }
+
+  const toggleEducationCategory = (type: EducationType) => {
+    setExpandedEducationCategories((prev) => ({ ...prev, [type]: !prev[type] }))
   }
 
   const navItems = [
@@ -475,6 +510,133 @@ export const Sidebar: React.FC = () => {
                                 ))}
                               </motion.div>
                             )}
+                          </div>
+                        )
+                      }
+
+                      if (item.to === '/education') {
+                        return (
+                          <div key={item.to}>
+                            <div className="relative">
+                              <Link
+                                to={item.to}
+                                className={cn(
+                                  "flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-slate-900 transition-all duration-200 hover:bg-white/70 hover:text-slate-950 hover:shadow-md dark:text-slate-100 dark:hover:bg-white/[0.07] dark:hover:text-white",
+                                  isActive && "border-l-2 border-primary bg-white/75 font-semibold text-cyan-700 shadow-[0_0_18px_rgba(6,182,212,0.12)] backdrop-blur-xl dark:bg-white/[0.08] dark:text-cyan-200 dark:shadow-[0_0_18px_rgba(34,211,238,0.12)]",
+                                )}
+                              >
+                                <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
+                                {!isCollapsed && (
+                                  <motion.span variants={variants} className="ml-3.5 truncate text-sm">
+                                    {item.label}
+                                  </motion.span>
+                                )}
+                              </Link>
+
+                              {!isCollapsed && educationGroups.length > 0 && (
+                                <motion.div variants={variants} className="absolute inset-y-0 right-1.5 my-auto flex h-7 items-center">
+                                  <button
+                                    type="button"
+                                    onClick={toggleEducationTree}
+                                    aria-label={isEducationTreeOpen ? 'Egitim agacini kapat' : 'Egitim agacini ac'}
+                                    aria-expanded={isEducationTreeOpen}
+                                    title={isEducationTreeOpen ? 'Kategorileri gizle' : 'Kategorileri goster'}
+                                    className="flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-slate-600 transition-all hover:border-cyan-500/25 hover:bg-cyan-500/10 hover:text-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:text-neutral-400 dark:hover:text-cyan-300"
+                                  >
+                                    <ChevronRight
+                                      className={cn(
+                                        'h-3.5 w-3.5 transition-transform duration-200',
+                                        isEducationTreeOpen && 'rotate-90'
+                                      )}
+                                    />
+                                  </button>
+                                </motion.div>
+                              )}
+                            </div>
+
+                            <AnimatePresence initial={false}>
+                              {!isCollapsed && isEducationTreeOpen && educationGroups.length > 0 && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="mt-2 overflow-hidden pl-4 font-mono text-xs md:text-sm"
+                                >
+                                  <div className="ml-2 flex flex-col gap-1 border-l border-slate-200 dark:border-slate-800">
+                                    {educationGroups.map((group) => {
+                                      const isCategoryOpen = expandedEducationCategories[group.type]
+                                      const hasActiveEducation = group.educations.some((education) => education.id === activeEducationId)
+
+                                      return (
+                                        <div key={group.type} className="flex flex-col pl-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleEducationCategory(group.type)}
+                                            className={cn(
+                                              'group/category flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-slate-800 transition-all hover:bg-white/70 hover:text-slate-950 hover:shadow-sm dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white',
+                                              hasActiveEducation && 'bg-white/75 text-cyan-700 shadow-[0_0_16px_rgba(6,182,212,0.1)] backdrop-blur-xl dark:bg-white/[0.07] dark:text-cyan-200'
+                                            )}
+                                            aria-expanded={isCategoryOpen}
+                                          >
+                                            <ChevronRight
+                                              className={cn(
+                                                'h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform duration-200 group-hover/category:text-cyan-700 dark:text-slate-500 dark:group-hover/category:text-cyan-300',
+                                                isCategoryOpen && 'rotate-90'
+                                              )}
+                                            />
+                                            <span className="truncate">{group.label}</span>
+                                            <span className="ml-auto rounded-full border border-slate-200 bg-white/70 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+                                              {group.educations.length}
+                                            </span>
+                                          </button>
+
+                                          <AnimatePresence initial={false}>
+                                            {isCategoryOpen && (
+                                              <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden pl-6"
+                                              >
+                                                <div className="ml-2 flex flex-col gap-1 border-l border-slate-200 py-1 dark:border-slate-800">
+                                                  {group.educations.map((education) => {
+                                                    const isEducationActive = activeEducationId === education.id
+
+                                                    return (
+                                                      <button
+                                                        key={education.id}
+                                                        type="button"
+                                                        onClick={() => navigate(`/education/${education.id}`)}
+                                                        className={cn(
+                                                          'flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] text-slate-700 transition-all hover:bg-white/70 hover:text-slate-950 hover:shadow-sm dark:text-neutral-400 dark:hover:bg-white/[0.06] dark:hover:text-white',
+                                                          isEducationActive && 'bg-white/80 font-bold text-cyan-700 shadow-[0_0_18px_rgba(6,182,212,0.14)] backdrop-blur-xl dark:bg-white/[0.08] dark:text-cyan-200'
+                                                        )}
+                                                      >
+                                                        <span
+                                                          className={cn(
+                                                            'h-1.5 w-1.5 shrink-0 rounded-full',
+                                                            education.status === 'ACTIVE' && 'bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,0.65)]',
+                                                            education.status === 'PAUSED' && 'bg-amber-400 shadow-[0_0_7px_rgba(251,191,36,0.65)]',
+                                                            education.status === 'DONE' && 'bg-cyan-400 shadow-[0_0_7px_rgba(34,211,238,0.65)]'
+                                                          )}
+                                                        />
+                                                        <span className="truncate">{education.title}</span>
+                                                      </button>
+                                                    )
+                                                  })}
+                                                </div>
+                                              </motion.div>
+                                            )}
+                                          </AnimatePresence>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         )
                       }

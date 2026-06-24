@@ -10,7 +10,8 @@ import { useUiStore } from './store/useUiStore'
 // Feature pages
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { ProjectsPage } from './features/projects/ProjectsPage'
-import { EducationPage } from './features/education/EducationPage'
+import { EducationHub } from './features/education/EducationHub'
+import { EducationStudio } from './features/education/EducationStudio'
 import { IdeasPage } from './features/ideas/IdeasPage'
 import { CalendarPage } from './features/calendar/CalendarPage'
 import { FocusPage } from './features/focus/FocusPage'
@@ -63,7 +64,8 @@ export const App: React.FC = () => {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/projects/:id" element={<ProjectsPage />} />
             <Route path="/projects/:id/phases/:phaseId" element={<ProjectsPage />} />
-            <Route path="/education" element={<EducationPage />} />
+            <Route path="/education" element={<EducationHub />} />
+            <Route path="/education/:id" element={<EducationStudio />} />
             <Route path="/ideas" element={<IdeasPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/focus" element={<FocusPage />} />

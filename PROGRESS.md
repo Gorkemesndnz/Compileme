@@ -42,6 +42,62 @@
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
 
+### 2026-06-24 - Faz FE-3 - Egitimler Rota, Mock State ve Sidebar Agaci
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Devam
+- Yapilanlar:
+  - `Education`, `EducationResource` ve nullable `resource_id` destekli `EducationPractice` frontend tipleri PostgreSQL semasiyla uyumlu olarak eklendi.
+  - Mock egitim, kaynak ve pratik verileri tek kaynakta toplandi; kategori gruplama yardimcisi `type` alanina gore hazirlandi.
+  - `/education` icin `EducationHub`, `/education/:id` icin `EducationStudio` rotalari baglandi.
+  - Sidebar'daki Egitimler sekmesi Framer Motion akordeonlu, 3 katmanli kategori/egitim agacina refactor edildi.
+  - `handleUpdatePractice(practiceId, updatedData)` API entegrasyonuna hazir iskelet olarak `EducationStudio` icinde tanimlandi.
+- Kararlar:
+  - Backend hook modeliyle cakismamak icin sema uyumlu mock tipleri `features/education` altinda ayri tutuldu.
+- Kabul kriteri:
+  - `npm.cmd run build` hatasiz tamamlandi.
+  - Vite dev server `http://127.0.0.1:5173/education` uzerinde 200 OK dondu.
+- Acik konular / siradaki:
+  - Egitim mock state'i backend `GET /api/educations`, resource ve practice endpoint'lerine baglanacak.
+
+### 2026-06-24 - Faz FE-3 - Programming Mode Studyosu
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Devam
+- Yapilanlar:
+  - `/education/:id` rotasinda `type === 'PROGRAMMING'` icin split-view Programming Studio arayuzu kuruldu.
+  - Sol panelde mufredat batch importer, resource-practice hiyerarsisi, genel alistirmalar bolumu ve AI prompt clipboard builder eklendi.
+  - Sag panelde JSON string ile saklanan multi-file code workspace, dosya tablari, yeni dosya ekleme, satir numarali editor ve markdown not paneli eklendi.
+  - `handleUpdatePractice` local state'i aninda guncelleyecek ve backend PATCH icin `title`, `code`, `notes`, `resourceId`, `orderIndex` payload'u uretecek sekilde tamamlandi.
+  - Not panelinden `kind = 'EDUCATION'`, `educationId = currentEduId` ile gorev olusturma akisi baglandi.
+- Kararlar:
+  - DB'deki tek `code` TEXT kolonu frontend'de `CodeFile[]` olarak yonetilip `JSON.stringify` / `JSON.parse` ile multi-file IDE modeline cevrildi.
+- Kabul kriteri:
+  - `npm.cmd run build` hatasiz tamamlandi.
+  - `git diff --check` temiz.
+  - `http://127.0.0.1:5173/education/1` 200 OK dondu.
+- Acik konular / siradaki:
+  - Backend practice DTO'su `resourceId` alanini alacak sekilde genisletildiginde PATCH payload'u dogrudan kalici FK senkronizasyonu yapabilecek.
+
+### 2026-06-24 - Faz FE-3 - Language Mode Studyosu ve Leitner Hafiza
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Devam
+- Yapilanlar:
+  - `/education/:id` rotasinda `type === 'LANGUAGE'` icin Language Studio arayuzu kuruldu.
+  - `EducationPractice.code` icinde `VocabularyCard[]` JSON string, `notes` icinde Ingilizce gunluk metni saklayan esnek sema mapping'i eklendi.
+  - A1-A2, B1, B2 ve C1-C2 seviye secici; seviye bazli kaynak/pratik filtreleme; Leitner box aksiyonlari eklendi.
+  - Kelime ekleme formu, 3D flip-card vocabulary deck, `Biliyorum` / `Unuttum` tekrar mantigi ve `nextReview` hesaplama kuruldu.
+  - Gunluk textarea'si icin 1200ms debounce auto-save, ceviri/sozluk modal UI'si ve `kind = EDUCATION` gorev olusturma aksiyonu eklendi.
+- Kararlar:
+  - Yeni DB tablosu acmadan dil verileri mevcut `education_practice.code` ve `education_practice.notes` kolonlari uzerinden tasindi.
+- Kabul kriteri:
+  - `npm.cmd run build` hatasiz tamamlandi.
+  - `git diff --check` temiz.
+  - `http://127.0.0.1:5173/education/4` 200 OK dondu.
+- Acik konular / siradaki:
+  - Google Translate API backend/proxy karari verildiginde `handleTranslate` gercek endpoint'e baglanacak.
+
 ### 2026-06-24 · Faz FE-2 — Sidebar Akordeon Ağacı ve Terminal Kartlı Proje Hub Entegrasyonu
 - Ajan: Antigravity
 - Branch / commit: master / (commit bekliyor)
