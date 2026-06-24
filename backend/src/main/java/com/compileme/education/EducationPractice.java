@@ -20,6 +20,10 @@ public class EducationPractice {
     @JoinColumn(name = "education_id", nullable = false)
     private Education education;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resource_id")
+    private EducationResource resource;
+
     @Column(nullable = false, length = 200)
     private String title;
 

@@ -42,7 +42,7 @@ export const EducationCard: React.FC<EducationCardProps> = ({ education }) => {
           navigate(`/education/${education.id}`)
         }
       }}
-      className="group h-[300px] w-[290px] cursor-pointer [perspective:1000px]"
+      className="group h-[300px] w-full max-w-[290px] cursor-pointer [perspective:1000px]"
       aria-label={`${education.title} studyosuna gir`}
     >
       <div className="relative h-full rounded-[50px] border border-slate-300 bg-gradient-to-br from-slate-100/80 to-slate-200/90 shadow-2xl transition-all duration-500 ease-in-out [transform-style:preserve-3d] group-hover:[box-shadow:rgba(15,23,42,0.24)_30px_50px_25px_-40px,rgba(15,23,42,0.12)_0px_25px_30px_0px] group-hover:[transform:rotate3d(1,1,0,30deg)] dark:border-white/5 dark:from-zinc-900 dark:to-black">
@@ -128,7 +128,7 @@ export const AddEducationCard: React.FC<{ categoryLabel: string; onClick: () => 
       type="button"
       onClick={onClick}
       className={cn(
-        'flex h-[300px] w-[290px] flex-col items-center justify-center gap-4 rounded-[32px] border border-dashed border-slate-300 bg-white/55 text-slate-900 shadow-md backdrop-blur-2xl transition-all hover:border-cyan-500/50 hover:bg-white/75 hover:shadow-[0_0_28px_rgba(6,182,212,0.14)]',
+        'flex h-[300px] w-full max-w-[290px] flex-col items-center justify-center gap-4 rounded-[32px] border border-dashed border-slate-300 bg-white/55 text-slate-900 shadow-md backdrop-blur-2xl transition-all hover:border-cyan-500/50 hover:bg-white/75 hover:shadow-[0_0_28px_rgba(6,182,212,0.14)]',
         'dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:border-cyan-300/40 dark:hover:bg-white/[0.07]'
       )}
     >

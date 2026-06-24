@@ -1,6 +1,7 @@
 package com.compileme.education;
 
 import com.compileme.education.dto.EducationRequest;
+import com.compileme.education.dto.EducationPracticeResponse;
 import com.compileme.education.dto.EducationResponse;
 import com.compileme.education.dto.ProgressUpdateRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,5 +75,17 @@ class EducationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getPractices_ShouldIncludeResourceId() throws Exception {
+        EducationPracticeResponse response = new EducationPracticeResponse(
+                100L, 10L, 22L, "PDF exercise", false, "", "", 0
+        );
+        when(educationService.listPractices(10L)).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/educations/10/practices"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].resourceId").value(22L));
     }
 }

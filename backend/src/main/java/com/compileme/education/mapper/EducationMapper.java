@@ -79,6 +79,7 @@ public class EducationMapper {
         return new EducationPracticeResponse(
                 entity.getId(),
                 entity.getEducation().getId(),
+                entity.getResource() != null ? entity.getResource().getId() : null,
                 entity.getTitle(),
                 entity.getCompleted(),
                 entity.getCode(),
@@ -87,11 +88,12 @@ public class EducationMapper {
         );
     }
 
-    public static EducationPractice toEntity(EducationPracticeRequest request, Education education) {
+    public static EducationPractice toEntity(EducationPracticeRequest request, Education education, EducationResource resource) {
         if (request == null) return null;
         int orderIndex = request.orderIndex() != null ? request.orderIndex() : 0;
         return EducationPractice.builder()
                 .education(education)
+                .resource(resource)
                 .title(request.title())
                 .completed(request.completed())
                 .code(request.code())
@@ -100,12 +102,13 @@ public class EducationMapper {
                 .build();
     }
 
-    public static void apply(EducationPractice entity, EducationPracticeRequest request) {
+    public static void apply(EducationPractice entity, EducationPracticeRequest request, EducationResource resource) {
         if (entity == null || request == null) return;
         if (request.title() != null) entity.setTitle(request.title());
         if (request.completed() != null) entity.setCompleted(request.completed());
         if (request.code() != null) entity.setCode(request.code());
         if (request.notes() != null) entity.setNotes(request.notes());
+        entity.setResource(resource);
         if (request.orderIndex() != null) entity.setOrderIndex(request.orderIndex());
     }
 }

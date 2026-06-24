@@ -1,6 +1,6 @@
 import { Education, EducationCategoryGroup, EducationPractice, EducationResource, EducationType } from './types'
 
-export const EDUCATION_TYPE_LABELS: Record<EducationType, string> = {
+export const EDUCATION_TYPE_LABELS: Record<string, string> = {
   PROGRAMMING: 'Programming',
   LANGUAGE: 'Language',
   OTHER: 'Other',
@@ -105,6 +105,20 @@ export const mockEducationResources: EducationResource[] = [
     url_or_path: 'https://compileme.local/english/b2-technical',
     level: 'B2',
   },
+  {
+    id: 501,
+    education_id: 5,
+    name: 'Reliability Patterns Chapter',
+    type: 'PDF',
+    url_or_path: '/files/system-design-reliability.pdf',
+  },
+  {
+    id: 502,
+    education_id: 5,
+    name: 'Data Modeling Interview Notes',
+    type: 'LINK',
+    url_or_path: 'https://compileme.local/system-design/data-modeling',
+  },
 ]
 
 export const mockEducationPractices: EducationPractice[] = [
@@ -203,26 +217,83 @@ export const mockEducationPractices: EducationPractice[] = [
     notes: 'Today I practiced explaining why I selected a modular frontend structure.',
     order_index: 3,
   },
+  {
+    id: 5001,
+    education_id: 5,
+    resource_id: null,
+    title: 'Kurs Genel Notlari',
+    completed: false,
+    code: JSON.stringify([
+      {
+        id: 1,
+        keyConcept: 'CAP tradeoff',
+        description: 'Distributed systems optimize between consistency and availability under network partition.',
+      },
+      {
+        id: 2,
+        keyConcept: 'Backpressure',
+        description: 'A flow-control mechanism that prevents producers from overwhelming downstream consumers.',
+      },
+    ]),
+    notes: '# Cornell Summary\n\n## Cues\n- Reliability\n- Tradeoffs\n\n## Notes\nDesign decisions should state the constraint first, then the consequence.\n\n## Summary\nReliable systems are built from explicit failure assumptions.',
+    order_index: 1,
+  },
+  {
+    id: 5002,
+    education_id: 5,
+    resource_id: 501,
+    title: 'Reliability Patterns Summary',
+    completed: false,
+    code: JSON.stringify([
+      {
+        id: 3,
+        keyConcept: 'Circuit breaker',
+        description: 'Stops repeated failing calls to protect the caller and give the dependency time to recover.',
+      },
+      {
+        id: 4,
+        keyConcept: 'Retry budget',
+        description: 'Limits retry volume so recovery behavior does not amplify an outage.',
+      },
+    ]),
+    notes: '# Cornell Notes\n\n## Cues\n- Circuit breaker\n- Retry budget\n\n## Notes\nRetries must be bounded and observable. Circuit breakers need clear half-open recovery behavior.\n\n## Summary\nResilience patterns are useful only when paired with metrics and limits.',
+    order_index: 2,
+  },
+  {
+    id: 5003,
+    education_id: 5,
+    resource_id: 502,
+    title: 'Data Modeling Cheatsheet',
+    completed: false,
+    code: JSON.stringify([
+      {
+        id: 5,
+        keyConcept: 'Access pattern first',
+        description: 'Schema choices should be justified by the dominant reads and writes.',
+      },
+    ]),
+    notes: '# Cornell Notes\n\n## Cues\n- Read model\n- Write model\n\n## Notes\nNormalize for integrity, denormalize when read pressure and ownership boundaries justify it.\n\n## Summary\nGood schemas make expected queries cheap and unexpected changes survivable.',
+    order_index: 3,
+  },
 ]
 
 export const groupEducationsByType = (educations: Education[]): EducationCategoryGroup[] => {
-  const grouped = educations.reduce<Record<EducationType, Education[]>>(
+  const grouped = educations.reduce<Record<string, Education[]>>(
     (acc, education) => {
+      if (!acc[education.type]) {
+        acc[education.type] = []
+      }
       acc[education.type].push(education)
       return acc
     },
-    {
-      PROGRAMMING: [],
-      LANGUAGE: [],
-      OTHER: [],
-    }
+    {}
   )
 
-  return (Object.keys(grouped) as EducationType[])
+  return Object.keys(grouped)
     .filter((type) => grouped[type].length > 0)
     .map((type) => ({
       type,
-      label: EDUCATION_TYPE_LABELS[type],
+      label: EDUCATION_TYPE_LABELS[type] ?? type,
       educations: grouped[type],
     }))
 }

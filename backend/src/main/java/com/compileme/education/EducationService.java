@@ -48,6 +48,10 @@ public class EducationService {
         return EducationMapper.toResponse(education);
     }
 
+    public void ensureEducationBelongsToCurrentUser(Long id) {
+        getEducationForCurrentUser(id);
+    }
+
     @Transactional
     public EducationResponse create(EducationRequest request) {
         Long userId = currentUserProvider.getCurrentUserId();
@@ -148,6 +152,7 @@ public class EducationService {
     @Transactional
     public EducationPracticeResponse addPractice(Long eduId, EducationPracticeRequest request) {
         Education education = getEducationForCurrentUser(eduId);
+        EducationResource resource = resolvePracticeResource(education, request.resourceId());
 
         int orderIndex;
         if (request.orderIndex() == null) {
@@ -160,7 +165,7 @@ public class EducationService {
             orderIndex = request.orderIndex();
         }
 
-        EducationPractice practice = EducationMapper.toEntity(request, education);
+        EducationPractice practice = EducationMapper.toEntity(request, education, resource);
         practice.setOrderIndex(orderIndex);
         EducationPractice saved = educationPracticeRepository.save(practice);
         return EducationMapper.toResponse(saved);
@@ -171,8 +176,9 @@ public class EducationService {
         EducationPractice practice = educationPracticeRepository.findById(practiceId)
                 .orElseThrow(() -> new NotFoundException("Pratik bulunamadı: " + practiceId));
         checkEducationOwnership(practice.getEducation());
+        EducationResource resource = resolvePracticeResource(practice.getEducation(), request.resourceId());
 
-        EducationMapper.apply(practice, request);
+        EducationMapper.apply(practice, request, resource);
         EducationPractice saved = educationPracticeRepository.save(practice);
         return EducationMapper.toResponse(saved);
     }
@@ -201,5 +207,19 @@ public class EducationService {
         if (!education.getUserId().equals(currentUserId)) {
             throw new NotFoundException("Eğitim bulunamadı: " + education.getId());
         }
+    }
+
+    private EducationResource resolvePracticeResource(Education education, Long resourceId) {
+        if (resourceId == null) {
+            return null;
+        }
+
+        EducationResource resource = educationResourceRepository.findById(resourceId)
+                .orElseThrow(() -> new NotFoundException("Kaynak bulunamadi: " + resourceId));
+        checkEducationOwnership(resource.getEducation());
+        if (!resource.getEducation().getId().equals(education.getId())) {
+            throw new IllegalArgumentException("Pratik kaynagi ayni egitime ait olmalidir.");
+        }
+        return resource;
     }
 }

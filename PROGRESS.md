@@ -34,6 +34,7 @@
 | FE-0 | Temel & ortak UI altyapısı | ✅ Tamamlandı |
 | FE-1 | Anasayfa + Su takibi (Frontend) | ✅ Tamamlandı |
 | FE-2 | Projeler (Frontend) | ✅ Tamamlandı |
+| FE-3 | Eğitimler (Frontend + backend entegrasyon sertleştirme) | 🟡 Devam ediyor |
 
 İşaretler: ⬜ Başlanmadı · 🟡 Devam ediyor · ✅ Tamamlandı · ⛔ Engellendi
 
@@ -41,6 +42,65 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-24 - Faz FE-3 - Egitim Modulu Backend Entegrasyon ve Modularizasyon
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandi
+- Yapilanlar:
+  - `education_practice` tablosuna nullable `resource_id` icin Flyway migration eklendi; backend entity, DTO ve mapper katmanlari `resourceId` sozlesmesine genisletildi.
+  - `EducationService` practice kaynak dogrulamasini yapacak sekilde guncellendi; resource baska egitime aitse 400 ureten is kuralina baglandi.
+  - `TaskService` education task olusturma/guncelleme oncesinde `EducationService` public servisi uzerinden education sahiplik/varlik kontrolu yapacak sekilde guclendirildi.
+  - `TaskRepository` icindeki cast tabanli null filtre JPQL'i kaldirildi; task listeleme Specification tabanli dinamik filtrelemeye tasindi.
+  - `GlobalExceptionHandler` veri butunlugu ihlallerini 500 yerine 400 donen kontrollu hata olarak yakalayacak sekilde genisletildi.
+  - `frontend/src/api/education.ts` gercek backend education/resource/practice/progress hook ve camelCase tipleriyle genisletildi.
+  - `EducationStudio` icin persisted/mock education ayrimini yapan shared hook ve type-mode secimini yapan `ProgrammingStudio`, `LanguageStudio`, `GeneralKnowledgeStudio` mode katmani eklendi.
+  - Mock education id'leriyle backend task/practice yazma denemeleri engellendi; demo veride task yerel listede korunuyor, gercek DB education kaydinda backend'e yaziliyor.
+  - Backend testleri resourceId ve education task validasyon senaryolariyla guncellendi.
+- Kararlar:
+  - Egitim kategori enum'u bu is kapsaminda `PROGRAMMING | LANGUAGE | OTHER` olarak korundu; custom kategori genislemesi ayri migration/urun karari olarak birakildi.
+  - Backend hedef Java surumu AGENTS.md ile uyumlu olacak sekilde `17` yapildi.
+- Kabul kriteri:
+  - `npm.cmd run build` basariyla tamamlandi.
+  - Backend Maven testleri calistirilamadi: bu makinede `mvn` ve Maven wrapper bulunmuyor.
+- Acik konular / siradaki:
+  - Maven kurulu ortamda `mvn test` calistirilip backend testleri dogrulanmali.
+  - EducationStudio icindeki kalan buyuk JSX tablari sonraki dilimde dosya/link/code/vocabulary/notlar panelleri olarak daha da parcali hale getirilebilir.
+
+### 2026-06-24 - Faz FE-3 - Dosya ve Link Sekmeleri Gelistirmesi (EducationStudio)
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapilanlar:
+  - `EducationStudio.tsx` içindeki "Dosyalar" ve "Linkler" sekmeleri talimatlar doğrultusunda tam genişlikli olarak sıfırdan geliştirildi.
+  - "Dosyalar" sekmesine tekil dosya yükleyici (`input type="file"`) ve HTML5 native sürükle-bırak (Drag and Drop) mekanizmalı sıralanabilir klasör ağacı eklendi.
+  - Dosya uzantılarına göre dinamik ikon atama motoru (PDF -> red FileText, PPT -> orange Presentation, Image -> blue Image) kurgulandı. Tıklanan dosyalar `window.open` ile native yeni sekmede açılacak şekilde bağlandı.
+  - "Linkler" sekmesine hızlı bağlantı ekleme formu yerleştirildi. URL içeriğine göre Lucide ikonlarını (Github, Tv, Youtube, Globe) dinamik seçen regex marka eşleştirme motoru ve hover marka parlamaları (glow effect) eklendi.
+- Kabul kriteri:
+  - `npm run build` hatasız tamamlandı.
+
+### 2026-06-24 - Faz FE-3 - Egitimler Detay Odasi (EducationStudio) Refaktoru
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapilanlar:
+  - `EducationStudio.tsx` tamamen refaktör edildi. Bütünleşik cam tuval prensiplerine göre tek bir pencere içine oturtuldu.
+  - Komuta barı & üst detay alanı (Badge'ler, platform ikonları ve animasyonlu neon Progress Bar) eklendi.
+  - Sol panelde Udemy tarzı dosya ağacı şeklinde dikey kılavuz çizgili müfredat listesi kurgulandı. Toplu müfredat yapıştırma (Batch Importer) modalı ve clipboard asistanı entegre edildi.
+  - Sağ panel IntelliJ stili dosya sekmelerine sahip "Code Studio", Cornell metoduna uyumlu debounced Markdown defteri "Lesson Notes", ve `DateTimePicker` ile takvime veri yazan "Tasks & Milestones" sekmeleriyle donatıldı.
+  - Dil öğrenim odaları için Leitner Box kelime destesi, debounce diary ve hızlı çeviri asistanı kurgulandı.
+- Kabul kriteri:
+  - `npm run build` hatasız tamamlandı.
+
+### 2026-06-24 - Faz FE-3 - Egitimler Grid Hizalamasi (4'lu Grid)
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Devam
+- Yapilanlar:
+  - `EducationCard` ve `AddEducationCard` bileşenlerinin sabit `w-[290px]` genişliği `w-full max-w-[290px]` olarak güncellendi.
+  - `EducationHub` içindeki flexbox `flex flex-wrap gap-7` container yapısı `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-7` responsive CSS Grid yapısına geçirildi. Böylece xl ekranlarda 4 kart yan yana hizalanacak şekilde ayarlandı.
+- Kabul kriteri:
+  - `npm run build` hatasız tamamlandı.
 
 ### 2026-06-24 - Faz FE-3 - Egitimler Rota, Mock State ve Sidebar Agaci
 - Ajan: Codex
@@ -97,6 +157,25 @@
   - `http://127.0.0.1:5173/education/4` 200 OK dondu.
 - Acik konular / siradaki:
   - Google Translate API backend/proxy karari verildiginde `handleTranslate` gercek endpoint'e baglanacak.
+
+### 2026-06-24 - Faz FE-3 - General Purpose Other Tuvali
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Devam
+- Yapilanlar:
+  - `PROGRAMMING` ve `LANGUAGE` disindaki egitim tipleri icin otomatik fallback General Purpose Study Canvas eklendi.
+  - `EducationPractice.notes` Cornell markdown notlari, `EducationPractice.code` ise `CheatsheetItem[]` JSON string olacak sekilde parse/stringify modeli kuruldu.
+  - Sol panelde dokuman indeksi, tamamlandi toggle'i, kurs genel notlari ve AI cheatsheet prompt builder eklendi.
+  - Sag panelde Zengin Ders Notlari ve Hap Bilgiler sekmeleri; 1200ms debounce auto-save; hizli `EDUCATION` gorev motoru; cheatsheet ekleme/silme akislari eklendi.
+  - `EducationType` ozel kategori stringlerini destekleyecek sekilde genisletildi.
+- Kararlar:
+  - OTHER/DESIGN/FINANCE gibi tum bilinmeyen tipler ayni bilgi yonetimi tuvaline duser.
+- Kabul kriteri:
+  - `npm.cmd run build` hatasiz tamamlandi.
+  - `git diff --check` temiz.
+  - `http://127.0.0.1:5173/education/5` 200 OK dondu.
+- Acik konular / siradaki:
+  - Backend `resourceId` DTO destegi eklendiginde dokuman-pratik iliskisi kalici yazma moduna alinacak.
 
 ### 2026-06-24 · Faz FE-2 — Sidebar Akordeon Ağacı ve Terminal Kartlı Proje Hub Entegrasyonu
 - Ajan: Antigravity

@@ -14,5 +14,6 @@ public record EducationPracticeRequest(
 
         String code,
         String notes,
+        Long resourceId,
         Integer orderIndex
 ) {}

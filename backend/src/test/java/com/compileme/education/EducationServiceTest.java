@@ -112,4 +112,95 @@ class EducationServiceTest {
         verify(fileService, times(1)).getMetadata(5L);
         verify(educationResourceRepository, times(1)).save(any(EducationResource.class));
     }
+
+    @Test
+    void addPractice_ShouldAllowGeneralPractice_WhenResourceIdIsNull() {
+        when(educationRepository.findById(10L)).thenReturn(Optional.of(education));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(educationPracticeRepository.findAllByEducationIdOrderByOrderIndexAsc(10L)).thenReturn(List.of());
+
+        EducationPractice saved = EducationPractice.builder()
+                .id(99L)
+                .education(education)
+                .resource(null)
+                .title("General exercise")
+                .completed(false)
+                .code("")
+                .notes("")
+                .orderIndex(0)
+                .build();
+        when(educationPracticeRepository.save(any(EducationPractice.class))).thenReturn(saved);
+
+        EducationPracticeRequest request = new EducationPracticeRequest("General exercise", false, "", "", null, null);
+        EducationPracticeResponse response = educationService.addPractice(10L, request);
+
+        assertNotNull(response);
+        assertNull(response.resourceId());
+        verify(educationResourceRepository, never()).findById(any());
+    }
+
+    @Test
+    void addPractice_ShouldAttachResource_WhenResourceBelongsToEducation() {
+        EducationResource resource = EducationResource.builder()
+                .id(22L)
+                .education(education)
+                .name("PDF")
+                .type(ResourceType.PDF)
+                .urlOrPath("/api/files/22")
+                .orderIndex(0)
+                .build();
+
+        when(educationRepository.findById(10L)).thenReturn(Optional.of(education));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(educationResourceRepository.findById(22L)).thenReturn(Optional.of(resource));
+        when(educationPracticeRepository.findAllByEducationIdOrderByOrderIndexAsc(10L)).thenReturn(List.of());
+
+        EducationPractice saved = EducationPractice.builder()
+                .id(99L)
+                .education(education)
+                .resource(resource)
+                .title("Resource exercise")
+                .completed(false)
+                .code("")
+                .notes("")
+                .orderIndex(0)
+                .build();
+        when(educationPracticeRepository.save(any(EducationPractice.class))).thenReturn(saved);
+
+        EducationPracticeRequest request = new EducationPracticeRequest("Resource exercise", false, "", "", 22L, null);
+        EducationPracticeResponse response = educationService.addPractice(10L, request);
+
+        assertEquals(22L, response.resourceId());
+    }
+
+    @Test
+    void addPractice_ShouldRejectResourceFromAnotherEducation() {
+        Education otherEducation = Education.builder()
+                .userId(userId)
+                .title("Other")
+                .source("Other")
+                .type(EducationType.PROGRAMMING)
+                .progressPercent(0)
+                .status(EducationStatus.ACTIVE)
+                .nextStudyDate(LocalDate.now())
+                .build();
+        otherEducation.setId(11L);
+
+        EducationResource resource = EducationResource.builder()
+                .id(22L)
+                .education(otherEducation)
+                .name("Other PDF")
+                .type(ResourceType.PDF)
+                .urlOrPath("/api/files/22")
+                .orderIndex(0)
+                .build();
+
+        when(educationRepository.findById(10L)).thenReturn(Optional.of(education));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(educationResourceRepository.findById(22L)).thenReturn(Optional.of(resource));
+
+        EducationPracticeRequest request = new EducationPracticeRequest("Resource exercise", false, "", "", 22L, null);
+
+        assertThrows(IllegalArgumentException.class, () -> educationService.addPractice(10L, request));
+    }
 }

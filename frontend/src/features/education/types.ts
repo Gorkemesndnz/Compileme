@@ -1,8 +1,8 @@
-export type EducationType = 'PROGRAMMING' | 'LANGUAGE' | 'OTHER'
+export type EducationType = 'PROGRAMMING' | 'LANGUAGE' | 'OTHER' | (string & {})
 
 export type EducationStatus = 'ACTIVE' | 'PAUSED' | 'DONE'
 
-export type EducationResourceType = 'PDF' | 'LINK'
+export type EducationResourceType = 'PDF' | 'SLIDE' | 'FILE' | 'LINK'
 
 export type LanguageLevel = 'A1_A2' | 'B1' | 'B2' | 'C1_C2'
 
@@ -20,6 +20,12 @@ export interface VocabularyCard {
   type: VocabularyType
   box: 1 | 2 | 3
   nextReview: string
+}
+
+export interface CheatsheetItem {
+  id: number
+  keyConcept: string
+  description: string
 }
 
 export interface Education {

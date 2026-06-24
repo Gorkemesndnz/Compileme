@@ -2,6 +2,7 @@ package com.compileme.task;
 
 import com.compileme.common.exception.NotFoundException;
 import com.compileme.common.security.CurrentUserProvider;
+import com.compileme.education.EducationService;
 import com.compileme.task.dto.MoveRequest;
 import com.compileme.task.dto.TaskRequest;
 import com.compileme.task.dto.TaskResponse;
@@ -9,6 +10,8 @@ import com.compileme.task.dto.TaskUpdateRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -29,6 +32,9 @@ class TaskServiceTest {
 
     @Mock
     private CurrentUserProvider currentUserProvider;
+
+    @Mock
+    private EducationService educationService;
 
     @InjectMocks
     private TaskService taskService;
@@ -52,7 +58,7 @@ class TaskServiceTest {
     @Test
     void list_ShouldReturnTaskResponses() {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
-        when(taskRepository.findTasks(eq(userId), any(), any(), any(), any(), any(), any(), any()))
+        when(taskRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Task>>any(), any(Sort.class)))
                 .thenReturn(List.of(task));
 
         List<TaskResponse> result = taskService.list(LocalDate.now(), null, null, null, null, null, null);
@@ -65,7 +71,7 @@ class TaskServiceTest {
     @Test
     void create_ShouldSaveAndReturnResponse() {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
-        when(taskRepository.findTasks(eq(userId), any(), any(), any(), any(), any(), any(), any()))
+        when(taskRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Task>>any()))
                 .thenReturn(List.of()); // orderIndex calculation max is -1 + 1 = 0
         when(taskRepository.save(any(Task.class))).thenReturn(task);
 
@@ -75,6 +81,27 @@ class TaskServiceTest {
         assertNotNull(response);
         assertEquals("Test Task", response.title());
         verify(taskRepository, times(1)).save(any(Task.class));
+    }
+
+    @Test
+    void create_ShouldValidateEducation_WhenEducationTaskProvided() {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Task>>any()))
+                .thenReturn(List.of());
+        when(taskRepository.save(any(Task.class))).thenReturn(task);
+
+        TaskRequest request = new TaskRequest("Study", "Notes", TaskKind.EDUCATION, LocalDate.now(), null, null, PlanningBucket.DAY, null, null, null, 10L);
+
+        taskService.create(request);
+
+        verify(educationService, times(1)).ensureEducationBelongsToCurrentUser(10L);
+    }
+
+    @Test
+    void create_ShouldRejectEducationTaskWithoutEducationId() {
+        TaskRequest request = new TaskRequest("Study", "Notes", TaskKind.EDUCATION, LocalDate.now(), null, null, PlanningBucket.DAY, null, null, null, null);
+
+        assertThrows(IllegalArgumentException.class, () -> taskService.create(request));
     }
 
     @Test

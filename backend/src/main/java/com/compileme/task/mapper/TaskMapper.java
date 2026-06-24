@@ -62,10 +62,8 @@ public class TaskMapper {
         if (request.planningBucket() != null) task.setPlanningBucket(request.planningBucket());
         if (request.targetPeriod() != null) task.setTargetPeriod(request.targetPeriod());
         
-        // Nullable foreign key fields are allowed to be cleared (null) or set, 
-        // so we check and map accordingly
-        task.setProjectId(request.projectId());
-        task.setPhaseId(request.phaseId());
-        task.setEducationId(request.educationId());
+        if (request.projectId() != null) task.setProjectId(request.projectId());
+        if (request.phaseId() != null) task.setPhaseId(request.phaseId());
+        if (request.educationId() != null) task.setEducationId(request.educationId());
     }
 }
