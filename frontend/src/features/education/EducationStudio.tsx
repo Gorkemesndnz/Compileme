@@ -39,7 +39,8 @@ import {
   Pencil,
   RefreshCw,
   ClipboardList,
-  CheckSquare
+  CheckSquare,
+  Search
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -48,6 +49,7 @@ import { useCreateTask, useTasks, useToggleTaskComplete, useDeleteTask } from '@
 import { cn } from '@/lib/utils'
 import { mockEducationPractices, mockEducationResources, mockEducations } from './mockEducationData'
 import { DateTimePicker } from '@/features/dashboard/DateTimePicker'
+import { ProjectDocument, useProjectDocuments, useProjects } from '@/api/projects'
 import { StudioModePanel } from './studio/modes'
 import { useEducationPersistenceGuard } from './studio/useEducationPersistenceGuard'
 import {
@@ -73,6 +75,19 @@ interface ReinforcementTask {
   completed: boolean
   codeFileName: string
 }
+
+interface ResourceNote {
+  id: string
+  resourceId: number | 'general'
+  title: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+type ReinforcementTarget =
+  | { id: string; type: 'resource'; label: string; resource: EducationResource }
+  | { id: string; type: 'project-document'; label: string; projectName: string; document: ProjectDocument }
 
 const LANGUAGE_LEVELS: Array<{ id: LanguageLevel; label: string; shortLabel: string }> = [
   { id: 'A1_A2', label: 'A1-A2 Başlangıç', shortLabel: 'A1-A2' },
@@ -225,6 +240,7 @@ export const EducationStudio: React.FC = () => {
   const createTaskMutation = useCreateTask()
   const toggleTaskMutation = useToggleTaskComplete()
   const deleteTaskMutation = useDeleteTask()
+  const { data: projects = [] } = useProjects()
 
   // Eğitimi bul
   const education = React.useMemo(
@@ -242,8 +258,10 @@ export const EducationStudio: React.FC = () => {
 
   const [selectedResourceId, setSelectedResourceId] = React.useState<number | null | undefined>(null)
   const [selectedPracticeId, setSelectedPracticeId] = React.useState<number | null>(null)
-  const [activeTab, setActiveTab] = React.useState<'overview' | 'files' | 'links' | 'primary' | 'notes'>('overview')
+  const [activeTab, setActiveTab] = React.useState<'overview' | 'files' | 'links' | 'reinforce' | 'primary' | 'notes'>('overview')
   const [notesDraft, setNotesDraft] = React.useState('')
+  const [noteTitleDraft, setNoteTitleDraft] = React.useState('')
+  const [activeResourceNoteId, setActiveResourceNoteId] = React.useState<string | null>(null)
   const [saveState, setSaveState] = React.useState<'idle' | 'saving' | 'saved'>('idle')
 
   // Modals & Dropdowns
@@ -297,9 +315,14 @@ export const EducationStudio: React.FC = () => {
   // -- NEW TRACKING STATES & PERSISTENCE HELPER FUNCTIONS --
   const [completedResources, setCompletedResources] = React.useState<Record<number, boolean>>({})
   const [resourceNotes, setResourceNotes] = React.useState<Record<number | string, string>>({})
+  const [resourceNoteItems, setResourceNoteItems] = React.useState<Record<string, ResourceNote[]>>({})
   const [activeNotesResourceId, setActiveNotesResourceId] = React.useState<number | null>(null)
-  const [reinforcements, setReinforcements] = React.useState<Record<number, ReinforcementTask[]>>({})
+  const [reinforcements, setReinforcements] = React.useState<Record<string, ReinforcementTask[]>>({})
   const [activeReinforceResourceId, setActiveReinforceResourceId] = React.useState<number | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = React.useState<number | undefined>(undefined)
+  const [reinforcementSearch, setReinforcementSearch] = React.useState('')
+  const [selectedReinforcementTargetId, setSelectedReinforcementTargetId] = React.useState('')
+  const [newReinforcementTitle, setNewReinforcementTitle] = React.useState('')
   const [isFolderCreatorOpen, setIsFolderCreatorOpen] = React.useState(false)
   const [newFolderName, setNewFolderName] = React.useState('')
   const [replacingResourceId, setReplacingResourceId] = React.useState<number | null>(null)
@@ -329,7 +352,12 @@ export const EducationStudio: React.FC = () => {
     localStorage.setItem(`resource-notes-${educationId}`, JSON.stringify(newNotes))
   }
 
-  const saveReinforcements = (newReinforcements: Record<number, ReinforcementTask[]>) => {
+  const saveResourceNoteItems = (newItems: Record<string, ResourceNote[]>) => {
+    setResourceNoteItems(newItems)
+    localStorage.setItem(`resource-note-items-${educationId}`, JSON.stringify(newItems))
+  }
+
+  const saveReinforcements = (newReinforcements: Record<string, ReinforcementTask[]>) => {
     setReinforcements(newReinforcements)
     localStorage.setItem(`reinforcements-${educationId}`, JSON.stringify(newReinforcements))
   }
@@ -391,10 +419,11 @@ export const EducationStudio: React.FC = () => {
 
     // 5. Resource Notes
     const savedNotes = localStorage.getItem(`resource-notes-${educationId}`)
+    let notesMap: Record<number | string, string> = {}
     if (savedNotes) {
-      setResourceNotes(JSON.parse(savedNotes))
+      notesMap = JSON.parse(savedNotes)
+      setResourceNotes(notesMap)
     } else {
-      const notesMap: Record<number | string, string> = {}
       const generalPractice = initialPractices.find(p => p.resource_id === null)
       if (generalPractice) {
         notesMap['general'] = generalPractice.notes || ''
@@ -406,6 +435,27 @@ export const EducationStudio: React.FC = () => {
       })
       setResourceNotes(notesMap)
       localStorage.setItem(`resource-notes-${educationId}`, JSON.stringify(notesMap))
+    }
+
+    const savedNoteItems = localStorage.getItem(`resource-note-items-${educationId}`)
+    if (savedNoteItems) {
+      setResourceNoteItems(JSON.parse(savedNoteItems))
+    } else {
+      const now = new Date().toISOString()
+      const noteItems: Record<string, ResourceNote[]> = {}
+      Object.entries(notesMap).forEach(([resourceKey, content]) => {
+        if (!content?.trim()) return
+        noteItems[resourceKey] = [{
+          id: `note-${resourceKey}-${Date.now()}`,
+          resourceId: resourceKey === 'general' ? 'general' : Number(resourceKey),
+          title: resourceKey === 'general' ? 'Genel Notlar' : 'Döküman Notu',
+          content,
+          createdAt: now,
+          updatedAt: now
+        }]
+      })
+      setResourceNoteItems(noteItems)
+      localStorage.setItem(`resource-note-items-${educationId}`, JSON.stringify(noteItems))
     }
 
     // 6. Reinforcements
@@ -449,36 +499,128 @@ export const EducationStudio: React.FC = () => {
     [practices, selectedPracticeId]
   )
 
+  React.useEffect(() => {
+    if (selectedProjectId === undefined && projects.length > 0) {
+      setSelectedProjectId(projects[0].id)
+    }
+  }, [projects, selectedProjectId])
+
+  const { data: projectDocuments = [] } = useProjectDocuments(selectedProjectId)
+
+  const reinforcementTargets = React.useMemo<ReinforcementTarget[]>(() => {
+    const resourceTargets = resources.map((resource) => ({
+      id: `resource:${resource.id}`,
+      type: 'resource' as const,
+      label: resource.name,
+      resource
+    }))
+
+    const selectedProject = projects.find((project) => project.id === selectedProjectId)
+    const documentTargets = projectDocuments.map((document) => ({
+      id: `project-document:${document.id}`,
+      type: 'project-document' as const,
+      label: document.title,
+      projectName: selectedProject?.name || 'Proje',
+      document
+    }))
+
+    return [...resourceTargets, ...documentTargets]
+  }, [projectDocuments, projects, resources, selectedProjectId])
+
+  React.useEffect(() => {
+    if (!selectedReinforcementTargetId && reinforcementTargets.length > 0) {
+      setSelectedReinforcementTargetId(reinforcementTargets[0].id)
+    }
+  }, [reinforcementTargets, selectedReinforcementTargetId])
+
+  const selectedReinforcementTarget = React.useMemo(
+    () => reinforcementTargets.find((target) => target.id === selectedReinforcementTargetId),
+    [reinforcementTargets, selectedReinforcementTargetId]
+  )
+
+  const activeNoteResourceKey = selectedResourceId === null || selectedResourceId === undefined
+    ? 'general'
+    : String(selectedResourceId)
+
+  const activeResourceNotes = React.useMemo(
+    () => resourceNoteItems[activeNoteResourceKey] || [],
+    [activeNoteResourceKey, resourceNoteItems]
+  )
+  const activeResourceNote = React.useMemo(
+    () => activeResourceNotes.find((note) => note.id === activeResourceNoteId) || activeResourceNotes[0] || null,
+    [activeResourceNoteId, activeResourceNotes]
+  )
+
   // Not taslağını pratik değiştikçe güncelle
   React.useEffect(() => {
+    if (activeResourceNote) {
+      setActiveResourceNoteId(activeResourceNote.id)
+      setNoteTitleDraft(activeResourceNote.title)
+      setNotesDraft(activeResourceNote.content)
+      return
+    }
+    setNoteTitleDraft('')
     setNotesDraft(selectedPractice?.notes ?? '')
-  }, [selectedPracticeId, selectedPractice?.notes])
+  }, [activeNoteResourceKey, activeResourceNote?.id, selectedPracticeId, selectedPractice?.notes])
 
   // Debounced auto-save notlar için
   React.useEffect(() => {
-    if (!selectedPracticeId || !selectedPractice) return
-    if (notesDraft === selectedPractice.notes) return
+    if (!activeResourceNoteId) return
+    if (notesDraft === activeResourceNote?.content && noteTitleDraft === activeResourceNote?.title) return
 
     setSaveState('saving')
     const timer = setTimeout(async () => {
+      const now = new Date().toISOString()
+      const currentNotes = resourceNoteItems[activeNoteResourceKey] || []
+      const updatedNotesForResource = currentNotes.map((note) =>
+        note.id === activeResourceNoteId
+          ? {
+              ...note,
+              title: noteTitleDraft.trim() || 'Başlıksız Not',
+              content: notesDraft,
+              updatedAt: now
+            }
+          : note
+      )
+      const updatedNoteItems = {
+        ...resourceNoteItems,
+        [activeNoteResourceKey]: updatedNotesForResource
+      }
+      saveResourceNoteItems(updatedNoteItems)
+
+      const mergedContent = updatedNotesForResource
+        .map((note) => `# ${note.title}\n\n${note.content}`)
+        .join('\n\n---\n\n')
+      const updatedLegacyNotes = { ...resourceNotes, [activeNoteResourceKey]: mergedContent }
+      saveResourceNotes(updatedLegacyNotes)
+
+      const practiceForNotes = activeNoteResourceKey === 'general'
+        ? practices.find(p => p.resource_id === null)
+        : practices.find(p => p.resource_id === Number(activeNoteResourceKey))
+
+      if (!practiceForNotes) {
+        setSaveState('saved')
+        return
+      }
+
       if (!isPersistedEducation) {
         setPractices((prev) =>
-          prev.map((p) => (p.id === selectedPracticeId ? { ...p, notes: notesDraft } : p))
+          prev.map((p) => (p.id === practiceForNotes.id ? { ...p, notes: mergedContent } : p))
         )
         setSaveState('saved')
         return
       }
       try {
-        await apiClient.patch(`/educations/practices/${selectedPracticeId}`, {
-          title: selectedPractice.title,
-          completed: selectedPractice.completed,
-          code: selectedPractice.code,
-          notes: notesDraft,
-          resourceId: selectedPractice.resource_id,
-          orderIndex: selectedPractice.order_index ?? 0,
+        await apiClient.patch(`/educations/practices/${practiceForNotes.id}`, {
+          title: practiceForNotes.title,
+          completed: practiceForNotes.completed,
+          code: practiceForNotes.code,
+          notes: mergedContent,
+          resourceId: practiceForNotes.resource_id,
+          orderIndex: practiceForNotes.order_index ?? 0,
         })
         setPractices((prev) =>
-          prev.map((p) => (p.id === selectedPracticeId ? { ...p, notes: notesDraft } : p))
+          prev.map((p) => (p.id === practiceForNotes.id ? { ...p, notes: mergedContent } : p))
         )
         setSaveState('saved')
         toast.success('Notlar otomatik kaydedildi.')
@@ -488,7 +630,7 @@ export const EducationStudio: React.FC = () => {
     }, 1200)
 
     return () => clearTimeout(timer)
-  }, [isPersistedEducation, notesDraft, selectedPracticeId])
+  }, [activeNoteResourceKey, activeResourceNote?.content, activeResourceNote?.title, activeResourceNoteId, isPersistedEducation, noteTitleDraft, notesDraft, practices, resourceNoteItems, resourceNotes])
 
   // Genel veri güncelleme handler'ı
   const handleUpdatePractice = React.useCallback(
@@ -683,8 +825,13 @@ export const EducationStudio: React.FC = () => {
       delete updatedNotes[resId]
       saveResourceNotes(updatedNotes)
 
+      const updatedNoteItems = { ...resourceNoteItems }
+      delete updatedNoteItems[String(resId)]
+      saveResourceNoteItems(updatedNoteItems)
+
       const updatedReinforce = { ...reinforcements }
-      delete updatedReinforce[resId]
+      delete updatedReinforce[`resource:${resId}`]
+      delete updatedReinforce[String(resId)]
       saveReinforcements(updatedReinforce)
 
       toast.success('Kaynak silindi.')
@@ -743,6 +890,61 @@ export const EducationStudio: React.FC = () => {
     }
   }
 
+  const handleCreateNoteForResource = (resourceKey: string, title?: string) => {
+    const now = new Date().toISOString()
+    const nextNote: ResourceNote = {
+      id: `note-${resourceKey}-${Date.now()}`,
+      resourceId: resourceKey === 'general' ? 'general' : Number(resourceKey),
+      title: title?.trim() || 'Yeni Not',
+      content: '',
+      createdAt: now,
+      updatedAt: now
+    }
+    const updated = {
+      ...resourceNoteItems,
+      [resourceKey]: [...(resourceNoteItems[resourceKey] || []), nextNote]
+    }
+    saveResourceNoteItems(updated)
+    setActiveResourceNoteId(nextNote.id)
+    setNoteTitleDraft(nextNote.title)
+    setNotesDraft('')
+    setActiveTab('notes')
+    toast.success('Yeni not başlığı oluşturuldu.')
+  }
+
+  const handleDeleteNoteForResource = (resourceKey: string, noteId: string) => {
+    const nextNotes = (resourceNoteItems[resourceKey] || []).filter((note) => note.id !== noteId)
+    const updated = {
+      ...resourceNoteItems,
+      [resourceKey]: nextNotes
+    }
+    saveResourceNoteItems(updated)
+    const fallback = nextNotes[0]
+    setActiveResourceNoteId(fallback?.id || null)
+    setNoteTitleDraft(fallback?.title || '')
+    setNotesDraft(fallback?.content || '')
+    saveResourceNotes({
+      ...resourceNotes,
+      [resourceKey]: nextNotes.map((note) => `# ${note.title}\n${note.content}`).join('\n\n')
+    })
+    toast.success('Not silindi.')
+  }
+
+  const handleOpenNotesForResource = (res: EducationResource) => {
+    const resourceKey = String(res.id)
+    setSelectedResourceId(res.id)
+    const notesForResource = resourceNoteItems[resourceKey] || []
+    if (notesForResource.length > 0) {
+      const firstNote = notesForResource[0]
+      setActiveResourceNoteId(firstNote.id)
+      setNoteTitleDraft(firstNote.title)
+      setNotesDraft(firstNote.content)
+    } else {
+      handleCreateNoteForResource(resourceKey, `${res.name} Notu`)
+    }
+    setActiveTab('notes')
+  }
+
   // Kod Editörüne Yönlendir
   const handleOpenCodeForResource = (res: EducationResource) => {
     let practice = practices.find(p => p.resource_id === res.id)
@@ -774,8 +976,9 @@ export const EducationStudio: React.FC = () => {
   }
 
   // Pekiştirme Görevleri Eylemleri
-  const handleAddReinforceTask = (resId: number, title: string) => {
-    const taskList = reinforcements[resId] || []
+  const handleAddReinforceTask = (targetId: string | number, title: string) => {
+    const targetKey = typeof targetId === 'number' ? `resource:${targetId}` : targetId
+    const taskList = reinforcements[targetKey] || []
     if (taskList.length >= 10) {
       toast.error('En fazla 10 pekiştirme görevi ekleyebilirsiniz.')
       return
@@ -784,32 +987,34 @@ export const EducationStudio: React.FC = () => {
       id: `reinforce-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       title,
       completed: false,
-      codeFileName: `Pekistirme_${resId}_${taskList.length + 1}.java`
+      codeFileName: `Pekistirme_${targetKey.replace(/[^a-zA-Z0-9]/g, '_')}_${taskList.length + 1}.java`
     }
     const updated = {
       ...reinforcements,
-      [resId]: [...taskList, newTask]
+      [targetKey]: [...taskList, newTask]
     }
     saveReinforcements(updated)
     toast.success('Pekiştirme projesi eklendi.')
   }
 
-  const handleToggleReinforceTask = (resId: number, taskId: string) => {
-    const taskList = reinforcements[resId] || []
+  const handleToggleReinforceTask = (targetId: string | number, taskId: string) => {
+    const targetKey = typeof targetId === 'number' ? `resource:${targetId}` : targetId
+    const taskList = reinforcements[targetKey] || []
     const updatedList = taskList.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
     const updated = {
       ...reinforcements,
-      [resId]: updatedList
+      [targetKey]: updatedList
     }
     saveReinforcements(updated)
   }
 
-  const handleDeleteReinforceTask = (resId: number, taskId: string) => {
-    const taskList = reinforcements[resId] || []
+  const handleDeleteReinforceTask = (targetId: string | number, taskId: string) => {
+    const targetKey = typeof targetId === 'number' ? `resource:${targetId}` : targetId
+    const taskList = reinforcements[targetKey] || []
     const updatedList = taskList.filter(t => t.id !== taskId)
     const updated = {
       ...reinforcements,
-      [resId]: updatedList
+      [targetKey]: updatedList
     }
     saveReinforcements(updated)
     toast.success('Pekiştirme projesi silindi.')
@@ -855,6 +1060,61 @@ export const EducationStudio: React.FC = () => {
   }
 
   // Sürükle Bırak: Dosyayı Klasör Başlığına Bırak
+  const getTargetLabel = (target: ReinforcementTarget) => {
+    return target.type === 'resource' ? target.resource.name : `${target.projectName} / ${target.document.title}`
+  }
+
+  const ensurePracticeForTarget = (target: ReinforcementTarget, task?: ReinforcementTask) => {
+    const targetLabel = getTargetLabel(target)
+    let practice = target.type === 'resource'
+      ? practices.find(p => p.resource_id === target.resource.id)
+      : practices.find(p => p.title === `[Pekiştirme] ${targetLabel}`)
+
+    if (!practice) {
+      const newPractice: EducationPractice = {
+        id: Date.now(),
+        education_id: educationId,
+        resource_id: target.type === 'resource' ? target.resource.id : null,
+        title: target.type === 'resource' ? `${target.resource.name} Pratik & Kod` : `[Pekiştirme] ${targetLabel}`,
+        completed: false,
+        code: serializeCodeFiles([{
+          name: task?.codeFileName || 'Main.java',
+          content: `// Bağlı kaynak: ${targetLabel}\n${task ? `// Pekiştirme: ${task.title}\n` : ''}\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("CompileMe bağlı kod alanı");\n    }\n}`
+        }]),
+        notes: target.type === 'resource' ? getNoteForResource(target.resource.id) : target.document.content || '',
+        order_index: practices.length + 1
+      }
+      const updatedPractices = [...practices, newPractice]
+      savePractices(updatedPractices)
+      practice = newPractice
+    } else if (task) {
+      const files = parseCodeFiles(practice.code)
+      if (!files.some(f => f.name === task.codeFileName)) {
+        files.push({
+          name: task.codeFileName,
+          content: `// Bağlı kaynak: ${targetLabel}\n// Pekiştirme: ${task.title}\n\npublic class Pekistirme {\n    public static void main(String[] args) {\n        System.out.println("Pekiştirme projesi çalışıyor");\n    }\n}`
+        })
+        const updatedPractice = { ...practice, code: serializeCodeFiles(files) }
+        savePractices(practices.map(p => p.id === practice?.id ? updatedPractice : p))
+        practice = updatedPractice
+      }
+    }
+
+    return practice
+  }
+
+  const handleWriteCodeForTarget = (target: ReinforcementTarget, task?: ReinforcementTask) => {
+    const practice = ensurePracticeForTarget(target, task)
+    if (!practice) return
+
+    setSelectedPracticeId(practice.id)
+    setSelectedResourceId(target.type === 'resource' ? target.resource.id : null)
+    setActiveFileName(task?.codeFileName || parseCodeFiles(practice.code)[0]?.name || 'Main.java')
+    setActiveTab('primary')
+    setActiveReinforceResourceId(null)
+    toast.success(`Kod editöründe açıldı: ${task?.codeFileName || getTargetLabel(target)}`)
+  }
+
   const handleDropResourceOnFolderHeader = (e: React.DragEvent, targetFolderId: string) => {
     const type = e.dataTransfer.getData('text/plain')
     if (type !== 'resource' || !draggedResourceInfo) return
@@ -1115,7 +1375,7 @@ export const EducationStudio: React.FC = () => {
     const updated = [...folders]
     const [removed] = updated.splice(draggedFolderIndex, 1)
     updated.splice(targetIndex, 0, removed)
-    setFolders(updated)
+    saveFolders(updated)
     setDraggedFolderIndex(null)
     toast.success('Klasör sırası güncellendi.')
   }
@@ -1190,6 +1450,7 @@ export const EducationStudio: React.FC = () => {
     { id: 'overview' as const, label: '📊 Overview' },
     { id: 'files' as const, label: '📂 Dosyalar' },
     { id: 'links' as const, label: '🔗 Linkler' },
+    { id: 'reinforce' as const, label: 'Pekistirmeler' },
     {
       id: 'primary' as const,
       label:
@@ -1681,7 +1942,7 @@ export const EducationStudio: React.FC = () => {
                                 {/* Right: Interactive Actions */}
                                 <div className="flex items-center gap-1 shrink-0 ml-4 opacity-75 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                                   <button
-                                    onClick={() => setActiveNotesResourceId(res.id)}
+                                    onClick={() => handleOpenNotesForResource(res)}
                                     className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
                                     title="Notlar"
                                   >
@@ -1786,7 +2047,7 @@ export const EducationStudio: React.FC = () => {
 
                   <div className="flex items-center gap-1 shrink-0 ml-4 opacity-75 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => setActiveNotesResourceId(res.id)}
+                      onClick={() => handleOpenNotesForResource(res)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
                       title="Notlar"
                     >
@@ -1940,17 +2201,262 @@ export const EducationStudio: React.FC = () => {
     )
   }
 
+  const renderReinforcementsTab = () => {
+    const filteredTargets = reinforcementTargets.filter((target) => {
+      const search = reinforcementSearch.trim().toLowerCase()
+      if (!search) return true
+      return getTargetLabel(target).toLowerCase().includes(search)
+    })
+    const selectedTargetTasks = selectedReinforcementTarget
+      ? reinforcements[selectedReinforcementTarget.id] || []
+      : []
+
+    return (
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 min-h-[430px]">
+        <div className="xl:col-span-4 glass-panel p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/25 backdrop-blur-xl shadow-md flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-cyan-500" />
+            <input
+              value={reinforcementSearch}
+              onChange={(e) => setReinforcementSearch(e.target.value)}
+              placeholder="Kaynak, dokuman veya baslik ara..."
+              className="h-10 flex-1 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/70 dark:bg-black/20 px-3 text-xs font-bold text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
+            />
+          </div>
+
+          <select
+            value={selectedProjectId ?? ''}
+            onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : undefined)}
+            className="h-10 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/70 dark:bg-black/20 px-3 text-xs font-bold text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
+          >
+            <option value="">Proje dokumanlari yok</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            {filteredTargets.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 p-4 text-xs font-bold text-slate-700 dark:text-zinc-350">
+                Eslesen kaynak bulunamadi.
+              </div>
+            ) : (
+              filteredTargets.map((target) => {
+                const active = selectedReinforcementTargetId === target.id
+                const taskCount = (reinforcements[target.id] || []).length
+                return (
+                  <button
+                    key={target.id}
+                    type="button"
+                    onClick={() => setSelectedReinforcementTargetId(target.id)}
+                    className={cn(
+                      'w-full text-left rounded-xl border p-3 transition-all',
+                      active
+                        ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_14px_rgba(6,182,212,0.18)]'
+                        : 'border-slate-200/70 dark:border-zinc-800/70 bg-white/50 dark:bg-zinc-900/30 hover:bg-white/80 dark:hover:bg-zinc-900/50'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-black text-slate-950 dark:text-white">
+                          {getTargetLabel(target)}
+                        </p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-500">
+                          {target.type === 'resource' ? target.resource.type : 'PROJECT DOC'} / {taskCount} pekistirme
+                        </p>
+                      </div>
+                      {target.type === 'resource' ? (
+                        <FileText className="h-4 w-4 shrink-0 text-cyan-500" />
+                      ) : (
+                        <BookOpen className="h-4 w-4 shrink-0 text-violet-500" />
+                      )}
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="xl:col-span-8 glass-panel p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/25 backdrop-blur-xl shadow-md flex flex-col gap-4">
+          {selectedReinforcementTarget ? (
+            <>
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 border-b border-slate-200 dark:border-zinc-800 pb-4">
+                <div>
+                  <h3 className="text-sm font-black text-slate-950 dark:text-white">
+                    {getTargetLabel(selectedReinforcementTarget)}
+                  </h3>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
+                    Dokuman, mufredat basligi veya proje dokumani icin bagli pekistirme calismalari.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleWriteCodeForTarget(selectedReinforcementTarget)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-700 dark:text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.08)] transition-all hover:bg-cyan-500/15"
+                >
+                  <Code2 className="h-3.5 w-3.5" />
+                  <span>Kod Alanini Ac</span>
+                </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  value={newReinforcementTitle}
+                  onChange={(e) => setNewReinforcementTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' || !selectedReinforcementTarget) return
+                    const title = newReinforcementTitle.trim()
+                    if (!title) return
+                    handleAddReinforceTask(selectedReinforcementTarget.id, title)
+                    setNewReinforcementTitle('')
+                  }}
+                  placeholder="Yeni pekistirme basligi yazin..."
+                  className="h-11 flex-1 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/70 dark:bg-black/20 px-3 text-xs font-bold text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!selectedReinforcementTarget) return
+                    const title = newReinforcementTitle.trim()
+                    if (!title) return
+                    handleAddReinforceTask(selectedReinforcementTarget.id, title)
+                    setNewReinforcementTitle('')
+                  }}
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 text-xs font-black text-cyan-700 dark:text-cyan-300 transition-all hover:bg-cyan-500/15"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Ekle</span>
+                </button>
+              </div>
+
+              <div className="space-y-2 overflow-y-auto pr-1">
+                {selectedTargetTasks.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800 p-6 text-center text-xs font-bold text-slate-700 dark:text-zinc-350">
+                    Bu kaynak icin henuz pekistirme yok.
+                  </div>
+                ) : (
+                  selectedTargetTasks.map((task, index) => (
+                    <div
+                      key={task.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/70 dark:border-zinc-800/70 bg-white/55 dark:bg-zinc-900/35 p-3"
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={() => handleToggleReinforceTask(selectedReinforcementTarget.id, task.id)}
+                          className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-zinc-700 bg-transparent"
+                        />
+                        <div className="min-w-0">
+                          <p className={cn('truncate text-xs font-black text-slate-950 dark:text-white', task.completed && 'line-through opacity-50')}>
+                            {index + 1}. {task.title}
+                          </p>
+                          <p className="mt-0.5 truncate text-[10px] font-mono text-slate-500 dark:text-zinc-500">
+                            {task.codeFileName}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleWriteCodeForTarget(selectedReinforcementTarget, task)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] font-black text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/15"
+                        >
+                          <Code2 className="h-3 w-3" />
+                          <span>Kod</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReinforceTask(selectedReinforcementTarget.id, task.id)}
+                          className="rounded-lg p-1.5 text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex h-full min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800 text-xs font-bold text-slate-700 dark:text-zinc-350">
+              Once bir kaynak veya proje dokumani secin.
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const renderCodeTab = () => {
+    const codeContextOptions = reinforcementTargets.flatMap((target) => {
+      const directOption = { value: target.id, label: getTargetLabel(target) }
+      const taskOptions = (reinforcements[target.id] || []).map((task) => ({
+        value: `reinforce|${target.id}|${task.id}`,
+        label: `${getTargetLabel(target)} / ${task.title}`
+      }))
+      return [directOption, ...taskOptions]
+    })
+
+    const handleCodeContextChange = (value: string) => {
+      if (!value) return
+      if (value.startsWith('reinforce|')) {
+        const [, targetId, taskId] = value.split('|')
+        const target = reinforcementTargets.find((item) => item.id === targetId)
+        const task = target ? (reinforcements[target.id] || []).find((item) => item.id === taskId) : undefined
+        if (target && task) handleWriteCodeForTarget(target, task)
+        return
+      }
+
+      const target = reinforcementTargets.find((item) => item.id === value)
+      if (target) handleWriteCodeForTarget(target)
+    }
+
+    const codeContextPanel = (
+      <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/25 backdrop-blur-xl p-3 shadow-md">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-zinc-400">
+              Kod baglami
+            </p>
+            <p className="text-xs font-bold text-slate-950 dark:text-white">
+              Yazdiginiz kodu dosya, dokuman veya pekistirme ile iliskilendirin.
+            </p>
+          </div>
+          <select
+            value={selectedPractice?.resource_id ? `resource:${selectedPractice.resource_id}` : ''}
+            onChange={(e) => handleCodeContextChange(e.target.value)}
+            className="h-10 min-w-full md:min-w-[320px] rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/80 dark:bg-black/30 px-3 text-xs font-bold text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
+          >
+            <option value="">Baglam sec...</option>
+            {codeContextOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    )
+
     if (!selectedPractice) {
       return (
-        <div className="text-center py-12 text-xs text-slate-900 dark:text-zinc-350">
+        <div className="space-y-3">
+          {codeContextPanel}
+          <div className="text-center py-12 text-xs font-bold text-slate-900 dark:text-zinc-350">
           Lütfen önce sol döküman listesinden bir pratik odası seçin.
+          </div>
         </div>
       )
     }
 
     return (
-      <div className="flex flex-col h-full min-h-[400px] w-full rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden bg-slate-950">
+      <div className="space-y-3">
+        {codeContextPanel}
+        <div className="flex flex-col h-full min-h-[400px] w-full rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden bg-slate-950">
         {/* IDE Header */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900 shrink-0">
           <div className="flex items-center gap-1.5 overflow-x-auto">
@@ -2008,6 +2514,7 @@ export const EducationStudio: React.FC = () => {
             placeholder="// Kodlarınızı buraya yazın..."
           />
         </div>
+      </div>
       </div>
     )
   }
@@ -2252,8 +2759,83 @@ export const EducationStudio: React.FC = () => {
           </span>
         </div>
 
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-4 flex-1 min-h-0">
+          <aside className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/55 dark:bg-zinc-950/25 backdrop-blur-xl p-3 shadow-md flex flex-col gap-3 min-h-[260px]">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-zinc-400">
+                  Not basliklari
+                </p>
+                <p className="text-[11px] font-bold text-slate-950 dark:text-white">
+                  {activeResourceNotes.length} not
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCreateNoteForResource(activeNoteResourceKey)}
+                className="inline-flex items-center gap-1 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-black text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/15"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Yeni</span>
+              </button>
+            </div>
+
+            <div className="space-y-2 overflow-y-auto pr-1">
+              {activeResourceNotes.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => handleCreateNoteForResource(activeNoteResourceKey)}
+                  className="w-full rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 p-4 text-left text-xs font-bold text-slate-700 dark:text-zinc-350 hover:border-cyan-500/40 hover:text-cyan-700 dark:hover:text-cyan-300"
+                >
+                  Bu kaynak icin ilk notu ekle.
+                </button>
+              ) : (
+                activeResourceNotes.map((note) => {
+                  const active = activeResourceNoteId === note.id
+                  return (
+                    <div
+                      key={note.id}
+                      className={cn(
+                        'group flex items-center gap-2 rounded-xl border p-2 transition-all',
+                        active
+                          ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_12px_rgba(6,182,212,0.14)]'
+                          : 'border-slate-200/70 dark:border-zinc-800/70 bg-white/50 dark:bg-zinc-900/30 hover:bg-white/80 dark:hover:bg-zinc-900/50'
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setActiveResourceNoteId(note.id)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <p className="truncate text-xs font-black text-slate-950 dark:text-white">
+                          {note.title || 'Basliksiz Not'}
+                        </p>
+                        <p className="mt-0.5 line-clamp-1 text-[10px] font-semibold text-slate-500 dark:text-zinc-500">
+                          {note.content || 'Bos not'}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNoteForResource(activeNoteResourceKey, note.id)}
+                        className="rounded-lg p-1 text-slate-400 opacity-100 transition-all hover:bg-red-500/10 hover:text-red-500 lg:opacity-0 lg:group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </aside>
+
         {/* Text Editor Area */}
-        <div className="flex-1 mt-4 flex flex-col">
+        <div className="flex flex-col min-h-[320px]">
+          <input
+            value={noteTitleDraft}
+            onChange={(e) => setNoteTitleDraft(e.target.value)}
+            placeholder="Not basligi..."
+            className="mb-3 h-11 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/70 dark:bg-black/20 px-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
+          />
           {education.type === 'LANGUAGE' ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
               <div className="lg:col-span-8 flex flex-col">
@@ -2299,6 +2881,7 @@ export const EducationStudio: React.FC = () => {
           )}
         </div>
       </div>
+      </div>
     )
   }
 
@@ -2310,6 +2893,8 @@ export const EducationStudio: React.FC = () => {
         return renderDosyalarTab()
       case 'links':
         return renderLinklerTab()
+      case 'reinforce':
+        return renderReinforcementsTab()
       case 'primary':
         if (education.type === 'PROGRAMMING') {
           return <StudioModePanel type={education.type}>{renderCodeTab()}</StudioModePanel>
@@ -2694,7 +3279,7 @@ export const EducationStudio: React.FC = () => {
         {activeReinforceResourceId !== null && (() => {
           const res = resources.find(r => r.id === activeReinforceResourceId)
           if (!res) return null
-          const taskList = reinforcements[res.id] || []
+          const taskList = reinforcements[`resource:${res.id}`] || reinforcements[res.id] || []
           return (
             <motion.div
               initial={{ opacity: 0 }}
