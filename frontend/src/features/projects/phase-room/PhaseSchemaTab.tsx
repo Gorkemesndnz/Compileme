@@ -98,7 +98,7 @@ export const PhaseSchemaTab: React.FC<PhaseSchemaTabProps> = ({
     if (schemaView !== 'diagram' || schema.tables.length === 0) return
 
     const renderDiagram = async () => {
-      if (!mermaidInitialized || isDark !== (mermaid as any)._config?.theme === 'dark') {
+      if (!mermaidInitialized || ((mermaid as any)._config?.theme === 'dark') !== isDark) {
         initMermaid(isDark)
       }
 

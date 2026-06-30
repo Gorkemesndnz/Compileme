@@ -40,7 +40,7 @@ class EducationControllerTest {
     void getEducations_ShouldReturnJsonArray() throws Exception {
         EducationResponse response = new EducationResponse(
                 10L, 1L, "Rust Language", "Rust Book", null, EducationType.PROGRAMMING,
-                0, EducationStatus.ACTIVE, LocalDate.now(), OffsetDateTime.now(), OffsetDateTime.now()
+                0, EducationStatus.ACTIVE, LocalDate.now(), null, null, null, null, null, OffsetDateTime.now(), OffsetDateTime.now()
         );
         when(educationService.list()).thenReturn(List.of(response));
 
@@ -54,7 +54,7 @@ class EducationControllerTest {
     void updateProgress_ShouldReturnOkStatus() throws Exception {
         EducationResponse response = new EducationResponse(
                 10L, 1L, "Rust Language", "Rust Book", null, EducationType.PROGRAMMING,
-                50, EducationStatus.ACTIVE, LocalDate.now(), OffsetDateTime.now(), OffsetDateTime.now()
+                50, EducationStatus.ACTIVE, LocalDate.now(), null, null, null, null, null, OffsetDateTime.now(), OffsetDateTime.now()
         );
         when(educationService.updateProgress(eq(10L), eq(50))).thenReturn(response);
 

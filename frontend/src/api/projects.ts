@@ -89,6 +89,7 @@ export interface ProjectLink {
   category?: LinkCategory
   notes?: string
   orderIndex: number
+  createdAt?: string
 }
 
 export interface ProjectLinkRequest {
@@ -108,6 +109,7 @@ export interface ProjectDocument {
   content?: string
   contentFormat: DocumentFormat
   orderIndex: number
+  createdAt?: string
 }
 
 export interface ProjectDocumentRequest {

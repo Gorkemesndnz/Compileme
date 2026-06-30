@@ -16,6 +16,11 @@ public record EducationResponse(
         Integer progressPercent,
         EducationStatus status,
         LocalDate nextStudyDate,
+        Integer durationHours,
+        String description,
+        String customCategory,
+        LocalDate startDate,
+        LocalDate endDate,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/ScrollArea'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Transition } from 'framer-motion'
 import {
   LayoutDashboard,
   Folder,
@@ -20,12 +20,16 @@ import {
   ChevronRight,
   Plus,
   Sun,
-  Moon
+  Moon,
+  Globe,
+  Monitor
 } from 'lucide-react'
 import { useUiStore } from '@/store/useUiStore'
+import { useTranslation } from '@/store/translations'
 import { ProjectStatus, useProjects, useProjectPhases, useProjectDocuments, Project } from '@/api/projects'
 import { Avatar, AvatarFallback } from '@/components/ui/Avatar'
-import { groupEducationsByType, mockEducations } from '@/features/education/mockEducationData'
+import { useEducations } from '@/api/education'
+import { groupEducationsByType } from '@/features/education/mockEducationData'
 import { EducationType } from '@/features/education/types'
 import {
   DropdownMenu,
@@ -73,11 +77,10 @@ const variants = {
   },
 }
 
-const transitionProps = {
+const transitionProps: Transition = {
   type: "tween",
   ease: "easeOut",
   duration: 0.2,
-  staggerChildren: 0.1,
 }
 
 const staggerVariants = {
@@ -314,27 +317,55 @@ const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
 }
 
 export const Sidebar: React.FC = () => {
-  const [isCollapsed, setIsCollapsed] = useState(true)
+  const {
+    theme,
+    setTheme,
+    language,
+    setLanguage,
+    activeProjectId,
+    setActiveProjectId,
+    setProjectOnboardingOpen,
+    sidebarOpen,
+    setSidebarOpen,
+  } = useUiStore()
+
+  const { t } = useTranslation()
+
+  const isCollapsed = !sidebarOpen
+  const setIsCollapsed = (collapsed: boolean) => setSidebarOpen(!collapsed)
+
   const [isProjectListOpen, setIsProjectListOpen] = useState(false)
   const [isEducationTreeOpen, setIsEducationTreeOpen] = useState(false)
   const [expandedEducationCategories, setExpandedEducationCategories] = useState<Record<EducationType, boolean>>({
     PROGRAMMING: true,
     LANGUAGE: false,
+    FRONTEND: false,
+    MOBILE: false,
     OTHER: false,
   })
+  const [isAnySidebarMenuOpen, setIsAnySidebarMenuOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const pathname = location.pathname
   const searchParams = new URLSearchParams(location.search)
-  const {
-    theme,
-    toggleTheme,
-    activeProjectId,
-    setActiveProjectId,
-    setProjectOnboardingOpen,
-  } = useUiStore()
+
   const { data: projects = [] } = useProjects()
-  const educationGroups = React.useMemo(() => groupEducationsByType(mockEducations), [])
+  const { data: rawEducations = [] } = useEducations()
+
+  const educations = React.useMemo(() => {
+    return rawEducations.map((edu: any) => ({
+      id: edu.id,
+      title: edu.title,
+      source: edu.source || '',
+      description: edu.source || '',
+      type: edu.type,
+      progress_percent: edu.progressPercent ?? 0,
+      status: edu.status || 'ACTIVE',
+      next_study_date: edu.nextStudyDate || null,
+    }))
+  }, [rawEducations])
+
+  const educationGroups = React.useMemo(() => groupEducationsByType(educations), [educations])
   const activeEducationId = React.useMemo(() => {
     const match = pathname.match(/^\/education\/(\d+)/)
     return match ? Number(match[1]) : undefined
@@ -346,11 +377,11 @@ export const Sidebar: React.FC = () => {
     }
 
     setIsEducationTreeOpen(true)
-    const activeEducation = mockEducations.find((education) => education.id === activeEducationId)
+    const activeEducation = educations.find((education) => education.id === activeEducationId)
     if (activeEducation) {
       setExpandedEducationCategories((prev) => ({ ...prev, [activeEducation.type]: true }))
     }
-  }, [activeEducationId, pathname])
+  }, [activeEducationId, pathname, educations])
 
   const openProject = (projectId: number) => {
     setActiveProjectId(projectId)
@@ -375,12 +406,12 @@ export const Sidebar: React.FC = () => {
   }
 
   const navItems = [
-    { to: '/', label: 'Anasayfa', icon: LayoutDashboard },
-    { to: '/projects', label: 'Projeler', icon: Folder },
-    { to: '/education', label: 'Eğitimler', icon: GraduationCap },
-    { to: '/ideas', label: 'Fikir Havuzu', icon: Lightbulb },
-    { to: '/calendar', label: 'Takvim', icon: Calendar },
-    { to: '/focus', label: 'Odak Modu', icon: Timer },
+    { to: '/', label: t('sidebar_dashboard'), icon: LayoutDashboard },
+    { to: '/projects', label: t('sidebar_projects'), icon: Folder },
+    { to: '/education', label: t('sidebar_education'), icon: GraduationCap },
+    { to: '/ideas', label: t('sidebar_ideas'), icon: Lightbulb },
+    { to: '/calendar', label: t('sidebar_calendar'), icon: Calendar },
+    { to: '/focus', label: t('sidebar_focus'), icon: Timer },
   ]
 
   return (
@@ -393,7 +424,11 @@ export const Sidebar: React.FC = () => {
       variants={sidebarVariants}
       transition={transitionProps}
       onMouseEnter={() => setIsCollapsed(false)}
-      onMouseLeave={() => setIsCollapsed(true)}
+      onMouseLeave={() => {
+        if (!isAnySidebarMenuOpen) {
+          setIsCollapsed(true)
+        }
+      }}
     >
       <motion.div
         className="relative z-40 flex h-full shrink-0 flex-col text-slate-700 transition-all dark:text-muted-foreground"
@@ -405,7 +440,7 @@ export const Sidebar: React.FC = () => {
             {/* Top Logo / Workspace Area */}
             <div className="flex h-[54px] w-full shrink-0 border-b border-border p-2">
               <div className="flex w-full items-center">
-                <DropdownMenu modal={false}>
+                <DropdownMenu modal={false} onOpenChange={setIsAnySidebarMenuOpen}>
                   <DropdownMenuTrigger className="w-full focus:outline-none" asChild>
                     <button className="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/40 text-left transition-colors cursor-pointer">
                       <Avatar className="rounded size-5 bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xs">
@@ -668,21 +703,65 @@ export const Sidebar: React.FC = () => {
 
               {/* Bottom Footer - Settings & Account */}
               <div className="flex flex-col p-2 gap-1 border-t border-border bg-muted/10">
-                <button
-                  onClick={toggleTheme}
-                  className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground"
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="h-4 w-4 shrink-0 text-amber-400" />
-                  ) : (
-                    <Moon className="h-4 w-4 shrink-0 text-slate-700 dark:text-slate-500" />
-                  )}
-                  {!isCollapsed && (
-                    <motion.span variants={variants} className="ml-3.5 text-sm">
-                      {theme === 'dark' ? 'Açık Tema' : 'Karanlık Tema'}
-                    </motion.span>
-                  )}
-                </button>
+                {/* Theme Selector Dropdown */}
+                <DropdownMenu modal={false} onOpenChange={setIsAnySidebarMenuOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground cursor-pointer select-none">
+                      {theme === 'dark' ? (
+                        <Moon className="h-4 w-4 shrink-0 text-cyan-400" />
+                      ) : theme === 'light' ? (
+                        <Sun className="h-4 w-4 shrink-0 text-amber-400" />
+                      ) : (
+                        <Monitor className="h-4 w-4 shrink-0 text-slate-400" />
+                      )}
+                      {!isCollapsed && (
+                        <motion.span variants={variants} className="ml-3.5 text-sm truncate">
+                          {theme === 'dark'
+                            ? t('sidebar_theme_dark')
+                            : theme === 'light'
+                            ? t('sidebar_theme_light')
+                            : t('sidebar_theme_system')}
+                        </motion.span>
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" align="start" sideOffset={10} className="w-48 bg-card border border-border">
+                    <DropdownMenuItem onClick={() => setTheme('light')} className="flex items-center gap-2 font-semibold">
+                      <Sun className="h-4 w-4 text-amber-400" /> {t('sidebar_theme_light')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme('dark')} className="flex items-center gap-2 font-semibold">
+                      <Moon className="h-4 w-4 text-cyan-400" /> {t('sidebar_theme_dark')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme('system')} className="flex items-center gap-2 font-semibold">
+                      <Monitor className="h-4 w-4 text-slate-400" /> {t('sidebar_theme_system')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Language Selector Dropdown */}
+                <DropdownMenu modal={false} onOpenChange={setIsAnySidebarMenuOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground cursor-pointer select-none">
+                      <Globe className="h-4 w-4 shrink-0 text-slate-500 dark:text-zinc-400" />
+                      {!isCollapsed && (
+                        <motion.span variants={variants} className="ml-3.5 text-sm truncate">
+                          {language === 'tr' ? 'Türkçe' : language === 'en' ? 'English' : 'Deutsch'}
+                        </motion.span>
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" align="start" sideOffset={10} className="w-48 bg-card border border-border">
+                    <DropdownMenuItem onClick={() => setLanguage('tr')} className="flex items-center gap-2 font-semibold">
+                      <span>🇹🇷 Türkçe</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setLanguage('en')} className="flex items-center gap-2 font-semibold">
+                      <span>🇺🇸 English</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setLanguage('de')} className="flex items-center gap-2 font-semibold">
+                      <span>🇩🇪 Deutsch</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 <Link
                   to="/settings"
@@ -691,13 +770,13 @@ export const Sidebar: React.FC = () => {
                   <Settings className="h-4 w-4 shrink-0" />
                   {!isCollapsed && (
                     <motion.span variants={variants} className="ml-3.5 text-sm">
-                      Ayarlar
+                      {t('sidebar_settings')}
                     </motion.span>
                   )}
                 </Link>
                 
                 <div>
-                  <DropdownMenu modal={false}>
+                  <DropdownMenu modal={false} onOpenChange={setIsAnySidebarMenuOpen}>
                     <DropdownMenuTrigger className="w-full focus:outline-none" asChild>
                       <button className="flex h-9 w-full flex-row items-center gap-2 rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground">
                         <Avatar className="size-5 bg-secondary border border-border">
@@ -730,10 +809,10 @@ export const Sidebar: React.FC = () => {
                       </div>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="flex items-center gap-2">
-                        <UserCircle className="h-4 w-4" /> Profilim
+                        <UserCircle className="h-4 w-4" /> {t('sidebar_profile')}
                       </DropdownMenuItem>
                       <DropdownMenuItem className="flex items-center gap-2 text-destructive hover:text-destructive">
-                        <LogOut className="h-4 w-4" /> Çıkış Yap
+                        <LogOut className="h-4 w-4" /> {t('sidebar_logout')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

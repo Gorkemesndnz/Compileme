@@ -4,6 +4,7 @@ import { Project } from '../../api/projects'
 import { Education } from '../../api/education'
 import { IdeaResponse } from '../../api/ideas'
 import { Task } from '../../api/tasks'
+import { useTranslation } from '../../store/translations'
 
 interface TerminalMetricsProps {
   completedTodayCount: number
@@ -84,6 +85,8 @@ export const TerminalMetrics: React.FC<TerminalMetricsProps> = ({
   educations,
   ideas,
 }) => {
+  const { t } = useTranslation()
+
   // Name alignment helper
   const padName = (name: string, len = 10) => {
     if (name.length >= len) {
@@ -172,7 +175,7 @@ export const TerminalMetrics: React.FC<TerminalMetricsProps> = ({
             ))
           ) : (
             <div className="text-zinc-400 dark:text-zinc-600/70">
-              No active projects.
+              {t('db_no_active_projects')}
             </div>
           )}
         </div>
@@ -188,10 +191,10 @@ export const TerminalMetrics: React.FC<TerminalMetricsProps> = ({
       {/* Card 4: ideas.conf */}
       <TerminalWindow fileName="ideas.conf" command="ideas --summary">
         <div className="space-y-1">
-          <div>{padLabel('Total Fikir', 12)}: {totalIdeas}</div>
-          <div>{padLabel('[Planlama]', 12)}: {planlamaCount}</div>
-          <div>{padLabel('[Proje]', 12)}: {projeCount}</div>
-          <div>{padLabel('[Arşiv]', 12)}: {arsivCount}</div>
+          <div>{padLabel(t('db_total_ideas_label'), 12)}: {totalIdeas}</div>
+          <div>{padLabel(t('db_planning_label'), 12)}: {planlamaCount}</div>
+          <div>{padLabel(t('db_project_label'), 12)}: {projeCount}</div>
+          <div>{padLabel(t('db_archive_label'), 12)}: {arsivCount}</div>
         </div>
       </TerminalWindow>
     </div>

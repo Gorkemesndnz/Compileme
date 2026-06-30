@@ -18,6 +18,11 @@ public class EducationMapper {
                 entity.getProgressPercent(),
                 entity.getStatus(),
                 entity.getNextStudyDate(),
+                entity.getDurationHours(),
+                entity.getDescription(),
+                entity.getCustomCategory(),
+                entity.getStartDate(),
+                entity.getEndDate(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
@@ -35,6 +40,11 @@ public class EducationMapper {
                 .progressPercent(0) // Yeni eğitimler 0 ilerlemeyle başlar
                 .status(status)
                 .nextStudyDate(request.nextStudyDate())
+                .durationHours(request.durationHours())
+                .description(request.description())
+                .customCategory(request.customCategory())
+                .startDate(request.startDate())
+                .endDate(request.endDate())
                 .build();
     }
 
@@ -46,6 +56,11 @@ public class EducationMapper {
         if (request.type() != null) entity.setType(request.type());
         if (request.status() != null) entity.setStatus(request.status());
         if (request.nextStudyDate() != null) entity.setNextStudyDate(request.nextStudyDate());
+        if (request.durationHours() != null) entity.setDurationHours(request.durationHours());
+        if (request.description() != null) entity.setDescription(request.description());
+        if (request.customCategory() != null) entity.setCustomCategory(request.customCategory());
+        if (request.startDate() != null) entity.setStartDate(request.startDate());
+        if (request.endDate() != null) entity.setEndDate(request.endDate());
     }
 
     // EducationResource

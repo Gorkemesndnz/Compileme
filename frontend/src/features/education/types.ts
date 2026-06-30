@@ -1,4 +1,6 @@
-export type EducationType = 'PROGRAMMING' | 'LANGUAGE' | 'OTHER' | (string & {})
+import { ProjectDocument } from '@/api/projects'
+
+export type EducationType = 'PROGRAMMING' | 'LANGUAGE' | 'FRONTEND' | 'MOBILE' | 'OTHER'
 
 export type EducationStatus = 'ACTIVE' | 'PAUSED' | 'DONE'
 
@@ -37,6 +39,9 @@ export interface Education {
   progress_percent: number
   status: EducationStatus
   next_study_date: string | null
+  custom_category?: string | null
+  start_date?: string | null
+  end_date?: string | null
 }
 
 export interface EducationResource {
@@ -64,3 +69,29 @@ export interface EducationCategoryGroup {
   label: string
   educations: Education[]
 }
+
+export interface FolderData {
+  id: string
+  name: string
+  resourceIds: number[]
+}
+
+export interface ReinforcementTask {
+  id: string
+  title: string
+  completed: boolean
+  codeFileName: string
+}
+
+export interface ResourceNote {
+  id: string
+  resourceId: number | 'general'
+  title: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type ReinforcementTarget =
+  | { id: string; type: 'resource'; label: string; resource: EducationResource }
+  | { id: string; type: 'project-document'; label: string; projectName: string; document: ProjectDocument }

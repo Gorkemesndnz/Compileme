@@ -5,7 +5,7 @@ import { toast, Toaster } from 'sonner'
 import { AppLayout } from './layout/AppLayout'
 import { WelcomeSplash } from './components/WelcomeSplash'
 import { LivingVineBackground } from './components/LivingVineBackground'
-import { useUiStore } from './store/useUiStore'
+import { useUiStore, applyTheme } from './store/useUiStore'
 
 // Feature pages
 import { DashboardPage } from './features/dashboard/DashboardPage'
@@ -47,10 +47,19 @@ export const App: React.FC = () => {
   const { theme } = useUiStore()
 
   React.useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
+    applyTheme(theme)
+
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      const listener = (e: MediaQueryListEvent) => {
+        if (e.matches) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      }
+      mediaQuery.addEventListener('change', listener)
+      return () => mediaQuery.removeEventListener('change', listener)
     }
   }, [theme])
 
@@ -73,7 +82,7 @@ export const App: React.FC = () => {
         </Routes>
       </BrowserRouter>
       
-      <Toaster richColors position="top-right" theme="dark" closeButton />
+      <Toaster richColors position="top-right" theme={theme} closeButton />
       {!splashComplete && <WelcomeSplash onComplete={() => setSplashComplete(true)} />}
     </QueryClientProvider>
   )

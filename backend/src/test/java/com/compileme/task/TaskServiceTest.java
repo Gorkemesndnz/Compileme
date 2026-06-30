@@ -10,7 +10,6 @@ import com.compileme.task.dto.TaskUpdateRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -58,7 +57,7 @@ class TaskServiceTest {
     @Test
     void list_ShouldReturnTaskResponses() {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
-        when(taskRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Task>>any(), any(Sort.class)))
+        when(taskRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Task>>any()))
                 .thenReturn(List.of(task));
 
         List<TaskResponse> result = taskService.list(LocalDate.now(), null, null, null, null, null, null);

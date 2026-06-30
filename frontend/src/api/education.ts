@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from './client'
 import { BaseEntity } from './types'
 
-export type EducationType = 'PROGRAMMING' | 'LANGUAGE' | 'OTHER'
+export type EducationType = 'PROGRAMMING' | 'LANGUAGE' | 'FRONTEND' | 'MOBILE' | 'OTHER'
 export type EducationStatus = 'ACTIVE' | 'PAUSED' | 'DONE'
 export type EducationResourceType = 'PDF' | 'SLIDE' | 'FILE' | 'LINK'
 
@@ -15,6 +15,11 @@ export interface Education extends BaseEntity {
   progressPercent: number
   status: EducationStatus
   nextStudyDate?: string | null
+  durationHours?: number | null
+  description?: string | null
+  customCategory?: string | null
+  startDate?: string | null
+  endDate?: string | null
 }
 
 export interface EducationRequest {
@@ -24,6 +29,11 @@ export interface EducationRequest {
   type: EducationType
   status?: EducationStatus
   nextStudyDate?: string | null
+  durationHours?: number | null
+  description?: string | null
+  customCategory?: string | null
+  startDate?: string | null
+  endDate?: string | null
 }
 
 export interface ProgressUpdateRequest {
@@ -183,6 +193,45 @@ export const useUpdateEducationProgress = () => {
     onSuccess: (education) => {
       queryClient.invalidateQueries({ queryKey: ['educations'] })
       queryClient.invalidateQueries({ queryKey: ['educations', education.id] })
+    }
+  })
+}
+
+export const useCreateEducation = () => {
+  const queryClient = useQueryClient()
+  return useMutation<Education, Error, EducationRequest>({
+    mutationFn: async (request) => {
+      const response = await apiClient.post<Education>('/educations', request)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['educations'] })
+    }
+  })
+}
+
+export const useUpdateEducation = () => {
+  const queryClient = useQueryClient()
+  return useMutation<Education, Error, { id: number; request: EducationRequest }>({
+    mutationFn: async ({ id, request }) => {
+      const response = await apiClient.patch<Education>(`/educations/${id}`, request)
+      return response.data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['educations'] })
+      queryClient.invalidateQueries({ queryKey: ['educations', data.id] })
+    }
+  })
+}
+
+export const useDeleteEducation = () => {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, number>({
+    mutationFn: async (id) => {
+      await apiClient.delete(`/educations/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['educations'] })
     }
   })
 }

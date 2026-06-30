@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
+import { useTranslation } from '@/store/translations'
 
 interface GreetingWithWeatherProps {
   temp?: number
@@ -13,19 +14,33 @@ export const GreetingWithWeather: React.FC<GreetingWithWeatherProps> = ({
   condition = 'Clear',
   className,
 }) => {
+  const { language } = useTranslation()
   const currentHour = new Date().getHours()
   const isDay = currentHour >= 6 && currentHour < 20
 
   // Zamana göre karşılama metni
   const getGreetingText = () => {
-    if (currentHour >= 5 && currentHour < 12) return 'Günaydın'
-    if (currentHour >= 12 && currentHour < 18) return 'İyi Günler'
-    if (currentHour >= 18 && currentHour < 22) return 'İyi Akşamlar'
-    return 'İyi Geceler'
+    if (language === 'en') {
+      if (currentHour >= 5 && currentHour < 12) return 'Good Morning'
+      if (currentHour >= 12 && currentHour < 18) return 'Good Day'
+      if (currentHour >= 18 && currentHour < 22) return 'Good Evening'
+      return 'Good Night'
+    } else if (language === 'de') {
+      if (currentHour >= 5 && currentHour < 12) return 'Guten Morgen'
+      if (currentHour >= 12 && currentHour < 18) return 'Guten Tag'
+      if (currentHour >= 18 && currentHour < 22) return 'Guten Abend'
+      return 'Gute Nacht'
+    } else {
+      if (currentHour >= 5 && currentHour < 12) return 'Günaydın'
+      if (currentHour >= 12 && currentHour < 18) return 'İyi Günler'
+      if (currentHour >= 18 && currentHour < 22) return 'İyi Akşamlar'
+      return 'İyi Geceler'
+    }
   }
 
-  // Türkçe tarih formatı
-  const formattedDate = new Date().toLocaleDateString('tr-TR', {
+  // Tarih formatı
+  const locale = language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : 'tr-TR'
+  const formattedDate = new Date().toLocaleDateString(locale, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

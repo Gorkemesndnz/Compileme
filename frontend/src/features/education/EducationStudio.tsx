@@ -45,6 +45,19 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
+import {
+  useCreateEducationPractice,
+  useCreateEducationResource,
+  useDeleteEducationResource,
+  useEducation,
+  useEducationPractices,
+  useEducationResources,
+  type Education as ApiEducation,
+  type EducationPractice as ApiEducationPractice,
+  type EducationResource as ApiEducationResource,
+  type EducationResourceType as ApiEducationResourceType,
+} from '@/api/education'
+import { useUploadFile } from '@/api/files'
 import { useCreateTask, useTasks, useToggleTaskComplete, useDeleteTask } from '@/api/tasks'
 import { cn } from '@/lib/utils'
 import { mockEducationPractices, mockEducationResources, mockEducations } from './mockEducationData'
@@ -61,172 +74,91 @@ import {
   LanguageLevel,
   VocabularyCard,
   VocabularyType,
+  FolderData,
+  ReinforcementTask,
+  ResourceNote,
+  ReinforcementTarget
 } from './types'
 
-interface FolderData {
-  id: string
-  name: string
-  resourceIds: number[]
+import { LeftFileTree } from './components/LeftFileTree'
+import { DeleteConfirmationModal } from './components/DeleteConfirmationModal'
+import { OverviewTab } from './components/OverviewTab'
+import { DosyalarTab } from './components/DosyalarTab'
+import { LinklerTab } from './components/LinklerTab'
+import { ReinforcementsTab } from './components/ReinforcementsTab'
+import { CodeTab } from './components/CodeTab'
+import { VocabularyTab } from './components/VocabularyTab'
+import { CheatsheetTab } from './components/CheatsheetTab'
+import { NotlarTab } from './components/NotlarTab'
+import {
+  parseCodeFiles,
+  serializeCodeFiles,
+  parseVocabulary,
+  serializeVocabulary,
+  parseCheatsheet,
+  serializeCheatsheet,
+  getPlatformIcon,
+  getBrandIcon,
+  getFileIcon,
+  getTargetLabel,
+  buildLineNumbers
+} from './components/studioHelpers'
+
+const toLocalEducation = (education: ApiEducation): Education => ({
+  id: education.id,
+  title: education.title,
+  source: education.source || '',
+  description: education.description || '',
+  type: education.type,
+  progress_percent: education.progressPercent ?? 0,
+  status: education.status || 'ACTIVE',
+  next_study_date: education.nextStudyDate || null,
+  custom_category: education.customCategory || null,
+  start_date: education.startDate || null,
+  end_date: education.endDate || null,
+})
+
+const toLocalResource = (resource: ApiEducationResource): EducationResource => ({
+  id: resource.id,
+  education_id: resource.educationId,
+  name: resource.name,
+  type: resource.type,
+  url_or_path: resource.urlOrPath,
+})
+
+const toLocalPractice = (practice: ApiEducationPractice): EducationPractice => ({
+  id: practice.id,
+  education_id: practice.educationId,
+  resource_id: practice.resourceId,
+  title: practice.title,
+  completed: practice.completed,
+  code: practice.code || '',
+  notes: practice.notes || '',
+  order_index: practice.orderIndex,
+})
+
+const getResourceTypeForFileName = (fileName: string): ApiEducationResourceType => {
+  const normalized = fileName.toLowerCase()
+  if (normalized.endsWith('.pdf')) return 'PDF'
+  if (normalized.endsWith('.ppt') || normalized.endsWith('.pptx')) return 'SLIDE'
+  return 'FILE'
 }
 
-interface ReinforcementTask {
-  id: string
-  title: string
-  completed: boolean
-  codeFileName: string
-}
+const isCurriculumLabelSeparator = (char: string) => char === '-' || char === ':' || char === '|'
 
-interface ResourceNote {
-  id: string
-  resourceId: number | 'general'
-  title: string
-  content: string
-  createdAt: string
-  updatedAt: string
-}
+const trimCurriculumLabel = (value: string) => {
+  let start = 0
+  let end = value.length
 
-type ReinforcementTarget =
-  | { id: string; type: 'resource'; label: string; resource: EducationResource }
-  | { id: string; type: 'project-document'; label: string; projectName: string; document: ProjectDocument }
-
-const LANGUAGE_LEVELS: Array<{ id: LanguageLevel; label: string; shortLabel: string }> = [
-  { id: 'A1_A2', label: 'A1-A2 Başlangıç', shortLabel: 'A1-A2' },
-  { id: 'B1', label: 'B1 Orta Seviye', shortLabel: 'B1' },
-  { id: 'B2', label: 'B2 İleri Orta', shortLabel: 'B2' },
-  { id: 'C1_C2', label: 'C1-C2 İleri', shortLabel: 'C1-C2' },
-]
-
-const VOCABULARY_TYPES: VocabularyType[] = ['Noun', 'Verb', 'Adj']
-
-const defaultCodeFiles: CodeFile[] = [
-  {
-    name: 'Main.java',
-    content: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("CompileMe practice");\n    }\n}',
-  },
-]
-
-const parseCodeFiles = (rawCode: string): CodeFile[] => {
-  if (!rawCode || !rawCode.trim()) {
-    return defaultCodeFiles
+  while (start < end && isCurriculumLabelSeparator(value[start])) {
+    start += 1
   }
-  try {
-    const parsed = JSON.parse(rawCode)
-    if (Array.isArray(parsed)) {
-      return parsed as CodeFile[]
-    }
-  } catch {
-    return [{ name: 'Main.java', content: rawCode }]
-  }
-  return [{ name: 'Main.java', content: rawCode }]
-}
 
-const serializeCodeFiles = (files: CodeFile[]): string => {
-  try {
-    return JSON.stringify(files)
-  } catch {
-    return '[]'
+  while (end > start && isCurriculumLabelSeparator(value[end - 1])) {
+    end -= 1
   }
-}
 
-const parseVocabulary = (rawCode: string): VocabularyCard[] => {
-  if (!rawCode || !rawCode.trim()) return []
-  try {
-    const parsed = JSON.parse(rawCode)
-    if (Array.isArray(parsed)) return parsed as VocabularyCard[]
-  } catch {
-    return []
-  }
-  return []
-}
-
-const serializeVocabulary = (cards: VocabularyCard[]): string => {
-  try {
-    return JSON.stringify(cards)
-  } catch {
-    return '[]'
-  }
-}
-
-const parseCheatsheet = (rawCode: string): CheatsheetItem[] => {
-  if (!rawCode || !rawCode.trim()) return []
-  try {
-    const parsed = JSON.parse(rawCode)
-    if (Array.isArray(parsed)) return parsed as CheatsheetItem[]
-  } catch {
-    return []
-  }
-  return []
-}
-
-const serializeCheatsheet = (items: CheatsheetItem[]): string => {
-  try {
-    return JSON.stringify(items)
-  } catch {
-    return '[]'
-  }
-}
-
-const getPlatformIcon = (source: string) => {
-  const normalized = source.toLowerCase()
-  if (normalized.includes('youtube')) return <Youtube className="h-4 w-4 text-red-500" />
-  if (normalized.includes('udemy')) return <Tv className="h-4 w-4 text-purple-500" />
-  return <GraduationCap className="h-4 w-4 text-cyan-500" />
-}
-
-const getBrandIcon = (url: string) => {
-  const lower = url.toLowerCase()
-  if (lower.includes('github')) return <Github className="h-5 w-5 text-slate-900 dark:text-white" />
-  if (lower.includes('udemy')) return <MonitorPlay className="h-5 w-5 text-purple-500" />
-  if (lower.includes('youtube')) return <Youtube className="h-5 w-5 text-red-500" />
-  return <Globe className="h-5 w-5 text-cyan-500" />
-}
-
-const getGlowColor = (url: string) => {
-  const lower = url.toLowerCase()
-  if (lower.includes('github')) return 'hover:shadow-[0_0_24px_rgba(255,255,255,0.15)] hover:border-slate-400'
-  if (lower.includes('udemy')) return 'hover:shadow-[0_0_24px_rgba(168,85,247,0.3)] hover:border-purple-500/50'
-  if (lower.includes('youtube')) return 'hover:shadow-[0_0_24px_rgba(239,68,68,0.3)] hover:border-red-500/50'
-  return 'hover:shadow-[0_0_24px_rgba(6,182,212,0.3)] hover:border-cyan-500/50'
-}
-
-const getFileIcon = (fileName: string, fileType: string) => {
-  const name = fileName.toLowerCase()
-  if (fileType === 'PDF' || name.endsWith('.pdf')) {
-    return <FileText className="h-4 w-4 text-red-500 shrink-0" />
-  }
-  if (fileType === 'LINK' || name.startsWith('http')) {
-    return <LinkIcon className="h-4 w-4 text-sky-500 shrink-0" />
-  }
-  if (fileType === 'VIDEO' || name.includes('video') || name.includes('youtube')) {
-    return <Play className="h-4 w-4 text-purple-500 shrink-0" />
-  }
-  if (name.endsWith('.ppt') || name.endsWith('.pptx') || name.endsWith('.presentation')) {
-    return <Presentation className="h-4 w-4 text-orange-500 shrink-0" />
-  }
-  if (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.gif')) {
-    return <Image className="h-4 w-4 text-blue-500 shrink-0" />
-  }
-  return <FileText className="h-4 w-4 text-cyan-500 shrink-0" />
-}
-
-const buildLineNumbers = (content: string) => {
-  const count = Math.max(content.split('\n').length, 14)
-  return Array.from({ length: count }, (_, idx) => idx + 1)
-}
-
-const addDays = (date: Date, days: number) => {
-  const nextDate = new Date(date)
-  nextDate.setDate(nextDate.getDate() + days)
-  return nextDate.toISOString().slice(0, 10)
-}
-
-const getNextReviewDate = (box: VocabularyCard['box']) => {
-  const intervals: Record<VocabularyCard['box'], number> = {
-    1: 1,
-    2: 3,
-    3: 7,
-  }
-  return addDays(new Date(), intervals[box] || 1)
+  return value.slice(start, end).trim()
 }
 
 export const EducationStudio: React.FC = () => {
@@ -241,11 +173,22 @@ export const EducationStudio: React.FC = () => {
   const toggleTaskMutation = useToggleTaskComplete()
   const deleteTaskMutation = useDeleteTask()
   const { data: projects = [] } = useProjects()
+  const { data: persistedEducation } = useEducation(Number.isFinite(educationId) ? educationId : undefined)
+  const { data: persistedResources = [], isSuccess: resourcesLoaded } = useEducationResources(educationId)
+  const { data: persistedPractices = [], isSuccess: practicesLoaded } = useEducationPractices(educationId)
+  const uploadFileMutation = useUploadFile()
+  const createResourceMutation = useCreateEducationResource(educationId)
+  const deleteResourceMutation = useDeleteEducationResource(educationId)
+  const createPracticeMutation = useCreateEducationPractice(educationId)
 
   // Eğitimi bul
-  const education = React.useMemo(
+  const fallbackEducation = React.useMemo(
     () => mockEducations.find((item) => item.id === educationId),
     [educationId]
+  )
+  const education = React.useMemo(
+    () => persistedEducation ? toLocalEducation(persistedEducation) : fallbackEducation,
+    [fallbackEducation, persistedEducation]
   )
 
   // DB'den bu eğitime ait görevleri çek
@@ -327,14 +270,31 @@ export const EducationStudio: React.FC = () => {
   const [newFolderName, setNewFolderName] = React.useState('')
   const [replacingResourceId, setReplacingResourceId] = React.useState<number | null>(null)
 
+  // UX Safety, Left Panel File Tree & CRUD State Declarations
+  const [codeDraft, setCodeDraft] = React.useState<string | null>(null)
+  const [selectedFolderIdForDropdown, setSelectedFolderIdForDropdown] = React.useState<string>('')
+  const [treeExpandedNodes, setTreeExpandedNodes] = React.useState<Record<string, boolean>>({})
+  const [treeLoadingNodes, setTreeLoadingNodes] = React.useState<Record<string, boolean>>({})
+  const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
+    isOpen: boolean
+    type: 'folder' | 'resource'
+    targetId: string | number
+    title: string
+    warningText: string
+  } | null>(null)
+
   const saveResources = (newResources: EducationResource[]) => {
     setResources(newResources)
-    localStorage.setItem(`resources-${educationId}`, JSON.stringify(newResources))
+    if (!isPersistedEducation) {
+      localStorage.setItem(`resources-${educationId}`, JSON.stringify(newResources))
+    }
   }
 
   const savePractices = (newPractices: EducationPractice[]) => {
     setPractices(newPractices)
-    localStorage.setItem(`practices-${educationId}`, JSON.stringify(newPractices))
+    if (!isPersistedEducation) {
+      localStorage.setItem(`practices-${educationId}`, JSON.stringify(newPractices))
+    }
   }
 
   const saveFolders = (newFolders: FolderData[]) => {
@@ -365,6 +325,44 @@ export const EducationStudio: React.FC = () => {
   // Eğitimin verilerini yerel state ile bağla
   React.useEffect(() => {
     if (!education) return
+
+    if (isPersistedEducation && resourcesLoaded && practicesLoaded) {
+      const initialResources = persistedResources.map(toLocalResource)
+      const initialPractices = persistedPractices.map(toLocalPractice)
+      setResources(initialResources)
+      setPractices(initialPractices)
+
+      const pdfIds = initialResources.filter(r => r.type === 'PDF' || r.type === 'SLIDE' || r.type === 'FILE').map(r => r.id)
+      const linkIds = initialResources.filter(r => r.type === 'LINK').map(r => r.id)
+      setFolders([
+        { id: 'folder-pdf', name: 'Ders Kitaplari & Dokumanlar', resourceIds: pdfIds },
+        { id: 'folder-link', name: 'Yardimci Web Kaynaklari & Baglantilar', resourceIds: linkIds }
+      ])
+
+      const completedMap: Record<number, boolean> = {}
+      initialResources.forEach(res => {
+        const resPractices = initialPractices.filter(p => p.resource_id === res.id)
+        completedMap[res.id] = resPractices.length > 0 && resPractices.every(p => p.completed)
+      })
+      setCompletedResources(completedMap)
+
+      const notesMap: Record<number | string, string> = {}
+      const generalPractice = initialPractices.find(p => p.resource_id === null)
+      if (generalPractice) notesMap.general = generalPractice.notes || ''
+      initialPractices.forEach(p => {
+        if (p.resource_id !== null) notesMap[p.resource_id] = p.notes || ''
+      })
+      setResourceNotes(notesMap)
+
+      if (initialPractices.length > 0) {
+        setSelectedPracticeId(initialPractices[0].id)
+        setSelectedResourceId(initialPractices[0].resource_id)
+      } else {
+        setSelectedPracticeId(null)
+        setSelectedResourceId(null)
+      }
+      return
+    }
 
     // 1. Resources
     const savedResources = localStorage.getItem(`resources-${educationId}`)
@@ -473,7 +471,7 @@ export const EducationStudio: React.FC = () => {
       setSelectedPracticeId(null)
       setSelectedResourceId(null)
     }
-  }, [educationId, education])
+  }, [educationId, education, isPersistedEducation, persistedPractices, persistedResources, practicesLoaded, resourcesLoaded])
 
   // Local tasks synchronizer
   React.useEffect(() => {
@@ -563,74 +561,7 @@ export const EducationStudio: React.FC = () => {
     setNotesDraft(selectedPractice?.notes ?? '')
   }, [activeNoteResourceKey, activeResourceNote?.id, selectedPracticeId, selectedPractice?.notes])
 
-  // Debounced auto-save notlar için
-  React.useEffect(() => {
-    if (!activeResourceNoteId) return
-    if (notesDraft === activeResourceNote?.content && noteTitleDraft === activeResourceNote?.title) return
-
-    setSaveState('saving')
-    const timer = setTimeout(async () => {
-      const now = new Date().toISOString()
-      const currentNotes = resourceNoteItems[activeNoteResourceKey] || []
-      const updatedNotesForResource = currentNotes.map((note) =>
-        note.id === activeResourceNoteId
-          ? {
-              ...note,
-              title: noteTitleDraft.trim() || 'Başlıksız Not',
-              content: notesDraft,
-              updatedAt: now
-            }
-          : note
-      )
-      const updatedNoteItems = {
-        ...resourceNoteItems,
-        [activeNoteResourceKey]: updatedNotesForResource
-      }
-      saveResourceNoteItems(updatedNoteItems)
-
-      const mergedContent = updatedNotesForResource
-        .map((note) => `# ${note.title}\n\n${note.content}`)
-        .join('\n\n---\n\n')
-      const updatedLegacyNotes = { ...resourceNotes, [activeNoteResourceKey]: mergedContent }
-      saveResourceNotes(updatedLegacyNotes)
-
-      const practiceForNotes = activeNoteResourceKey === 'general'
-        ? practices.find(p => p.resource_id === null)
-        : practices.find(p => p.resource_id === Number(activeNoteResourceKey))
-
-      if (!practiceForNotes) {
-        setSaveState('saved')
-        return
-      }
-
-      if (!isPersistedEducation) {
-        setPractices((prev) =>
-          prev.map((p) => (p.id === practiceForNotes.id ? { ...p, notes: mergedContent } : p))
-        )
-        setSaveState('saved')
-        return
-      }
-      try {
-        await apiClient.patch(`/educations/practices/${practiceForNotes.id}`, {
-          title: practiceForNotes.title,
-          completed: practiceForNotes.completed,
-          code: practiceForNotes.code,
-          notes: mergedContent,
-          resourceId: practiceForNotes.resource_id,
-          orderIndex: practiceForNotes.order_index ?? 0,
-        })
-        setPractices((prev) =>
-          prev.map((p) => (p.id === practiceForNotes.id ? { ...p, notes: mergedContent } : p))
-        )
-        setSaveState('saved')
-        toast.success('Notlar otomatik kaydedildi.')
-      } catch {
-        setSaveState('saved')
-      }
-    }, 1200)
-
-    return () => clearTimeout(timer)
-  }, [activeNoteResourceKey, activeResourceNote?.content, activeResourceNote?.title, activeResourceNoteId, isPersistedEducation, noteTitleDraft, notesDraft, practices, resourceNoteItems, resourceNotes])
+  // Debounced auto-save notlar için - PASSED (Manüel kayıt aktif)
 
   // Genel veri güncelleme handler'ı
   const handleUpdatePractice = React.useCallback(
@@ -660,8 +591,30 @@ export const EducationStudio: React.FC = () => {
     [isPersistedEducation, practices]
   )
 
+  const createPracticeFromDraft = React.useCallback(
+    async (draft: Omit<EducationPractice, 'id'>) => {
+      if (isPersistedEducation) {
+        const created = await createPracticeMutation.mutateAsync({
+          title: draft.title,
+          completed: draft.completed,
+          code: draft.code,
+          notes: draft.notes,
+          resourceId: draft.resource_id,
+          orderIndex: draft.order_index,
+        })
+        return toLocalPractice(created)
+      }
+
+      return {
+        ...draft,
+        id: Date.now(),
+      }
+    },
+    [createPracticeMutation, isPersistedEducation]
+  )
+
   // Toplu Müfredat İçe Aktarma (Syllabus Parser)
-  const handleImportCurriculum = () => {
+  const handleImportCurriculum = async () => {
     const lines = importText
       .split('\n')
       .map((line) => line.trim())
@@ -680,11 +633,11 @@ export const EducationStudio: React.FC = () => {
       const match = line.match(urlRegex)
       let name = line
       let url = `imported://${line.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-      let type: 'PDF' | 'LINK' | 'VIDEO' | 'DOC' = 'DOC'
+      let type: ApiEducationResourceType = 'FILE'
 
       if (match) {
         url = match[1]
-        name = line.replace(url, '').trim().replace(/^[-:|]+|[-:|]+$/g, '').trim() || url
+        name = trimCurriculumLabel(line.replace(url, '').trim()) || url
         type = 'LINK'
       } else if (line.toLowerCase().includes('.pdf')) {
         type = 'PDF'
@@ -695,7 +648,7 @@ export const EducationStudio: React.FC = () => {
         line.toLowerCase().includes('youtube') ||
         line.toLowerCase().includes('oynatma')
       ) {
-        type = 'VIDEO'
+        type = 'LINK'
       }
 
       newResources.push({
@@ -707,11 +660,30 @@ export const EducationStudio: React.FC = () => {
       })
     })
 
+    if (isPersistedEducation) {
+      try {
+        await Promise.all(newResources.map((resource, index) =>
+          createResourceMutation.mutateAsync({
+            name: resource.name,
+            type: resource.type,
+            urlOrPath: resource.url_or_path,
+            orderIndex: resources.length + index,
+          })
+        ))
+        setImportText('')
+        setIsImporterOpen(false)
+        toast.success(`${newResources.length} yeni kaynak mufredata eklendi!`)
+      } catch {
+        toast.error('Kaynaklar sunucuya kaydedilemedi.')
+      }
+      return
+    }
+
     const updatedResources = [...resources, ...newResources]
     saveResources(updatedResources)
 
-    const pdfIds = newResources.filter(r => r.type === 'PDF' || r.type === 'DOC').map(r => r.id)
-    const linkIds = newResources.filter(r => r.type === 'LINK' || r.type === 'VIDEO').map(r => r.id)
+    const pdfIds = newResources.filter(r => r.type === 'PDF' || r.type === 'FILE' || r.type === 'SLIDE').map(r => r.id)
+    const linkIds = newResources.filter(r => r.type === 'LINK').map(r => r.id)
 
     // Put them in folder-pdf or folder-link if folders exist, otherwise uncategorized
     const updatedFolders = folders.map(f => {
@@ -731,22 +703,38 @@ export const EducationStudio: React.FC = () => {
   }
 
   // Tekil Dosya Yükle
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (isPersistedEducation) {
+      try {
+        const uploaded = await uploadFileMutation.mutateAsync(file)
+        await createResourceMutation.mutateAsync({
+          name: file.name,
+          type: getResourceTypeForFileName(file.name),
+          urlOrPath: uploaded.downloadUrl || `/api/files/${uploaded.id}`,
+          orderIndex: resources.length,
+        })
+        toast.success('Dosya basariyla yuklendi!')
+      } catch {
+        toast.error('Dosya sunucuya yuklenemedi.')
+      }
+      return
+    }
 
     const newResource: EducationResource = {
       id: Date.now(),
       education_id: educationId,
       name: file.name,
-      type: file.name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'DOC',
+      type: getResourceTypeForFileName(file.name),
       url_or_path: URL.createObjectURL(file)
     }
 
     const updatedResources = [...resources, newResource]
     saveResources(updatedResources)
 
-    const targetFolderId = newResource.type === 'PDF' ? 'folder-pdf' : 'folder-link'
+    const targetFolderId = newResource.type === 'LINK' ? 'folder-link' : 'folder-pdf'
     const folderExists = folders.some(f => f.id === targetFolderId)
 
     if (folderExists) {
@@ -782,60 +770,146 @@ export const EducationStudio: React.FC = () => {
     toast.success('Yeni klasör oluşturuldu.')
   }
 
-  // Klasör Sil
-  const handleDeleteFolder = (folderId: string) => {
-    if (window.confirm('Bu klasörü silmek istediğinize emin misiniz? (Klasörün içindeki dökümanlar silinmez, klasörsüz kalır)')) {
-      const updated = folders.filter(f => f.id !== folderId)
-      saveFolders(updated)
-      toast.success('Klasör silindi.')
-    }
-  }
-
   // Klasör Yeniden Adlandır
   const handleRenameFolder = (folderId: string) => {
-    const currentFolder = folders.find(f => f.id === folderId)
-    if (!currentFolder) return
-    const newName = window.prompt('Klasör ismini düzenleyin:', currentFolder.name)?.trim()
-    if (newName) {
-      const updated = folders.map(f => f.id === folderId ? { ...f, name: newName } : f)
+    const folder = folders.find(f => f.id === folderId)
+    if (!folder) return
+    const newName = window.prompt('Klasör için yeni bir isim girin:', folder.name)
+    if (newName && newName.trim()) {
+      const updated = folders.map(f => f.id === folderId ? { ...f, name: newName.trim() } : f)
       saveFolders(updated)
-      toast.success('Klasör ismi güncellendi.')
+      toast.success('Klasör adı güncellendi.')
     }
   }
 
-  // Dosya Kaldır (Delete Resource)
-  const handleDeleteResource = (resId: number) => {
-    if (window.confirm('Bu kaynağı silmek istediğinize emin misiniz?')) {
-      const updatedResources = resources.filter(r => r.id !== resId)
-      saveResources(updatedResources)
+  // Klasör Sil (Cascade Warning Modal tetikler)
+  const handleDeleteFolder = (folderId: string) => {
+    const folder = folders.find(f => f.id === folderId)
+    if (!folder) return
 
-      // Remove from folders
-      const updatedFolders = folders.map(f => ({
-        ...f,
-        resourceIds: f.resourceIds.filter(id => id !== resId)
-      }))
-      saveFolders(updatedFolders)
+    const fileCount = folder.resourceIds.length
+    let taskCount = 0
+    let noteCount = 0
 
-      // Clean metadata
-      const updatedCompleted = { ...completedResources }
-      delete updatedCompleted[resId]
-      saveCompletedResources(updatedCompleted)
+    folder.resourceIds.forEach((resId) => {
+      const actualTaskKey = reinforcements[`resource:${resId}`] ? `resource:${resId}` : (reinforcements[String(resId)] ? String(resId) : `resource:${resId}`)
+      taskCount += (reinforcements[actualTaskKey] || []).length
 
-      const updatedNotes = { ...resourceNotes }
-      delete updatedNotes[resId]
-      saveResourceNotes(updatedNotes)
+      const actualNoteKey = resourceNoteItems[`resource:${resId}`] ? `resource:${resId}` : (resourceNoteItems[String(resId)] ? String(resId) : `resource:${resId}`)
+      noteCount += (resourceNoteItems[actualNoteKey] || []).length
+    })
 
-      const updatedNoteItems = { ...resourceNoteItems }
-      delete updatedNoteItems[String(resId)]
-      saveResourceNoteItems(updatedNoteItems)
-
-      const updatedReinforce = { ...reinforcements }
-      delete updatedReinforce[`resource:${resId}`]
-      delete updatedReinforce[String(resId)]
-      saveReinforcements(updatedReinforce)
-
-      toast.success('Kaynak silindi.')
+    if (fileCount > 0 || taskCount > 0 || noteCount > 0) {
+      setDeleteConfirmation({
+        isOpen: true,
+        type: 'folder',
+        targetId: folderId,
+        title: `"${folder.name}" Klasörünü Sil`,
+        warningText: `Bu klasörü silmek altındaki ${fileCount} dosyayı, ${taskCount} pekiştirme görevini ve ${noteCount} notu kalıcı olarak silecektir. Devam etmek istiyor musunuz?`
+      })
+    } else {
+      if (window.confirm('Bu boş klasörü silmek istediğinize emin misiniz?')) {
+        void executeDeleteFolder(folderId)
+      }
     }
+  }
+
+  const executeDeleteFolder = async (folderId: string) => {
+    const folder = folders.find(f => f.id === folderId)
+    if (!folder) return
+
+    let updatedResources = [...resources]
+    let updatedPractices = [...practices]
+    let updatedReinforcements = { ...reinforcements }
+    let updatedNoteItems = { ...resourceNoteItems }
+
+    if (isPersistedEducation) {
+      await Promise.all(folder.resourceIds.map((resId) => deleteResourceMutation.mutateAsync(resId)))
+    }
+
+    folder.resourceIds.forEach((resId) => {
+      updatedResources = updatedResources.filter(r => r.id !== resId)
+      updatedPractices = updatedPractices.filter(p => p.resource_id !== resId)
+      delete updatedReinforcements[`resource:${resId}`]
+      delete updatedReinforcements[String(resId)]
+      delete updatedNoteItems[`resource:${resId}`]
+      delete updatedNoteItems[String(resId)]
+    })
+
+    const updatedFolders = folders.filter(f => f.id !== folderId)
+    saveFolders(updatedFolders)
+    saveResources(updatedResources)
+    savePractices(updatedPractices)
+    saveReinforcements(updatedReinforcements)
+    saveResourceNoteItems(updatedNoteItems)
+    toast.success('Klasör ve altındaki tüm içerikler silindi.')
+  }
+
+  // Dosya Yeniden Adlandır
+  const handleRenameResource = (resId: number) => {
+    const res = resources.find(r => r.id === resId)
+    if (!res) return
+    const newName = window.prompt('Dosya için yeni bir isim girin:', res.name)
+    if (newName && newName.trim()) {
+      const updated = resources.map(r => r.id === resId ? { ...r, name: newName.trim() } : r)
+      saveResources(updated)
+      toast.success('Dosya adı güncellendi.')
+    }
+  }
+
+  // Dosya Sil (Cascade Warning Modal tetikler)
+  const handleDeleteResource = (resId: number) => {
+    const res = resources.find(r => r.id === resId)
+    if (!res) return
+
+    const actualTaskKey = reinforcements[`resource:${resId}`] ? `resource:${resId}` : (reinforcements[String(resId)] ? String(resId) : `resource:${resId}`)
+    const taskCount = (reinforcements[actualTaskKey] || []).length
+
+    const actualNoteKey = resourceNoteItems[`resource:${resId}`] ? `resource:${resId}` : (resourceNoteItems[String(resId)] ? String(resId) : `resource:${resId}`)
+    const noteCount = (resourceNoteItems[actualNoteKey] || []).length
+
+    if (taskCount > 0 || noteCount > 0) {
+      setDeleteConfirmation({
+        isOpen: true,
+        type: 'resource',
+        targetId: resId,
+        title: `"${res.name}" Dosyasını Sil`,
+        warningText: `Bu dosyayı silmek bağlı olan ${taskCount} pekiştirme görevini ve ${noteCount} notu kalıcı olarak silecektir. Devam etmek istiyor musunuz?`
+      })
+    } else {
+      if (window.confirm('Bu dosyayı silmek istediğinize emin misiniz?')) {
+        void executeDeleteResource(resId)
+      }
+    }
+  }
+
+  const executeDeleteResource = async (resId: number) => {
+    if (isPersistedEducation) {
+      await deleteResourceMutation.mutateAsync(resId)
+    }
+
+    const updatedResources = resources.filter(r => r.id !== resId)
+    const updatedPractices = practices.filter(p => p.resource_id !== resId)
+
+    const updatedReinforcements = { ...reinforcements }
+    delete updatedReinforcements[`resource:${resId}`]
+    delete updatedReinforcements[String(resId)]
+
+    const updatedNoteItems = { ...resourceNoteItems }
+    delete updatedNoteItems[`resource:${resId}`]
+    delete updatedNoteItems[String(resId)]
+
+    const updatedFolders = folders.map(f => ({
+      ...f,
+      resourceIds: f.resourceIds.filter(id => id !== resId)
+    }))
+
+    saveFolders(updatedFolders)
+    saveResources(updatedResources)
+    savePractices(updatedPractices)
+    saveReinforcements(updatedReinforcements)
+    saveResourceNoteItems(updatedNoteItems)
+    toast.success('Dosya ve tüm bağlı veriler silindi.')
   }
 
   // Dosyayı Değiştir (Replace Resource)
@@ -856,7 +930,7 @@ export const EducationStudio: React.FC = () => {
         return {
           ...res,
           name: file.name,
-          type: file.name.toLowerCase().endsWith('.pdf') ? ('PDF' as const) : ('DOC' as const),
+          type: getResourceTypeForFileName(file.name),
           url_or_path: URL.createObjectURL(file)
         }
       }
@@ -931,6 +1005,7 @@ export const EducationStudio: React.FC = () => {
   }
 
   const handleOpenNotesForResource = (res: EducationResource) => {
+    if (!confirmNavigation()) return
     const resourceKey = String(res.id)
     setSelectedResourceId(res.id)
     const notesForResource = resourceNoteItems[resourceKey] || []
@@ -946,12 +1021,12 @@ export const EducationStudio: React.FC = () => {
   }
 
   // Kod Editörüne Yönlendir
-  const handleOpenCodeForResource = (res: EducationResource) => {
+  const handleOpenCodeForResource = async (res: EducationResource) => {
+    if (!confirmNavigation()) return
     let practice = practices.find(p => p.resource_id === res.id)
     if (!practice) {
       // Create new practice if not exists
-      const newPractice: EducationPractice = {
-        id: Date.now(),
+      const newPractice = await createPracticeFromDraft({
         education_id: educationId,
         resource_id: res.id,
         title: `${res.name} Pratik & Kod`,
@@ -962,7 +1037,7 @@ export const EducationStudio: React.FC = () => {
         }]),
         notes: getNoteForResource(res.id),
         order_index: practices.length + 1
-      }
+      })
       const updatedPractices = [...practices, newPractice]
       savePractices(updatedPractices)
       practice = newPractice
@@ -1046,8 +1121,9 @@ export const EducationStudio: React.FC = () => {
           name: task.codeFileName,
           content: `// Pekiştirme Projesi: ${task.title}\n// Bu dosyadaki kod ve pratik projesi parent-child ilişkisiyle bağlıdır.\n\npublic class Pekistirme {\n    public static void main(String[] args) {\n        System.out.println("Pekiştirme projesi çalışıyor");\n    }\n}`
         })
-        practice.code = serializeCodeFiles(files)
-        savePractices(practices.map(p => p.id === practice.id ? practice : p))
+        const updatedPractice = { ...practice, code: serializeCodeFiles(files) }
+        savePractices(practices.map(p => p.id === updatedPractice.id ? updatedPractice : p))
+        practice = updatedPractice
       }
     }
 
@@ -1060,10 +1136,6 @@ export const EducationStudio: React.FC = () => {
   }
 
   // Sürükle Bırak: Dosyayı Klasör Başlığına Bırak
-  const getTargetLabel = (target: ReinforcementTarget) => {
-    return target.type === 'resource' ? target.resource.name : `${target.projectName} / ${target.document.title}`
-  }
-
   const ensurePracticeForTarget = (target: ReinforcementTarget, task?: ReinforcementTask) => {
     const targetLabel = getTargetLabel(target)
     let practice = target.type === 'resource'
@@ -1113,6 +1185,26 @@ export const EducationStudio: React.FC = () => {
     setActiveTab('primary')
     setActiveReinforceResourceId(null)
     toast.success(`Kod editöründe açıldı: ${task?.codeFileName || getTargetLabel(target)}`)
+  }
+
+  const handleDropdown1Change = (folderId: string) => {
+    setSelectedFolderIdForDropdown(folderId)
+  }
+
+  const handleDropdown2Change = (targetId: string) => {
+    const target = reinforcementTargets.find((item) => item.id === targetId)
+    if (target) {
+      handleWriteCodeForTarget(target)
+    }
+  }
+
+  const handleDropdown3Change = (taskId: string) => {
+    if (taskId === 'direct') return
+    const target = reinforcementTargets.find((item) => item.id === `resource:${selectedResourceId}`)
+    const task = selectedResourceId ? (reinforcements[`resource:${selectedResourceId}`] || []).find((item) => item.id === taskId) : undefined
+    if (target && task) {
+      handleWriteCodeForTarget(target, task)
+    }
   }
 
   const handleDropResourceOnFolderHeader = (e: React.DragEvent, targetFolderId: string) => {
@@ -1344,19 +1436,19 @@ export const EducationStudio: React.FC = () => {
 
   const cycleStatus = () => {
     if (!education) return
-    const statusCycle: Record<string, 'PLANNING' | 'ACTIVE' | 'DONE'> = {
-      PLANNING: 'ACTIVE',
+    const statusCycle: Record<string, 'ACTIVE' | 'PAUSED' | 'DONE'> = {
+      PAUSED: 'ACTIVE',
       ACTIVE: 'DONE',
-      DONE: 'PLANNING',
+      DONE: 'PAUSED',
     }
     const next = statusCycle[education.status] || 'ACTIVE'
     education.status = next
-    toast.success(`Eğitim durumu "${next === 'PLANNING' ? 'Planlama' : next === 'ACTIVE' ? 'Çalışılıyor' : 'Tamamlandı'}" olarak güncellendi!`)
+    toast.success(`Eğitim durumu "${next === 'PAUSED' ? 'Duraklatıldı' : next === 'ACTIVE' ? 'Çalışılıyor' : 'Tamamlandı'}" olarak güncellendi!`)
     setResources([...resources])
   }
 
   const getStatusLabel = (status: string) => {
-    if (status === 'PLANNING') return 'Planlama'
+    if (status === 'PAUSED') return 'Duraklatildi'
     if (status === 'ACTIVE') return 'Çalışılıyor'
     if (status === 'DONE') return 'Tamamlandı'
     return 'Çalışılıyor'
@@ -1467,6 +1559,232 @@ export const EducationStudio: React.FC = () => {
   const codeFiles = parseCodeFiles(selectedPractice?.code ?? '')
   const activeFile = codeFiles.find((f) => f.name === activeFileName) || codeFiles[0] || { name: 'Main.java', content: '' }
 
+  // --- UX SAFETY NAVIGATION CONTROLS & HELPERS ---
+  const isCodeDirty = codeDraft !== null && codeDraft !== activeFile.content
+
+  const isNotesDirty = React.useMemo(() => {
+    if (!activeResourceNote) return false
+    return notesDraft !== activeResourceNote.content || noteTitleDraft !== activeResourceNote.title
+  }, [activeResourceNote, notesDraft, noteTitleDraft])
+
+  const confirmNavigation = (): boolean => {
+    if (isCodeDirty || isNotesDirty) {
+      return window.confirm('Kaydedilmemiş değişiklikleriniz var. Ayrılmak istediğinize emin misiniz?')
+    }
+    return true
+  }
+
+  const handleTabChange = (tab: any) => {
+    if (!confirmNavigation()) return
+    setActiveTab(tab)
+  }
+
+  const handleFileTabChange = (fileName: string) => {
+    if (!confirmNavigation()) return
+    setActiveFileName(fileName)
+    setCodeDraft(null)
+  }
+
+  const handleToggleTreeNode = async (nodeId: string) => {
+    if (treeExpandedNodes[nodeId]) {
+      setTreeExpandedNodes((prev) => ({ ...prev, [nodeId]: false }))
+    } else {
+      setTreeLoadingNodes((prev) => ({ ...prev, [nodeId]: true }))
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      setTreeLoadingNodes((prev) => ({ ...prev, [nodeId]: false }))
+      setTreeExpandedNodes((prev) => ({ ...prev, [nodeId]: true }))
+    }
+  }
+
+  const handleTreeNodeClick = (type: 'file' | 'task' | 'note', targetId: string, itemId?: string | number) => {
+    if (!confirmNavigation()) return
+
+    if (type === 'file') {
+      const numId = Number(targetId)
+      setSelectedResourceId(numId)
+      const match = practices.find((p) => p.resource_id === numId)
+      if (match) {
+        setSelectedPracticeId(match.id)
+      }
+      setActiveTab('files')
+    } else if (type === 'task') {
+      const resId = Number(targetId.replace('resource:', ''))
+      setSelectedResourceId(resId)
+      const match = practices.find((p) => p.resource_id === resId)
+      if (match) {
+        setSelectedPracticeId(match.id)
+        const tasks = reinforcements[targetId] || []
+        const task = tasks.find(t => t.id === itemId)
+        if (task && task.codeFileName) {
+          setActiveFileName(task.codeFileName)
+        }
+      }
+      setActiveTab('primary')
+      setCodeDraft(null)
+    } else if (type === 'note') {
+      const resId = targetId === 'general' ? null : Number(targetId.replace('resource:', ''))
+      setSelectedResourceId(resId)
+      const match = practices.find((p) => p.resource_id === resId)
+      if (match) {
+        setSelectedPracticeId(match.id)
+      }
+      if (itemId) {
+        setActiveResourceNoteId(String(itemId))
+        const notes = resourceNoteItems[targetId] || []
+        const note = notes.find(n => n.id === itemId)
+        if (note) {
+          setNoteTitleDraft(note.title)
+          setNotesDraft(note.content)
+        }
+      }
+      setActiveTab('notes')
+    }
+  }
+
+  // --- CRUD ACTIONS FOR TASKS & NOTES ---
+  const handleRenameTask = (actualKey: string, taskId: string) => {
+    const list = reinforcements[actualKey] || []
+    const task = list.find(t => t.id === taskId)
+    if (!task) return
+    const newTitle = window.prompt('Pekiştirme görevi için yeni bir başlık girin:', task.title)
+    if (newTitle && newTitle.trim()) {
+      const updated = list.map(t => t.id === taskId ? { ...t, title: newTitle.trim() } : t)
+      const updatedReinforcements = { ...reinforcements, [actualKey]: updated }
+      saveReinforcements(updatedReinforcements)
+      toast.success('Pekiştirme görevi adı güncellendi.')
+    }
+  }
+
+  const handleDeleteTask = (actualKey: string, taskId: string) => {
+    if (!window.confirm('Bu pekiştirme görevini silmek istediğinize emin misiniz?')) return
+    const list = reinforcements[actualKey] || []
+    const updated = list.filter(t => t.id !== taskId)
+    const updatedReinforcements = { ...reinforcements, [actualKey]: updated }
+    saveReinforcements(updatedReinforcements)
+    toast.success('Pekiştirme görevi silindi.')
+  }
+
+  const handleRenameNote = (actualKey: string, noteId: string) => {
+    const list = resourceNoteItems[actualKey] || []
+    const note = list.find(n => n.id === noteId)
+    if (!note) return
+    const newTitle = window.prompt('Not için yeni bir başlık girin:', note.title)
+    if (newTitle && newTitle.trim()) {
+      const updated = list.map(n => n.id === noteId ? { ...n, title: newTitle.trim(), updatedAt: new Date().toISOString() } : n)
+      const updatedNoteItems = { ...resourceNoteItems, [actualKey]: updated }
+      saveResourceNoteItems(updatedNoteItems)
+      if (activeResourceNoteId === noteId) {
+        setNoteTitleDraft(newTitle.trim())
+      }
+      toast.success('Not adı güncellendi.')
+    }
+  }
+
+  const handleDeleteNote = (actualKey: string, noteId: string) => {
+    if (!window.confirm('Bu notu silmek istediğinize emin misiniz?')) return
+    const list = resourceNoteItems[actualKey] || []
+    const updated = list.filter(n => n.id !== noteId)
+    const updatedNoteItems = { ...resourceNoteItems, [actualKey]: updated }
+    saveResourceNoteItems(updatedNoteItems)
+    if (activeResourceNoteId === noteId) {
+      setActiveResourceNoteId(null)
+      setNoteTitleDraft('')
+      setNotesDraft('')
+    }
+    toast.success('Not silindi.')
+  }
+
+  const handleNoteTopicChange = (val: string) => {
+    if (!confirmNavigation()) return
+    if (val === 'general') {
+      setSelectedResourceId(null)
+      const match = practices.find((p) => p.resource_id === null)
+      if (match) setSelectedPracticeId(match.id)
+    } else {
+      const numId = Number(val)
+      setSelectedResourceId(numId)
+      const match = practices.find((p) => p.resource_id === numId)
+      if (match) setSelectedPracticeId(match.id)
+    }
+  }
+
+  const handleNoteItemClick = (noteId: string) => {
+    if (!confirmNavigation()) return
+    setActiveResourceNoteId(noteId)
+    const currentNotes = resourceNoteItems[activeNoteResourceKey] || []
+    const note = currentNotes.find(n => n.id === noteId)
+    if (note) {
+      setNoteTitleDraft(note.title)
+      setNotesDraft(note.content)
+    }
+  }
+
+  const handleSaveNotes = async () => {
+    if (!activeResourceNoteId) return
+    setSaveState('saving')
+    const now = new Date().toISOString()
+    const currentNotes = resourceNoteItems[activeNoteResourceKey] || []
+    const updatedNotesForResource = currentNotes.map((note) =>
+      note.id === activeResourceNoteId
+        ? {
+            ...note,
+            title: noteTitleDraft.trim() || 'Başlıksız Not',
+            content: notesDraft,
+            updatedAt: now
+          }
+        : note
+    )
+    const updatedNoteItems = {
+      ...resourceNoteItems,
+      [activeNoteResourceKey]: updatedNotesForResource
+    }
+    saveResourceNoteItems(updatedNoteItems)
+
+    const mergedContent = updatedNotesForResource
+      .map((note) => `# ${note.title}\n\n${note.content}`)
+      .join('\n\n---\n\n')
+    const updatedLegacyNotes = { ...resourceNotes, [activeNoteResourceKey]: mergedContent }
+    saveResourceNotes(updatedLegacyNotes)
+
+    const practiceForNotes = activeNoteResourceKey === 'general'
+      ? practices.find(p => p.resource_id === null)
+      : practices.find(p => p.resource_id === Number(activeNoteResourceKey))
+
+    if (!practiceForNotes) {
+      setSaveState('saved')
+      toast.success('Not kaydedildi.')
+      return
+    }
+
+    if (!isPersistedEducation) {
+      setPractices((prev) =>
+        prev.map((p) => (p.id === practiceForNotes.id ? { ...p, notes: mergedContent } : p))
+      )
+      setSaveState('saved')
+      toast.success('Not kaydedildi.')
+      return
+    }
+
+    try {
+      await apiClient.patch(`/educations/practices/${practiceForNotes.id}`, {
+        title: practiceForNotes.title,
+        completed: practiceForNotes.completed,
+        code: practiceForNotes.code,
+        notes: mergedContent,
+        resourceId: practiceForNotes.resource_id,
+        orderIndex: practiceForNotes.order_index ?? 0,
+      })
+      setPractices((prev) =>
+        prev.map((p) => (p.id === practiceForNotes.id ? { ...p, notes: mergedContent } : p))
+      )
+      setSaveState('saved')
+      toast.success('Not başarıyla kaydedildi.')
+    } catch {
+      setSaveState('saved')
+      toast.error('Not kaydedilirken bir hata oluştu.')
+    }
+  }
+
   const handleCodeChange = (newVal: string) => {
     if (!selectedPractice) return
     const updated = codeFiles.map((f) => (f.name === activeFile.name ? { ...f, content: newVal } : f))
@@ -1491,13 +1809,26 @@ export const EducationStudio: React.FC = () => {
 
   const handleSaveCodeDirectly = () => {
     if (!selectedPractice) return
-    void handleUpdatePractice(selectedPractice.id, { code: serializeCodeFiles(codeFiles) })
+    const targetContent = codeDraft ?? activeFile.content
+    const updated = codeFiles.map((f) => (f.name === activeFile.name ? { ...f, content: targetContent } : f))
+    void handleUpdatePractice(selectedPractice.id, { code: serializeCodeFiles(updated) })
+    setCodeDraft(null)
     toast.success('Kod değişiklikleri kaydedildi.')
   }
 
   // Language Vocabulary Helpers
   const vocabulary = parseVocabulary(selectedPractice?.code ?? '')
   const levelVocabulary = vocabulary
+  const getNextReviewDate = (box: VocabularyCard['box']) => {
+    const daysByBox: Record<VocabularyCard['box'], number> = {
+      1: 1,
+      2: 3,
+      3: 7,
+    }
+    const next = new Date()
+    next.setDate(next.getDate() + daysByBox[box])
+    return next.toISOString().slice(0, 10)
+  }
 
   const handleAddVocabWord = () => {
     if (!selectedPractice) return
@@ -1586,1325 +1917,185 @@ export const EducationStudio: React.FC = () => {
   }
 
   // Sub-tab renders
-  const renderOverviewTab = () => {
-    return (
-      <div className="grid grid-cols-12 gap-6 h-full overflow-hidden">
-        {/* Roadmap - Sol Blok */}
-        <div className="col-span-12 lg:col-span-7 h-full flex flex-col min-h-[300px]">
-          <div className="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/20 backdrop-blur-xl h-full flex flex-col">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-4 flex items-center gap-1.5 shrink-0">
-              <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
-              <span>Eğitim Yol Haritası (Roadmap)</span>
-            </h3>
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 pl-2 relative border-l border-slate-200 dark:border-zinc-800 ml-3">
-              {resources.map((res) => {
-                const resPractices = practices.filter((p) => p.resource_id === res.id)
-                const isCompleted = resPractices.length > 0 && resPractices.every((p) => p.completed)
-                return (
-                  <div key={res.id} className="relative pl-6">
-                    <div
-                      className={cn(
-                        'absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full border transition-all duration-300',
-                        isCompleted
-                          ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
-                          : 'bg-slate-200 border-slate-300 dark:bg-zinc-900 dark:border-zinc-700'
-                      )}
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-slate-900 dark:text-zinc-200">{res.name}</span>
-                      <span className="text-[10px] text-slate-500 dark:text-zinc-500 mt-0.5">{res.url_or_path}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Bugünün İşleri ve Karalama Defteri - Sağ Blok */}
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 h-full overflow-hidden">
-          <div className="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/20 backdrop-blur-xl flex flex-col shrink-0">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-3 flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-cyan-500" />
-              <span>Bugünkü Eğitim İşleri</span>
-            </h3>
-
-            {/* Hızlı Görev Ekleme Barı - Genişletilmiş Task Card Formatı */}
-            <form onSubmit={handleAddTask} className="flex flex-col gap-3 p-4 rounded-2xl bg-slate-50/50 dark:bg-black/15 border border-slate-200/50 dark:border-zinc-800/50 mb-4 shadow-sm">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-500 tracking-wider">Görev Başlığı</label>
-                <input
-                  type="text"
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="Örn: Spring Boot JPA Çalışması..."
-                  className="h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-500 tracking-wider">Tarih Seç</label>
-                  <input
-                    type="date"
-                    value={taskDate}
-                    onChange={(e) => setTaskDate(e.target.value)}
-                    className="h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-900 dark:text-white outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-500 tracking-wider">Saat Seç</label>
-                  <input
-                    type="time"
-                    value={taskTime}
-                    onChange={(e) => setTaskTime(e.target.value)}
-                    className="h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-900 dark:text-white outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="w-full h-10 rounded-xl bg-cyan-500 text-white text-xs font-black shadow-[0_0_12px_rgba(6,182,212,0.3)] hover:bg-cyan-600 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none"
-              >
-                <Plus className="h-4 w-4" />
-                <span>+ Ekle</span>
-              </button>
-            </form>
-
-            {/* Görev Listesi */}
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {localTasks.length === 0 ? (
-                <p className="text-[11px] text-slate-900 dark:text-zinc-300 text-center py-4">
-                  Bugün için planlanmış proje görevi yok.
-                </p>
-              ) : (
-                localTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-white/50 dark:bg-zinc-900/35 border border-slate-200/50 dark:border-zinc-800/50 gap-2"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={t.status === 'DONE'}
-                        onChange={() => void handleToggleLocalTask(t.id)}
-                        className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-zinc-700 bg-transparent cursor-pointer"
-                      />
-                      <div className="flex flex-col min-w-0 flex-1">
-                        {editingTaskId === t.id ? (
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <input
-                              type="text"
-                              value={editingTaskTitle}
-                              onChange={(e) => setEditingTaskTitle(e.target.value)}
-                              className="h-7 px-2 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white focus:border-cyan-500/50 outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleSaveLocalTaskEdit(t.id)}
-                              className="px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-[10px] font-bold"
-                            >
-                              Kaydet
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingTaskId(null)}
-                              className="px-2 py-1 rounded bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 text-[10px] font-bold"
-                            >
-                              İptal
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <span className={cn(
-                              "text-xs font-bold text-slate-900 dark:text-zinc-300 truncate",
-                              t.status === 'DONE' && "line-through opacity-50"
-                            )}>
-                              {t.title}
-                            </span>
-                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              {/* Dynamic Course Title Tag */}
-                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 shrink-0">
-                                {t.tag}
-                              </span>
-                              {(t.scheduledDate || t.scheduledTime) && (
-                                <span className="text-[9px] font-semibold text-slate-500 dark:text-zinc-500 flex items-center gap-0.5 shrink-0">
-                                  <Calendar className="h-2.5 w-2.5" />
-                                  <span>{t.scheduledDate} {t.scheduledTime}</span>
-                                </span>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {editingTaskId !== t.id && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingTaskId(t.id)
-                            setEditingTaskTitle(t.title)
-                          }}
-                          className="p-1 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                          title="Görevi Düzenle"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteLocalTask(t.id)}
-                          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all"
-                          title="Görevi Sil"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Scratchpad */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/20 backdrop-blur-xl flex flex-col flex-grow min-h-[140px]">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-3 flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5 text-cyan-500" />
-              <span>Anlık Karalama Defteri</span>
-            </h3>
-            <textarea
-              defaultValue={localStorage.getItem(`education-scratch-${educationId}`) || ''}
-              onChange={(e) => localStorage.setItem(`education-scratch-${educationId}`, e.target.value)}
-              placeholder="Hızlı notlarınızı buraya karalayın (Otomatik kaydedilir)..."
-              className="w-full flex-grow resize-none bg-transparent text-xs font-semibold leading-relaxed text-slate-900 dark:text-zinc-300 outline-none placeholder:text-slate-400 dark:placeholder:text-zinc-500"
-            />
-          </div>
-        </div>
-      </div>
-    )
-  }
-  const renderDosyalarTab = () => {
-    const folderResourceIds = new Set(folders.flatMap((f) => f.resourceIds))
-    const uncategorizedResources = resources.filter((r) => !folderResourceIds.has(r.id))
-
-    return (
-      <div className="space-y-6">
-        {/* Hidden inputs for replacement */}
-        <input
-          type="file"
-          id="replace-file-input"
-          onChange={handleFileReplace}
-          className="hidden"
-        />
-
-        {/* Üst Kontrol & Batch Importer */}
-        <div className="flex flex-wrap items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-4 gap-3">
-          <div className="flex items-center gap-3">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-              accept=".pdf,.ppt,.pptx,.png,.jpg,.jpeg,.gif"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 text-xs font-black text-slate-900 dark:text-white hover:bg-slate-100/50 dark:hover:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 px-4 py-2 rounded-full transition-all cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Tekil Dosya Yükle</span>
-            </button>
-            <button
-              onClick={() => setIsFolderCreatorOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-black text-slate-900 dark:text-white hover:bg-slate-100/50 dark:hover:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 px-4 py-2 rounded-full transition-all cursor-pointer"
-            >
-              <FolderPlus className="h-3.5 w-3.5 text-amber-500" />
-              <span>Yeni Klasör</span>
-            </button>
-          </div>
-          <button
-            onClick={() => setIsImporterOpen(true)}
-            className="inline-flex items-center gap-1.5 text-xs font-black text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-all bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 px-4 py-2 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.08)] cursor-pointer"
-          >
-            <UploadCloud className="h-3.5 w-3.5" />
-            <span>Müfredat Yapıştır</span>
-          </button>
-        </div>
-
-        {/* Klasörleme Yapısı ve Drag & Drop */}
-        <div className="space-y-4">
-          {folders.map((folder, folderIdx) => {
-            const isOpen = !!foldersOpen[folder.id]
-            const folderResources = folder.resourceIds
-              .map(id => resources.find(r => r.id === id))
-              .filter((r): r is EducationResource => !!r)
-
-            return (
-              <div
-                key={folder.id}
-                draggable
-                onDragStart={(e) => handleDragStartFolder(e, folderIdx)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  const type = e.dataTransfer.getData('text/plain')
-                  if (type === 'resource') {
-                    handleDropResourceOnFolderHeader(e, folder.id)
-                  } else {
-                    handleDropFolder(e, folderIdx)
-                  }
-                }}
-                className="border border-slate-200 dark:border-zinc-850 rounded-2xl bg-white/20 dark:bg-zinc-950/10 overflow-hidden shadow-sm"
-              >
-                {/* Folder Header */}
-                <div
-                  onClick={() => toggleFolderState(folder.id)}
-                  className="w-full flex items-center justify-between p-4 bg-slate-100/50 dark:bg-zinc-900/30 text-xs font-bold text-slate-900 dark:text-white cursor-pointer select-none group/folder"
-                >
-                  <div className="flex items-center gap-2">
-                    <Folder className="h-4 w-4 text-amber-500 fill-amber-500" />
-                    <span>{folder.name} ({folderResources.length} Öğe)</span>
-                  </div>
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => handleRenameFolder(folder.id)}
-                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-400 hover:text-cyan-500 transition-colors"
-                      title="Yeniden Adlandır"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteFolder(folder.id)}
-                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Klasörü Sil"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                    <ChevronRight className={cn('h-4 w-4 text-slate-400 transition-transform duration-300 ml-1', isOpen && 'rotate-90')} />
-                  </div>
-                </div>
-
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden border-t border-slate-200 dark:border-zinc-800"
-                    >
-                      <div className="p-3 space-y-2">
-                        {folderResources.length === 0 ? (
-                          <p className="text-xs text-slate-900 dark:text-zinc-350 p-3">Bu klasör henüz boş. Dosyaları buraya sürükleyebilirsiniz.</p>
-                        ) : (
-                          <div className="relative border-l border-slate-200 dark:border-zinc-800 ml-3 pl-4 space-y-2">
-                            {folderResources.map((res, resIdx) => (
-                              <div
-                                key={res.id}
-                                draggable
-                                onDragStart={(e) => handleDragStartResource(e, folder.id, res.id)}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  handleDropResource(e, folder.id, resIdx)
-                                }}
-                                className="flex items-center justify-between p-3 bg-white/40 dark:bg-zinc-900/35 border border-slate-200/50 dark:border-zinc-800/50 rounded-xl hover:bg-slate-100/40 dark:hover:bg-zinc-900/20 transition-all cursor-pointer group"
-                              >
-                                {/* Left: Checkbox + Icon + Link Title */}
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!completedResources[res.id]}
-                                    onChange={(e) => {
-                                      e.stopPropagation()
-                                      const updated = { ...completedResources, [res.id]: !completedResources[res.id] }
-                                      saveCompletedResources(updated)
-                                      toast.success(updated[res.id] ? 'Kaynak tamamlandı!' : 'Kaynak işareti kaldırıldı.')
-                                    }}
-                                    className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-zinc-700 bg-transparent cursor-pointer shrink-0"
-                                  />
-                                  <div
-                                    onClick={() => {
-                                      window.open(res.url_or_path, '_blank')
-                                      toast.success('Belge yeni sekmede açıldı!')
-                                    }}
-                                    className="flex items-center gap-2 cursor-pointer hover:underline min-w-0 flex-1"
-                                  >
-                                    {getFileIcon(res.name, res.type)}
-                                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                      {res.name}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Right: Interactive Actions */}
-                                <div className="flex items-center gap-1 shrink-0 ml-4 opacity-75 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    onClick={() => handleOpenNotesForResource(res)}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                                    title="Notlar"
-                                  >
-                                    <FileText className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleOpenCodeForResource(res)}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                                    title="Kodlama Editörü"
-                                  >
-                                    <Code2 className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => triggerReplaceFile(res.id)}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                                    title="Değiştir"
-                                  >
-                                    <RefreshCw className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveReinforceResourceId(res.id)}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                                    title="Pekiştirme Projeleri"
-                                  >
-                                    <Zap className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteResource(res.id)}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all"
-                                    title="Kaldır"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Klasörlenmemiş Kaynaklar Bölümü */}
-        {uncategorizedResources.length > 0 && (
-          <div
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleDropResource(e, 'uncategorized', uncategorizedResources.length)
-            }}
-            className="border border-dashed border-slate-300 dark:border-zinc-800 rounded-2xl bg-slate-50/20 dark:bg-black/10 p-4 space-y-3"
-          >
-            <div className="flex items-center gap-2 text-xs font-black text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
-              <FolderOpen className="h-4 w-4 text-slate-400" />
-              <span>Klasörlenmemiş Dosyalar ({uncategorizedResources.length} Öğe)</span>
-            </div>
-            <div className="space-y-2 pl-4 border-l border-slate-200 dark:border-zinc-800">
-              {uncategorizedResources.map((res, resIdx) => (
-                <div
-                  key={res.id}
-                  draggable
-                  onDragStart={(e) => handleDragStartResource(e, 'uncategorized', res.id)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleDropResource(e, 'uncategorized', resIdx)
-                  }}
-                  className="flex items-center justify-between p-3 bg-white/40 dark:bg-zinc-900/35 border border-slate-200/50 dark:border-zinc-800/50 rounded-xl hover:bg-slate-100/40 dark:hover:bg-zinc-900/20 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <input
-                      type="checkbox"
-                      checked={!!completedResources[res.id]}
-                      onChange={(e) => {
-                        e.stopPropagation()
-                        const updated = { ...completedResources, [res.id]: !completedResources[res.id] }
-                        saveCompletedResources(updated)
-                        toast.success(updated[res.id] ? 'Kaynak tamamlandı!' : 'Kaynak işareti kaldırıldı.')
-                      }}
-                      className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-zinc-700 bg-transparent cursor-pointer shrink-0"
-                    />
-                    <div
-                      onClick={() => {
-                        window.open(res.url_or_path, '_blank')
-                        toast.success('Belge yeni sekmede açıldı!')
-                      }}
-                      className="flex items-center gap-2 cursor-pointer hover:underline min-w-0 flex-1"
-                    >
-                      {getFileIcon(res.name, res.type)}
-                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                        {res.name}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0 ml-4 opacity-75 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => handleOpenNotesForResource(res)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                      title="Notlar"
-                    >
-                      <FileText className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleOpenCodeForResource(res)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                      title="Kodlama Editörü"
-                    >
-                      <Code2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => triggerReplaceFile(res.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                      title="Değiştir"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setActiveReinforceResourceId(res.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all"
-                      title="Pekiştirme Projeleri"
-                    >
-                      <Zap className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteResource(res.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all"
-                      title="Kaldır"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-
-  const renderLinklerTab = () => {
-    const linkResources = resources.filter((r) => r.type === 'LINK')
-
-    return (
-      <div className="space-y-6">
-        {/* Hızlı Link Ekleme Modülü */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3">
-          <div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-              Harici Platform Fırlatma Rampası
-            </h3>
-            <p className="text-[11px] text-slate-900 dark:text-zinc-300 mt-0.5">
-              Udemy, YouTube, GitHub bağlantılarınızı tek merkezden fırlatın
-            </p>
-          </div>
-          <button
-            onClick={() => setIsLinkAdderOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 text-xs font-black text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-all bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 px-3.5 py-1.5 rounded-full"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Bağlantı Ekle</span>
-          </button>
-        </div>
-
-        <AnimatePresence>
-          {isLinkAdderOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/20 dark:bg-zinc-955/10 backdrop-blur-xl"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                <div className="sm:col-span-5">
-                  <label className="block text-[9px] font-extrabold uppercase text-slate-900 dark:text-zinc-300 tracking-wider mb-1">
-                    Platform Adı (Örn: GitHub Repom)
-                  </label>
-                  <input
-                    type="text"
-                    value={newLinkName}
-                    onChange={(e) => setNewLinkName(e.target.value)}
-                    placeholder="Örn: GitHub Deposu..."
-                    className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-cyan-500/50 outline-none"
-                  />
-                </div>
-                <div className="sm:col-span-5">
-                  <label className="block text-[9px] font-extrabold uppercase text-slate-900 dark:text-zinc-300 tracking-wider mb-1">
-                    Bağlantı URL'si
-                  </label>
-                  <input
-                    type="text"
-                    value={newLinkUrl}
-                    onChange={(e) => setNewLinkUrl(e.target.value)}
-                    placeholder="github.com/username/repo..."
-                    className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-cyan-500/50 outline-none"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <button
-                    type="button"
-                    onClick={handleAddLink}
-                    className="w-full h-10 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition-all"
-                  >
-                    + Ekle
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 3D Eklenti Kart Izgarası */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {linkResources.map((link) => (
-            <div
-              key={link.id}
-              onClick={() => {
-                window.open(link.url_or_path, '_blank')
-                toast.success('Platform fırlatıldı!')
-              }}
-              className={cn(
-                'p-5 rounded-2xl border border-slate-200/60 dark:border-zinc-800/40 bg-white/60 dark:bg-zinc-900/60 cursor-pointer flex flex-col justify-between h-32 group relative overflow-hidden transition-all duration-300',
-                getGlowColor(link.url_or_path)
-              )}
-            >
-              <div className="absolute -right-4 -top-4 w-12 h-12 bg-cyan-500/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
-
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-850 text-slate-700 dark:text-zinc-300">
-                  {getBrandIcon(link.url_or_path)}
-                </div>
-                <span className="text-xs font-black text-slate-900 dark:text-white truncate">
-                  {link.name}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between mt-3">
-                <span className="text-[10px] text-slate-900 dark:text-zinc-300 truncate max-w-[150px] font-mono">
-                  {link.url_or_path}
-                </span>
-                <ExternalLink className="h-4 w-4 text-slate-400 dark:text-zinc-650 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  const renderReinforcementsTab = () => {
-    const filteredTargets = reinforcementTargets.filter((target) => {
-      const search = reinforcementSearch.trim().toLowerCase()
-      if (!search) return true
-      return getTargetLabel(target).toLowerCase().includes(search)
-    })
-    const selectedTargetTasks = selectedReinforcementTarget
-      ? reinforcements[selectedReinforcementTarget.id] || []
-      : []
-
-    return (
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 min-h-[430px]">
-        <div className="xl:col-span-4 glass-panel p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/25 backdrop-blur-xl shadow-md flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-cyan-500" />
-            <input
-              value={reinforcementSearch}
-              onChange={(e) => setReinforcementSearch(e.target.value)}
-              placeholder="Kaynak, dokuman veya baslik ara..."
-              className="h-10 flex-1 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/70 dark:bg-black/20 px-3 text-xs font-bold text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
-            />
-          </div>
-
-          <select
-            value={selectedProjectId ?? ''}
-            onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : undefined)}
-            className="h-10 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/70 dark:bg-black/20 px-3 text-xs font-bold text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
-          >
-            <option value="">Proje dokumanlari yok</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-            {filteredTargets.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 p-4 text-xs font-bold text-slate-700 dark:text-zinc-350">
-                Eslesen kaynak bulunamadi.
-              </div>
-            ) : (
-              filteredTargets.map((target) => {
-                const active = selectedReinforcementTargetId === target.id
-                const taskCount = (reinforcements[target.id] || []).length
-                return (
-                  <button
-                    key={target.id}
-                    type="button"
-                    onClick={() => setSelectedReinforcementTargetId(target.id)}
-                    className={cn(
-                      'w-full text-left rounded-xl border p-3 transition-all',
-                      active
-                        ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_14px_rgba(6,182,212,0.18)]'
-                        : 'border-slate-200/70 dark:border-zinc-800/70 bg-white/50 dark:bg-zinc-900/30 hover:bg-white/80 dark:hover:bg-zinc-900/50'
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-black text-slate-950 dark:text-white">
-                          {getTargetLabel(target)}
-                        </p>
-                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-500">
-                          {target.type === 'resource' ? target.resource.type : 'PROJECT DOC'} / {taskCount} pekistirme
-                        </p>
-                      </div>
-                      {target.type === 'resource' ? (
-                        <FileText className="h-4 w-4 shrink-0 text-cyan-500" />
-                      ) : (
-                        <BookOpen className="h-4 w-4 shrink-0 text-violet-500" />
-                      )}
-                    </div>
-                  </button>
-                )
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="xl:col-span-8 glass-panel p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/25 backdrop-blur-xl shadow-md flex flex-col gap-4">
-          {selectedReinforcementTarget ? (
-            <>
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 border-b border-slate-200 dark:border-zinc-800 pb-4">
-                <div>
-                  <h3 className="text-sm font-black text-slate-950 dark:text-white">
-                    {getTargetLabel(selectedReinforcementTarget)}
-                  </h3>
-                  <p className="mt-1 text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
-                    Dokuman, mufredat basligi veya proje dokumani icin bagli pekistirme calismalari.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleWriteCodeForTarget(selectedReinforcementTarget)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-700 dark:text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.08)] transition-all hover:bg-cyan-500/15"
-                >
-                  <Code2 className="h-3.5 w-3.5" />
-                  <span>Kod Alanini Ac</span>
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  value={newReinforcementTitle}
-                  onChange={(e) => setNewReinforcementTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter' || !selectedReinforcementTarget) return
-                    const title = newReinforcementTitle.trim()
-                    if (!title) return
-                    handleAddReinforceTask(selectedReinforcementTarget.id, title)
-                    setNewReinforcementTitle('')
-                  }}
-                  placeholder="Yeni pekistirme basligi yazin..."
-                  className="h-11 flex-1 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/70 dark:bg-black/20 px-3 text-xs font-bold text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!selectedReinforcementTarget) return
-                    const title = newReinforcementTitle.trim()
-                    if (!title) return
-                    handleAddReinforceTask(selectedReinforcementTarget.id, title)
-                    setNewReinforcementTitle('')
-                  }}
-                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 text-xs font-black text-cyan-700 dark:text-cyan-300 transition-all hover:bg-cyan-500/15"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Ekle</span>
-                </button>
-              </div>
-
-              <div className="space-y-2 overflow-y-auto pr-1">
-                {selectedTargetTasks.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800 p-6 text-center text-xs font-bold text-slate-700 dark:text-zinc-350">
-                    Bu kaynak icin henuz pekistirme yok.
-                  </div>
-                ) : (
-                  selectedTargetTasks.map((task, index) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/70 dark:border-zinc-800/70 bg-white/55 dark:bg-zinc-900/35 p-3"
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={task.completed}
-                          onChange={() => handleToggleReinforceTask(selectedReinforcementTarget.id, task.id)}
-                          className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-zinc-700 bg-transparent"
-                        />
-                        <div className="min-w-0">
-                          <p className={cn('truncate text-xs font-black text-slate-950 dark:text-white', task.completed && 'line-through opacity-50')}>
-                            {index + 1}. {task.title}
-                          </p>
-                          <p className="mt-0.5 truncate text-[10px] font-mono text-slate-500 dark:text-zinc-500">
-                            {task.codeFileName}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleWriteCodeForTarget(selectedReinforcementTarget, task)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] font-black text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/15"
-                        >
-                          <Code2 className="h-3 w-3" />
-                          <span>Kod</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteReinforceTask(selectedReinforcementTarget.id, task.id)}
-                          className="rounded-lg p-1.5 text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-500"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex h-full min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800 text-xs font-bold text-slate-700 dark:text-zinc-350">
-              Once bir kaynak veya proje dokumani secin.
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  const renderCodeTab = () => {
-    const codeContextOptions = reinforcementTargets.flatMap((target) => {
-      const directOption = { value: target.id, label: getTargetLabel(target) }
-      const taskOptions = (reinforcements[target.id] || []).map((task) => ({
-        value: `reinforce|${target.id}|${task.id}`,
-        label: `${getTargetLabel(target)} / ${task.title}`
-      }))
-      return [directOption, ...taskOptions]
-    })
-
-    const handleCodeContextChange = (value: string) => {
-      if (!value) return
-      if (value.startsWith('reinforce|')) {
-        const [, targetId, taskId] = value.split('|')
-        const target = reinforcementTargets.find((item) => item.id === targetId)
-        const task = target ? (reinforcements[target.id] || []).find((item) => item.id === taskId) : undefined
-        if (target && task) handleWriteCodeForTarget(target, task)
-        return
-      }
-
-      const target = reinforcementTargets.find((item) => item.id === value)
-      if (target) handleWriteCodeForTarget(target)
-    }
-
-    const codeContextPanel = (
-      <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/25 backdrop-blur-xl p-3 shadow-md">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-zinc-400">
-              Kod baglami
-            </p>
-            <p className="text-xs font-bold text-slate-950 dark:text-white">
-              Yazdiginiz kodu dosya, dokuman veya pekistirme ile iliskilendirin.
-            </p>
-          </div>
-          <select
-            value={selectedPractice?.resource_id ? `resource:${selectedPractice.resource_id}` : ''}
-            onChange={(e) => handleCodeContextChange(e.target.value)}
-            className="h-10 min-w-full md:min-w-[320px] rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/80 dark:bg-black/30 px-3 text-xs font-bold text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
-          >
-            <option value="">Baglam sec...</option>
-            {codeContextOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-    )
-
-    if (!selectedPractice) {
-      return (
-        <div className="space-y-3">
-          {codeContextPanel}
-          <div className="text-center py-12 text-xs font-bold text-slate-900 dark:text-zinc-350">
-          Lütfen önce sol döküman listesinden bir pratik odası seçin.
-          </div>
-        </div>
-      )
-    }
-
-    return (
-      <div className="space-y-3">
-        {codeContextPanel}
-        <div className="flex flex-col h-full min-h-[400px] w-full rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden bg-slate-950">
-        {/* IDE Header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900 shrink-0">
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            {codeFiles.map((file) => (
-              <button
-                key={file.name}
-                type="button"
-                onClick={() => setActiveFileName(file.name)}
-                className={cn(
-                  'px-3 py-1.5 rounded-t-lg text-xs font-mono font-bold transition-all relative',
-                  activeFile.name === file.name
-                    ? 'bg-slate-955 text-cyan-400 font-extrabold'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850'
-                )}
-              >
-                {file.name}
-                {activeFile.name === file.name && (
-                  <span className="absolute bottom-0 inset-x-0 h-[2px] bg-cyan-400 shadow-[0_0_8px_#06b6d4]" />
-                )}
-              </button>
-            ))}
-            <button
-              onClick={handleAddNewFile}
-              className="p-1 rounded bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all"
-              title="Yeni Dosya Ekle"
-            >
-              <Plus className="h-3 w-3" />
-            </button>
-          </div>
-
-          <button
-            onClick={handleSaveCodeDirectly}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-400 hover:text-white hover:bg-cyan-500/10 border border-cyan-500/30 rounded transition-all"
-          >
-            <Save className="h-3 w-3" />
-            <span>Kaydet</span>
-          </button>
-        </div>
-
-        {/* Editor Layout */}
-        <div className="flex-1 grid grid-cols-[3.5rem_1fr] bg-black/50 backdrop-blur-md border border-white/5 relative min-h-[300px]">
-          {/* Line Numbers */}
-          <div className="select-none border-r border-zinc-850 text-right pr-3 pl-1 py-4 font-mono text-[11px] leading-6 text-zinc-500 bg-slate-950/60">
-            {buildLineNumbers(activeFile.content).map((num) => (
-              <div key={num}>{num}</div>
-            ))}
-          </div>
-
-          {/* Code Input */}
-          <textarea
-            value={activeFile.content}
-            onChange={(e) => handleCodeChange(e.target.value)}
-            spellCheck={false}
-            className="w-full h-full min-h-[300px] resize-none bg-transparent py-4 px-4 font-mono text-xs leading-6 text-cyan-50/90 outline-none placeholder:text-zinc-750 focus:ring-1 focus:ring-cyan-500/20"
-            placeholder="// Kodlarınızı buraya yazın..."
-          />
-        </div>
-      </div>
-      </div>
-    )
-  }
-
-  const renderVocabularyTab = () => {
-    return (
-      <div className="space-y-6">
-        {/* Level Selector */}
-        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-zinc-800 pb-3">
-          {LANGUAGE_LEVELS.map((level) => (
-            <button
-              key={level.id}
-              onClick={() => setActiveLevel(level.id)}
-              className={cn(
-                'px-3 py-1.5 text-xs font-bold rounded-xl transition-all border',
-                activeLevel === level.id
-                  ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-600 dark:text-cyan-400'
-                  : 'bg-transparent border-transparent text-slate-800 dark:text-zinc-400 hover:bg-slate-100/50 dark:hover:bg-zinc-900/40'
-              )}
-            >
-              {level.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Word Adder */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/30 dark:bg-zinc-950/20 backdrop-blur-xl">
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-3">
-            Kelime Haznesi Ekle
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-            <div className="sm:col-span-5">
-              <label className="block text-[9px] font-extrabold uppercase text-slate-900 dark:text-zinc-300 tracking-wider mb-1">İngilizce Kelime</label>
-              <input
-                type="text"
-                value={word}
-                onChange={(e) => setWord(e.target.value)}
-                placeholder="English word..."
-                className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-950 dark:text-white"
-              />
-            </div>
-            <div className="sm:col-span-4">
-              <label className="block text-[9px] font-extrabold uppercase text-slate-900 dark:text-zinc-300 tracking-wider mb-1">Türkçe Karşılığı</label>
-              <input
-                type="text"
-                value={meaning}
-                onChange={(e) => setMeaning(e.target.value)}
-                placeholder="Türkçe karşılığı..."
-                className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-950 dark:text-white"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-[9px] font-extrabold uppercase text-slate-900 dark:text-zinc-300 tracking-wider mb-1">Kelime Tipi</label>
-              <select
-                value={wordType}
-                onChange={(e) => setWordType(e.target.value as VocabularyType)}
-                className="w-full h-10 px-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-950 dark:text-white"
-              >
-                {VOCABULARY_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              onClick={handleAddVocabWord}
-              className="sm:col-span-1 h-10 w-full rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/15 flex items-center justify-center transition-all"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Cards List */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {levelVocabulary.map((card) => {
-            const isFlipped = !!flippedCards[card.id]
-            return (
-              <div key={card.id} className="flex flex-col gap-2">
-                <button
-                  onClick={() =>
-                    setFlippedCards((prev) => ({ ...prev, [card.id]: !prev[card.id] }))
-                  }
-                  className="h-32 w-full [perspective:800px] text-left outline-none"
-                >
-                  <div
-                    className={cn(
-                      'relative w-full h-full rounded-2xl border border-slate-200/60 dark:border-zinc-800/40 bg-white/60 dark:bg-zinc-900/60 transition-transform duration-500 [transform-style:preserve-3d]',
-                      isFlipped && '[transform:rotateY(180deg)]'
-                    )}
-                  >
-                    {/* Front Side */}
-                    <div className="absolute inset-0 flex flex-col justify-between p-4 [backface-visibility:hidden] overflow-hidden">
-                      <span className="text-sm font-black text-slate-900 dark:text-white truncate">
-                        {card.word}
-                      </span>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase">
-                          {card.type}
-                        </span>
-                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-                          Box {card.box}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Back Side */}
-                    <div className="absolute inset-0 flex flex-col justify-between p-4 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 overflow-hidden">
-                      <span className="text-sm font-black truncate">
-                        {card.meaning}
-                      </span>
-                      <span className="text-[9px] font-medium opacity-80">
-                        Tarih: {card.nextReview}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    onClick={() => handleLeitnerResult(card.id, 'known')}
-                    className="px-2 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase transition-all"
-                  >
-                    Biliyorum
-                  </button>
-                  <button
-                    onClick={() => handleLeitnerResult(card.id, 'forgot')}
-                    className="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase transition-all"
-                  >
-                    Unuttum
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
-
-  const renderCheatsheetTab = () => {
-    return (
-      <div className="space-y-6">
-        {/* Cheatsheet Adder */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/30 dark:bg-zinc-950/20 backdrop-blur-xl">
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-3">
-            Kilit Teknik Kavram Ekle (Cheatsheet)
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-            <div className="md:col-span-4">
-              <label className="block text-[9px] font-extrabold uppercase text-slate-900 dark:text-zinc-300 tracking-wider mb-1">Anahtar Terim / Konsept</label>
-              <input
-                type="text"
-                value={keyConcept}
-                onChange={(e) => setKeyConcept(e.target.value)}
-                placeholder="Örn: ACID Standartları..."
-                className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-950 dark:text-white"
-              />
-            </div>
-            <div className="md:col-span-7">
-              <label className="block text-[9px] font-extrabold uppercase text-slate-900 dark:text-zinc-300 tracking-wider mb-1">Özet Teknik Açıklama</label>
-              <input
-                type="text"
-                value={conceptDescription}
-                onChange={(e) => setConceptDescription(e.target.value)}
-                placeholder="Kısa ve net ezber bilgisi..."
-                className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-950 dark:text-white"
-              />
-            </div>
-            <button
-              onClick={handleAddCheatItem}
-              className="md:col-span-1 h-10 w-full rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/15 flex items-center justify-center transition-all"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Cheatsheet Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {cheatsheet.map((item) => (
-            <div
-              key={item.id}
-              className="relative p-4 pr-10 rounded-xl border border-slate-200/60 dark:border-zinc-800/40 bg-white/60 dark:bg-zinc-900/60 flex flex-col gap-1.5 animate-in fade-in duration-300"
-            >
-              <button
-                onClick={() => handleDeleteCheatItem(item.id)}
-                className="absolute right-3 top-3 p-1.5 rounded-lg text-slate-400 hover:text-red-500 dark:text-zinc-650 hover:bg-red-500/10 transition-all"
-                title="Sil"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-              <span className="text-xs font-black text-slate-900 dark:text-white">
-                {item.keyConcept}
-              </span>
-              <p className="text-[11px] font-medium text-slate-650 dark:text-zinc-350 leading-relaxed">
-                {item.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  const renderNotlarTab = () => {
-    return (
-      <div className="flex flex-col h-full min-h-[350px]">
-        {/* Dropdown Topic Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 dark:border-zinc-800 gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-zinc-350">
-              Konu Seçimi:
-            </label>
-            <select
-              value={selectedResourceId === null || selectedResourceId === undefined ? 'general' : selectedResourceId}
-              onChange={(e) => {
-                const val = e.target.value
-                if (val === 'general') {
-                  setSelectedResourceId(null)
-                  const match = practices.find((p) => p.resource_id === null)
-                  if (match) setSelectedPracticeId(match.id)
-                } else {
-                  const numId = Number(val)
-                  setSelectedResourceId(numId)
-                  const match = practices.find((p) => p.resource_id === numId)
-                  if (match) setSelectedPracticeId(match.id)
-                }
-              }}
-              className="h-9 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-950 dark:text-white outline-none"
-            >
-              <option value="general">Kurs Genel Notları</option>
-              {resources.map((res) => (
-                <option key={res.id} value={res.id}>
-                  {res.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <span className="text-[10px] font-extrabold uppercase text-cyan-600 dark:text-cyan-400">
-            {saveState === 'saving' ? 'Kaydediliyor...' : 'Otomatik Kayıt Aktif'}
-          </span>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-4 flex-1 min-h-0">
-          <aside className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/55 dark:bg-zinc-950/25 backdrop-blur-xl p-3 shadow-md flex flex-col gap-3 min-h-[260px]">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-zinc-400">
-                  Not basliklari
-                </p>
-                <p className="text-[11px] font-bold text-slate-950 dark:text-white">
-                  {activeResourceNotes.length} not
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleCreateNoteForResource(activeNoteResourceKey)}
-                className="inline-flex items-center gap-1 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-black text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/15"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Yeni</span>
-              </button>
-            </div>
-
-            <div className="space-y-2 overflow-y-auto pr-1">
-              {activeResourceNotes.length === 0 ? (
-                <button
-                  type="button"
-                  onClick={() => handleCreateNoteForResource(activeNoteResourceKey)}
-                  className="w-full rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 p-4 text-left text-xs font-bold text-slate-700 dark:text-zinc-350 hover:border-cyan-500/40 hover:text-cyan-700 dark:hover:text-cyan-300"
-                >
-                  Bu kaynak icin ilk notu ekle.
-                </button>
-              ) : (
-                activeResourceNotes.map((note) => {
-                  const active = activeResourceNoteId === note.id
-                  return (
-                    <div
-                      key={note.id}
-                      className={cn(
-                        'group flex items-center gap-2 rounded-xl border p-2 transition-all',
-                        active
-                          ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_12px_rgba(6,182,212,0.14)]'
-                          : 'border-slate-200/70 dark:border-zinc-800/70 bg-white/50 dark:bg-zinc-900/30 hover:bg-white/80 dark:hover:bg-zinc-900/50'
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setActiveResourceNoteId(note.id)}
-                        className="min-w-0 flex-1 text-left"
-                      >
-                        <p className="truncate text-xs font-black text-slate-950 dark:text-white">
-                          {note.title || 'Basliksiz Not'}
-                        </p>
-                        <p className="mt-0.5 line-clamp-1 text-[10px] font-semibold text-slate-500 dark:text-zinc-500">
-                          {note.content || 'Bos not'}
-                        </p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteNoteForResource(activeNoteResourceKey, note.id)}
-                        className="rounded-lg p-1 text-slate-400 opacity-100 transition-all hover:bg-red-500/10 hover:text-red-500 lg:opacity-0 lg:group-hover:opacity-100"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </aside>
-
-        {/* Text Editor Area */}
-        <div className="flex flex-col min-h-[320px]">
-          <input
-            value={noteTitleDraft}
-            onChange={(e) => setNoteTitleDraft(e.target.value)}
-            placeholder="Not basligi..."
-            className="mb-3 h-11 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/70 dark:bg-black/20 px-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-cyan-500/50"
-          />
-          {education.type === 'LANGUAGE' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
-              <div className="lg:col-span-8 flex flex-col">
-                <textarea
-                  value={notesDraft}
-                  onChange={(e) => setNotesDraft(e.target.value)}
-                  placeholder="Write your technical summary or speaking diary in English..."
-                  className="w-full flex-1 min-h-[250px] resize-none bg-white/50 dark:bg-black/20 p-4 border border-slate-200 dark:border-zinc-800 rounded-2xl text-xs font-bold leading-6 text-slate-950 dark:text-white outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
-                />
-              </div>
-
-              <div className="lg:col-span-4 glass-panel p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/30 dark:bg-zinc-950/20 backdrop-blur-xl flex flex-col gap-3">
-                <h5 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
-                  Çeviri & Sözlük Asistanı
-                </h5>
-                <textarea
-                  value={translateInput}
-                  onChange={(e) => setTranslateInput(e.target.value)}
-                  placeholder="Çevirilecek ifadeyi girin..."
-                  className="w-full h-20 resize-none rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 p-2.5 text-xs text-slate-950 dark:text-white outline-none focus:border-cyan-500/40"
-                />
-                <button
-                  type="button"
-                  onClick={handleQuickTranslate}
-                  className="w-full py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition-all"
-                >
-                  Çevir
-                </button>
-                {translateResult && (
-                  <div className="mt-2 p-3 rounded-xl bg-white/60 dark:bg-black/35 text-[11px] font-semibold text-slate-900 dark:text-zinc-350 leading-relaxed whitespace-pre-line border border-slate-200 dark:border-zinc-800">
-                    {translateResult}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <textarea
-              value={notesDraft}
-              onChange={(e) => setNotesDraft(e.target.value)}
-              placeholder="# Cornell Not Alma Metodu&#10;&#10;## Kavramlar & İpuçları&#10;- Terim 1: Kısaca ipucu...&#10;&#10;## Detaylı Ders Notları&#10;- Buraya döküman veya videodaki tüm önemli yerleri yazın...&#10;&#10;## Özet&#10;- Konuyu kendi kelimelerinizle 2 satırda özetleyin..."
-              className="w-full flex-1 min-h-[300px] resize-none bg-white/50 dark:bg-black/20 p-4 border border-slate-200 dark:border-zinc-800 rounded-2xl text-xs font-bold leading-6 text-slate-950 dark:text-white outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
-            />
-          )}
-        </div>
-      </div>
-      </div>
-    )
-  }
-
+  // --- 4-LEVEL LEFT FILE TREE ---
   const renderTabContent = () => {
+    const commonProps = {
+      resources,
+      education,
+      educationId,
+    }
+
     switch (activeTab) {
       case 'overview':
-        return renderOverviewTab()
+        return (
+          <OverviewTab
+            {...commonProps}
+            practices={practices}
+            localTasks={localTasks}
+            taskTitle={taskTitle}
+            setTaskTitle={setTaskTitle}
+            taskDate={taskDate}
+            setTaskDate={setTaskDate}
+            taskTime={taskTime}
+            setTaskTime={setTaskTime}
+            handleAddTask={handleAddTask}
+            handleToggleLocalTask={handleToggleLocalTask}
+            editingTaskId={editingTaskId}
+            setEditingTaskId={setEditingTaskId}
+            editingTaskTitle={editingTaskTitle}
+            setEditingTaskTitle={setEditingTaskTitle}
+            handleSaveLocalTaskEdit={handleSaveLocalTaskEdit}
+            handleDeleteLocalTask={handleDeleteLocalTask}
+          />
+        )
       case 'files':
-        return renderDosyalarTab()
+        return (
+          <DosyalarTab
+            {...commonProps}
+            folders={folders}
+            foldersOpen={foldersOpen}
+            toggleFolderState={toggleFolderState}
+            completedResources={completedResources}
+            saveCompletedResources={saveCompletedResources}
+            handleRenameFolder={handleRenameFolder}
+            handleDeleteFolder={handleDeleteFolder}
+            handleRenameResource={handleRenameResource}
+            handleDeleteResource={handleDeleteResource}
+            handleOpenNotesForResource={handleOpenNotesForResource}
+            handleOpenCodeForResource={handleOpenCodeForResource}
+            triggerReplaceFile={triggerReplaceFile}
+            setActiveReinforceResourceId={setActiveReinforceResourceId}
+            fileInputRef={fileInputRef}
+            handleFileUpload={handleFileUpload}
+            handleFileReplace={handleFileReplace}
+            setIsFolderCreatorOpen={setIsFolderCreatorOpen}
+            setIsImporterOpen={setIsImporterOpen}
+            handleDragStartFolder={handleDragStartFolder}
+            handleDragStartResource={handleDragStartResource}
+            handleDropFolder={handleDropFolder}
+            handleDropResource={handleDropResource}
+            handleDropResourceOnFolderHeader={handleDropResourceOnFolderHeader}
+          />
+        )
       case 'links':
-        return renderLinklerTab()
+        return (
+          <LinklerTab
+            {...commonProps}
+            isLinkAdderOpen={isLinkAdderOpen}
+            setIsLinkAdderOpen={setIsLinkAdderOpen}
+            newLinkName={newLinkName}
+            setNewLinkName={setNewLinkName}
+            newLinkUrl={newLinkUrl}
+            setNewLinkUrl={setNewLinkUrl}
+            handleAddLink={handleAddLink}
+          />
+        )
       case 'reinforce':
-        return renderReinforcementsTab()
+        return (
+          <ReinforcementsTab
+            {...commonProps}
+            reinforcementTargets={reinforcementTargets}
+            reinforcementSearch={reinforcementSearch}
+            setReinforcementSearch={setReinforcementSearch}
+            selectedProjectId={selectedProjectId}
+            setSelectedProjectId={setSelectedProjectId}
+            projects={projects}
+            selectedReinforcementTargetId={selectedReinforcementTargetId}
+            setSelectedReinforcementTargetId={setSelectedReinforcementTargetId}
+            reinforcements={reinforcements}
+            newReinforcementTitle={newReinforcementTitle}
+            setNewReinforcementTitle={setNewReinforcementTitle}
+            handleAddReinforceTask={handleAddReinforceTask}
+            handleToggleReinforceTask={handleToggleReinforceTask}
+            handleDeleteReinforceTask={handleDeleteReinforceTask}
+            handleWriteCodeForTarget={handleWriteCodeForTarget}
+          />
+        )
       case 'primary':
         if (education.type === 'PROGRAMMING') {
-          return <StudioModePanel type={education.type}>{renderCodeTab()}</StudioModePanel>
+          return (
+            <StudioModePanel type={education.type}>
+              <CodeTab
+                {...commonProps}
+                selectedPractice={selectedPractice}
+                codeFiles={codeFiles}
+                activeFile={activeFile}
+                codeDraft={codeDraft}
+                setCodeDraft={setCodeDraft}
+                activeFileName={activeFileName}
+                handleFileTabChange={handleFileTabChange}
+                handleSaveCodeDirectly={handleSaveCodeDirectly}
+                isCodeDirty={isCodeDirty}
+                folders={folders}
+                reinforcementTargets={reinforcementTargets}
+                reinforcements={reinforcements}
+                selectedFolderIdForDropdown={selectedFolderIdForDropdown}
+                handleDropdown1Change={handleDropdown1Change}
+                handleDropdown2Change={handleDropdown2Change}
+                handleDropdown3Change={handleDropdown3Change}
+              />
+            </StudioModePanel>
+          )
         } else if (education.type === 'LANGUAGE') {
-          return <StudioModePanel type={education.type}>{renderVocabularyTab()}</StudioModePanel>
+          return (
+            <StudioModePanel type={education.type}>
+              <VocabularyTab
+                vocabularyCards={vocabulary}
+                activeLevel={activeLevel}
+                setActiveLevel={setActiveLevel}
+                word={word}
+                setWord={setWord}
+                meaning={meaning}
+                setMeaning={setMeaning}
+                wordType={wordType}
+                setWordType={setWordType}
+                handleAddVocabWord={handleAddVocabWord}
+                handleLeitnerResult={handleLeitnerResult}
+                flippedCards={flippedCards}
+                setFlippedCards={setFlippedCards}
+              />
+            </StudioModePanel>
+          )
         } else {
-          return <StudioModePanel type={education.type}>{renderCheatsheetTab()}</StudioModePanel>
+          return (
+            <StudioModePanel type={education.type}>
+              <CheatsheetTab
+                cheatsheetItems={cheatsheet}
+                keyConcept={keyConcept}
+                setKeyConcept={setKeyConcept}
+                conceptDescription={conceptDescription}
+                setConceptDescription={setConceptDescription}
+                handleAddCheatItem={handleAddCheatItem}
+                handleDeleteCheatItem={handleDeleteCheatItem}
+              />
+            </StudioModePanel>
+          )
         }
       case 'notes':
-        return renderNotlarTab()
+        return (
+          <NotlarTab
+            {...commonProps}
+            selectedResourceId={selectedResourceId}
+            handleNoteTopicChange={handleNoteTopicChange}
+            saveState={saveState}
+            isNotesDirty={isNotesDirty}
+            handleSaveNotes={handleSaveNotes}
+            activeNoteResourceKey={activeNoteResourceKey}
+            resourceNoteItems={resourceNoteItems}
+            handleNoteItemClick={handleNoteItemClick}
+            activeResourceNoteId={activeResourceNoteId}
+            handleCreateNoteForResource={handleCreateNoteForResource}
+            handleDeleteNoteForResource={handleDeleteNoteForResource}
+            noteTitleDraft={noteTitleDraft}
+            setNoteTitleDraft={setNoteTitleDraft}
+            notesDraft={notesDraft}
+            setNotesDraft={setNotesDraft}
+            translateInput={translateInput}
+            setTranslateInput={setTranslateInput}
+            translateResult={translateResult}
+            handleQuickTranslate={handleQuickTranslate}
+          />
+        )
       default:
         return null
     }
@@ -3072,7 +2263,7 @@ export const EducationStudio: React.FC = () => {
           {tabOptions.map((option) => (
             <button
               key={option.id}
-              onClick={() => setActiveTab(option.id)}
+              onClick={() => handleTabChange(option.id)}
               className={getMovieButtonClass(activeTab === option.id)}
             >
               {option.label}
@@ -3081,21 +2272,67 @@ export const EducationStudio: React.FC = () => {
         </div>
 
         {/* Ana Gövde (Body) */}
-        <div className="flex-grow overflow-hidden relative">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.2 }}
-              className="h-full overflow-y-auto pr-1"
-            >
-              {renderTabContent()}
-            </motion.div>
-          </AnimatePresence>
+        <div className="flex-grow overflow-hidden relative flex gap-6">
+          {/* Sol Panel: File Tree */}
+          <div className="w-80 shrink-0 hidden md:block h-full overflow-hidden">
+            <LeftFileTree
+              folders={folders}
+              resources={resources}
+              selectedResourceId={selectedResourceId}
+              activeTab={activeTab}
+              activeFileName={activeFileName}
+              activeResourceNoteId={activeResourceNoteId}
+              reinforcements={reinforcements}
+              resourceNoteItems={resourceNoteItems}
+              treeExpandedNodes={treeExpandedNodes}
+              treeLoadingNodes={treeLoadingNodes}
+              handleToggleTreeNode={handleToggleTreeNode}
+              handleTreeNodeClick={handleTreeNodeClick}
+              handleRenameFolder={handleRenameFolder}
+              handleDeleteFolder={handleDeleteFolder}
+              handleRenameResource={handleRenameResource}
+              handleDeleteResource={handleDeleteResource}
+              handleRenameTask={handleRenameTask}
+              handleDeleteTask={handleDeleteTask}
+              handleRenameNote={handleRenameNote}
+              handleDeleteNote={handleDeleteNote}
+            />
+          </div>
+
+          {/* Sağ Panel: Tab İçeriği */}
+          <div className="flex-grow overflow-hidden relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.2 }}
+                className="h-full overflow-y-auto pr-1"
+              >
+                {renderTabContent()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
+
+      {/* Cascade Deletion Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={!!deleteConfirmation?.isOpen}
+        title={deleteConfirmation?.title || ''}
+        warningText={deleteConfirmation?.warningText || ''}
+        onClose={() => setDeleteConfirmation(null)}
+        onConfirm={() => {
+          if (deleteConfirmation) {
+            if (deleteConfirmation.type === 'folder') {
+              void executeDeleteFolder(String(deleteConfirmation.targetId))
+            } else {
+              void executeDeleteResource(Number(deleteConfirmation.targetId))
+            }
+          }
+        }}
+      />
 
       {/* ──────────────────────────────────────────────────────────────────
           CURRICULUM BATCH IMPORTER MODAL

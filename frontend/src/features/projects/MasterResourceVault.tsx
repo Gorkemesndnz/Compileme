@@ -244,7 +244,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
         type: l.type,
         category: l.category,
         notes: l.notes,
-        resourceType: (isFile ? 'file' : 'link') as const,
+        resourceType: isFile ? 'file' as const : 'link' as const,
         phaseId,
         subPhaseId,
         createdAt: l.createdAt || '',
@@ -267,6 +267,9 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
   const selectedResource = useMemo(() => {
     return allResources.find((r) => r.uid === selectedResourceId) || null
   }, [allResources, selectedResourceId])
+  const selectedResourceUrl = selectedResource && selectedResource.resourceType !== 'document'
+    ? selectedResource.url
+    : undefined
 
   // Clean Title Masking
   const getCleanTitle = (title: string) => {
@@ -510,7 +513,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
     try {
       if (selectedResource.resourceType === 'document') {
         await updateDocMutation.mutateAsync({
-          id: selectedResource.id,
+          documentId: selectedResource.id,
           request: {
             title: finalTitle,
             content: selectedResource.content || '',
@@ -868,9 +871,9 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {selectedResource.url && (
+                  {selectedResourceUrl && (
                     <a
-                      href={selectedResource.url}
+                      href={selectedResourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-850 border border-slate-200/50 dark:border-slate-800 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
@@ -906,15 +909,15 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                   </div>
                 ) : selectedResource.resourceType === 'file' ? (
                   <div className="space-y-3 w-full text-center py-4">
-                    {selectedResource.url.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                    {selectedResourceUrl?.match(/\.(jpeg|jpg|gif|png)$/i) ? (
                       <img
-                        src={selectedResource.url}
+                        src={selectedResourceUrl}
                         alt={selectedResource.title}
                         className="max-h-80 mx-auto rounded-xl border border-slate-200/50 shadow-md object-contain"
                       />
-                    ) : selectedResource.url.match(/\.pdf$/i) ? (
+                    ) : selectedResourceUrl?.match(/\.pdf$/i) ? (
                       <iframe
-                        src={`${selectedResource.url}#toolbar=0`}
+                        src={`${selectedResourceUrl}#toolbar=0`}
                         title={selectedResource.title}
                         className="w-full h-96 rounded-xl border border-slate-200 dark:border-slate-900"
                       />
@@ -925,7 +928,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                           Önizleme desteklenmiyor. Dosyayı indirip görüntüleyebilirsiniz.
                         </span>
                         <a
-                          href={selectedResource.url}
+                          href={selectedResourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 inline-flex items-center gap-1.5"
@@ -948,7 +951,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                       </p>
                     )}
                     <a
-                      href={selectedResource.url}
+                      href={selectedResourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20 inline-flex items-center gap-1.5"

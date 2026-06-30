@@ -13,9 +13,9 @@
 
 ## Şu Anki Durum
 - **Aktif faz:** FE-3 — Eğitimler (Frontend)
-- **Çalışıyor mu:** Evet (Proje komuta merkezi terminal görünümüyle ve 4 katmanlı akordeon sidebar ağacıyla çalışıyor.)
-- **Sırada:** FE-3 — Eğitimler (Frontend)
-- **Son güncelleme:** 24.06.2026
+- **Çalışıyor mu:** Evet (frontend build, backend testleri, API smoke, ana eğitim rotaları ve sidebar tema/dil browser smoke temiz.)
+- **Sırada:** FE-3 — Eğitimler (Frontend) için opsiyonel bundle/code-splitting temizliği ve kullanıcı akışı cilası.
+- **Son güncelleme:** 30.06.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
@@ -42,6 +42,33 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-06-30 - Faz FE-3 - Stabilizasyon, Eğitim Entegrasyonu ve Backend Smoke
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Devam
+- Yapılanlar:
+  - Frontend build script'i gerçek app type-check yapacak şekilde `tsc -p tsconfig.app.json --noEmit && vite build` olarak güncellendi.
+  - Dashboard `TerminalMetrics` içindeki eksik `useTranslation()` ve eğitim `OverviewTab` içindeki eksik `FileText` import'u düzeltildi.
+  - Sidebar tema/dil dropdown'ları açıkken auto-collapse duracak şekilde `isAnySidebarMenuOpen` state'i eklendi; `Toaster` teması UI store ile senkronlandı.
+  - Eğitim frontend akışında kaynak/pratik verisi gerçek backend hook'larına bağlandı; yeni eğitim oluştururken link/dosya kaynakları `POST /api/files` ve `POST /api/educations/{id}/resources` ile kalıcı yazılacak hale getirildi.
+  - Education type/kategori tarafında `FRONTEND` ve `MOBILE` destekleri korunup label/başlangıç sidebar kategorileri tamamlandı.
+  - Backend Dockerfile Java 17 Maven/JRE imajlarına çekildi.
+  - `/api/tasks` 500 hatası giderildi: Hibernate Criteria `nullsLast()` yerine Specification içinde `CASE WHEN ... IS NULL` sıralaması kullanıldı.
+  - Vite CSS minify uyarısına neden olan Tailwind false-positive regex literal kullanımı `trimCurriculumLabel` helper'ına taşındı; `Expected identifier but found "-"` uyarısı giderildi.
+- Kararlar:
+  - Education PATCH mevcut davranışı korundu: request'te `null` gelen alanlar "dokunma" anlamında kalıyor.
+  - Browser smoke için Chrome headless bu ortamda kapanınca Edge executable kullanıldı.
+- Kabul kriteri:
+  - `npm.cmd exec tsc -- -p tsconfig.app.json --noEmit` başarılı.
+  - `npm.cmd run build` başarılı.
+  - `docker compose up -d --build postgres backend` başarılı; Flyway 8 migration validate ve Hibernate startup temiz.
+  - Docker Java 17 Maven ile tam `mvn test`: 70 test, 0 hata; `/api/tasks` fix'i sonrası `TaskControllerTest,TaskServiceTest` targeted testi başarılı.
+  - Canlı API smoke: health, education create/list, file upload, resource create/list/delete, practice create/list/update/delete başarılı.
+  - Browser smoke: `/`, `/education`, `/education/4` console/pageerror sıfır.
+- Açık konular / sıradaki:
+  - Sidebar tema/dil dropdown smoke'u Edge/Playwright ile tamamlandı: menüler sidebar dışına mouse move sonrası açık kaldı; `theme=light`, `language=de` seçimi ve console/pageerror sıfır doğrulandı.
+  - Vite build sadece büyük chunk uyarısı veriyor; çalışmayı kırmıyor, ileride dynamic import/manualChunks ile performans iyileştirmesi olarak ele alınabilir.
 
 ### 2026-06-24 - Faz FE-3 - Egitim Modulu Backend Entegrasyon ve Modularizasyon
 - Ajan: Codex
@@ -777,7 +804,7 @@
 - **PostgreSQL Portu:** Yerel port `5432` dolu olduğu için Docker host portu `5433` yapıldı ve backend bu porta bağlandı.
 - **Java Sürümü:** Yerel makinede yalnızca JDK 18 kurulu olduğu için Java 21 yerine hedef derleme sürümü Java `17` yapıldı (Spring Boot 3.x ile tam uyumludur).
 - **PostgreSQL Nullable Parametre Eşleşmesi:** JPQL/HQL sorgularında parametre null kontrolü yapılırken (`:param is null`) PostgreSQL'in tip çözümleme hatası vermesini engellemek için parametreler `cast(:param as type)` şeklinde cast edilir.
-- **Java 21 Modernizasyonu ve Docker:** Proje Java 21 LTS sürümüne yükseltildi, Maven multi-stage Dockerfile ve docker-compose backend servisi eklenerek tüm mimari Dockerize edildi.
+- **Docker Java Sürümü:** Backend Docker build/runtime Java `17` imajlarını kullanır; Java 21'e geçiş yapılmadı çünkü AGENTS.md hedefi Java 17 olarak tanımlar.
 - **stored_file Denetim Kolonları:** stored_file tablosunda updated_at bulunmadığından entity sınıfı BaseEntity'den türetilmedi.
 - **Weather API Key (.env):** OpenWeatherMap API key yerel .env dosyasında saklanır ve git'e pushlanması engellenir. Docker Compose aracılığıyla container ortamına güvenle aktarılır.
 - **Weather Coordinates (lat/lon):** /api/weather endpoint'i koordinat tabanlı sorguları (lat/lon) doğrudan destekler.

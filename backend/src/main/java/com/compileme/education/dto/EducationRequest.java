@@ -23,5 +23,15 @@ public record EducationRequest(
 
         EducationStatus status,
 
-        LocalDate nextStudyDate
+        LocalDate nextStudyDate,
+
+        Integer durationHours,
+
+        String description,
+
+        String customCategory,
+
+        LocalDate startDate,
+
+        LocalDate endDate
 ) {}

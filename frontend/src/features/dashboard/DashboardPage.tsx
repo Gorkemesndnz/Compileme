@@ -56,8 +56,11 @@ import { MicroWaterTracker } from './MicroWaterTracker'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button as MovingBorderButton } from '../../components/ui/moving-border'
 
+import { useTranslation } from '../../store/translations'
+
 export const DashboardPage: React.FC = () => {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   
   // Local dates helpers
   const getLocalDateString = (daysOffset = 0) => {
@@ -282,7 +285,7 @@ export const DashboardPage: React.FC = () => {
         onSuccess: () => {
           setQuickAddText('')
           setQuickAddTime('')
-          toast.success('Görev eklendi.')
+          toast.success(t('db_task_added'))
         }
       })
     }
@@ -314,7 +317,7 @@ export const DashboardPage: React.FC = () => {
         setFocusedFormEdu('')
         setFocusedFormKind('GENERAL')
         setShowAddFormFocused(false)
-        toast.success('Görev eklendi.')
+        toast.success(t('db_task_added'))
       }
     })
   }
@@ -345,7 +348,7 @@ export const DashboardPage: React.FC = () => {
         setTomorrowFormEdu('')
         setTomorrowFormKind('GENERAL')
         setShowAddFormTomorrow(false)
-        toast.success('Görev eklendi.')
+        toast.success(t('db_task_added'))
       }
     })
   }
@@ -380,7 +383,7 @@ export const DashboardPage: React.FC = () => {
         setMonthFormEdu('')
         setMonthFormKind('GENERAL')
         setShowAddFormMonth(false)
-        toast.success(hasDate ? 'Görev planlanarak eklendi.' : 'Aylık plana görev eklendi.')
+        toast.success(hasDate ? t('db_task_plan_added') : t('db_task_month_added'))
       }
     })
   }
@@ -436,7 +439,7 @@ export const DashboardPage: React.FC = () => {
 
   const handleResetDay = async () => {
     if (waterSummary && waterSummary.logs && waterSummary.logs.length > 0) {
-      if (window.confirm('Bugünkü tüm su tüketim geçmişini sıfırlamak istediğinize emin misiniz?')) {
+      if (window.confirm(t('db_reset_water_confirm'))) {
         const originalLogs = [...waterSummary.logs]
         const originalAmount = waterSummary.consumedMl
 
@@ -449,7 +452,7 @@ export const DashboardPage: React.FC = () => {
 
         try {
           await Promise.all(originalLogs.map(log => deleteWaterMutation.mutateAsync(log.id)))
-          toast.success('Bugünkü su tüketim verileri sıfırlandı.')
+          toast.success(t('db_water_reset_success'))
         } catch (e) {
           queryClient.setQueryData(['water', today], {
             ...waterSummary,
@@ -495,7 +498,7 @@ export const DashboardPage: React.FC = () => {
     }, {
       onSuccess: () => {
         setEditingTaskId(null)
-        toast.success('Görev güncellendi.')
+        toast.success(t('btn_save'))
       }
     })
   }
@@ -508,7 +511,7 @@ export const DashboardPage: React.FC = () => {
       planningBucket: 'DAY'
     }, {
       onSuccess: () => {
-        toast.success('Görev yarına ertelendi.')
+        toast.success(t('db_task_moved'))
       }
     })
   }
@@ -517,8 +520,8 @@ export const DashboardPage: React.FC = () => {
   const planliGunler = Array.from(
     new Set(
       monthTasks
-        .filter(t => t.scheduledDate && t.scheduledDate !== today && t.scheduledDate !== tomorrow)
         .map(t => t.scheduledDate)
+        .filter((date): date is string => !!date && date !== today && date !== tomorrow)
     )
   ).sort()
 
@@ -791,7 +794,7 @@ export const DashboardPage: React.FC = () => {
                 <button
                   onClick={() => startEditing(task)}
                   className="p-1 text-neutral-500 hover:text-neutral-800 dark:hover:text-white transition-colors"
-                  title="Düzenle"
+                  title={t('btn_edit')}
                 >
                   <Edit2 className="h-3 w-3" />
                 </button>
@@ -800,7 +803,7 @@ export const DashboardPage: React.FC = () => {
                     onClick={() => handleDeferToTomorrow(task)}
                     disabled={moveTaskToTomorrowMutation.isPending}
                     className="p-1 text-neutral-500 hover:text-cyan-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Yarına ertele"
+                    title={t('db_postpone')}
                   >
                     <ArrowRight className="h-3 w-3" />
                   </button>
@@ -809,7 +812,7 @@ export const DashboardPage: React.FC = () => {
                   onClick={() => deleteTaskMutation.mutate(task.id)}
                   disabled={deleteTaskMutation.isPending}
                   className="p-1 text-neutral-500 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Görevi Sil"
+                  title={t('db_delete_task')}
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -862,8 +865,8 @@ export const DashboardPage: React.FC = () => {
               onChange={(e) => setQuickAddText(e.target.value)}
               placeholder={
                 quickAddType === 'idea'
-                  ? 'Aklındaki fikri yaz...'
-                  : 'Yeni görev oluştur...'
+                  ? t('db_idea_placeholder')
+                  : t('db_task_placeholder')
               }
               className="h-10 w-full min-w-0 flex-grow appearance-none border-0 bg-transparent p-0 text-sm font-medium text-neutral-950 shadow-none outline-none ring-0 placeholder:text-neutral-600 focus:border-transparent focus:bg-transparent focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-transparent dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:bg-transparent"
             />
@@ -886,7 +889,7 @@ export const DashboardPage: React.FC = () => {
             className="group flex h-10 shrink-0 items-center justify-center gap-2 self-end bg-transparent px-2 text-neutral-950 sm:self-auto dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="relative pb-1 text-xs font-black uppercase after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-bottom-right after:scale-x-0 after:bg-neutral-950 after:transition-transform after:duration-300 group-hover:after:origin-bottom-left group-hover:after:scale-x-100 dark:after:bg-white">
-              Ekle
+              {t('btn_add')}
             </span>
             <ArrowRight className="h-4 w-5 -translate-x-2 transition-transform duration-300 group-hover:translate-x-0 group-active:scale-90" />
           </button>
@@ -921,7 +924,7 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-200/10">
               <div className="flex items-center gap-2">
                 <span className="text-base font-extrabold text-neutral-900 dark:text-white">
-                  {focusedDate === today ? 'Bugün' : 'Planlı Gün'}
+                  {focusedDate === today ? t('db_today') : t('db_plan_day')}
                 </span>
                 <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-[10px] font-bold text-neutral-700 dark:border-neutral-800/40 dark:bg-neutral-900/40 dark:text-neutral-400">
                   {formatTurkishDate(focusedDate)}
@@ -932,7 +935,7 @@ export const DashboardPage: React.FC = () => {
                   onClick={() => setFocusedDate(today)}
                   className="text-[10px] font-bold text-cyan-500 hover:text-cyan-600 transition-colors flex items-center gap-1"
                 >
-                  <ArrowLeft className="h-3 w-3" /> Bugüne Dön
+                  <ArrowLeft className="h-3 w-3" /> {t('db_return_to_today')}
                 </button>
               )}
             </div>
@@ -946,7 +949,7 @@ export const DashboardPage: React.FC = () => {
             ) : focusedTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-zinc-500 space-y-2 select-none">
                 <Inbox className="h-8 w-8 stroke-[1.2]" />
-                <p className="text-xs font-medium">Bu gün için görev bulunmuyor.</p>
+                <p className="text-xs font-medium">{t('db_no_tasks_today')}</p>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
@@ -1016,13 +1019,13 @@ export const DashboardPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-1">
+                <div className="flex items-center justify-end gap-2 pt-1.5">
                   <button
                     type="button"
                     onClick={() => setShowAddFormFocused(false)}
                     className="px-3 py-1 rounded text-xs text-neutral-400 hover:text-white transition-colors"
                   >
-                    İptal
+                    {t('btn_cancel')}
                   </button>
                   {/* Retro Modern Sketch Button */}
                   <button
@@ -1030,7 +1033,7 @@ export const DashboardPage: React.FC = () => {
                     disabled={createTaskMutation.isPending}
                     className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
                   >
-                    {createTaskMutation.isPending ? 'Ekleniyor...' : 'Ekle'}
+                    {createTaskMutation.isPending ? t('btn_add') + '...' : t('btn_add')}
                   </button>
                 </div>
               </form>
@@ -1041,7 +1044,7 @@ export const DashboardPage: React.FC = () => {
                 containerClassName="w-full h-10"
                 className="border-neutral-200 text-xs font-semibold shadow-sm dark:border-neutral-800"
               >
-                + Görev Ekle
+                + {t('db_add_task_form')}
               </MovingBorderButton>
             )}
           </div>
@@ -1058,7 +1061,7 @@ export const DashboardPage: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-200/10">
               <div className="flex items-center gap-2">
-                <span className="text-base font-extrabold text-neutral-900 dark:text-white">Yarın</span>
+                <span className="text-base font-extrabold text-neutral-900 dark:text-white">{t('db_tomorrow')}</span>
                 <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-[10px] font-bold text-neutral-700 dark:border-neutral-800/40 dark:bg-neutral-900/40 dark:text-neutral-400">
                   {formatTurkishDate(tomorrow)}
                 </span>
@@ -1074,7 +1077,7 @@ export const DashboardPage: React.FC = () => {
             ) : tomorrowTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-zinc-500 space-y-2 select-none">
                 <Inbox className="h-8 w-8 stroke-[1.2]" />
-                <p className="text-xs font-medium">Yarın için görev bulunmuyor.</p>
+                <p className="text-xs font-medium">{t('db_no_tasks_tomorrow')}</p>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
@@ -1093,7 +1096,7 @@ export const DashboardPage: React.FC = () => {
                     required
                     value={tomorrowFormTitle}
                     onChange={(e) => setTomorrowFormTitle(e.target.value)}
-                    placeholder="Görev adı..."
+                    placeholder={t('db_task_title_placeholder')}
                     className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                   />
                   <div className="w-full">
@@ -1144,13 +1147,13 @@ export const DashboardPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-1">
+                <div className="flex justify-end gap-2 pt-1.5">
                   <button
                     type="button"
                     onClick={() => setShowAddFormTomorrow(false)}
                     className="px-3 py-1 rounded text-xs text-neutral-400 hover:text-white transition-colors"
                   >
-                    İptal
+                    {t('btn_cancel')}
                   </button>
                   {/* Retro Modern Sketch Button */}
                   <button
@@ -1158,7 +1161,7 @@ export const DashboardPage: React.FC = () => {
                     disabled={createTaskMutation.isPending}
                     className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
                   >
-                    {createTaskMutation.isPending ? 'Ekleniyor...' : 'Ekle'}
+                    {createTaskMutation.isPending ? t('btn_add') + '...' : t('btn_add')}
                   </button>
                 </div>
               </form>
@@ -1169,7 +1172,7 @@ export const DashboardPage: React.FC = () => {
                 containerClassName="w-full h-10"
                 className="border-neutral-200 text-xs font-semibold shadow-sm dark:border-neutral-800"
               >
-                + Görev Ekle
+                + {t('db_add_task_form')}
               </MovingBorderButton>
             )}
           </div>
@@ -1185,16 +1188,16 @@ export const DashboardPage: React.FC = () => {
           <div className="space-y-4 w-full">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-200/10">
-              <span className="text-base font-extrabold text-neutral-900 dark:text-white">Aylık Plan</span>
+              <span className="text-base font-extrabold text-neutral-900 dark:text-white">{t('db_month_plan')}</span>
             </div>
 
             {/* A. Aylık Genel Havuz (Tarihsiz İşler) */}
             <div className="space-y-2">
-              <span className="text-[10px] font-extrabold tracking-wider uppercase text-neutral-500 dark:text-zinc-500 block">Tarihsiz Aylık Havuz</span>
+              <span className="text-[10px] font-extrabold tracking-wider uppercase text-neutral-500 dark:text-zinc-500 block">{t('db_unscheduled_pool')}</span>
               {loadingMonthPlan ? (
                 <div className="h-10 bg-neutral-200 dark:bg-neutral-850 rounded-xl animate-pulse" />
               ) : monthPlanTasks.length === 0 ? (
-                <p className="text-[10px] text-neutral-500 italic py-2 text-center">Bu ay için tarihsiz görev yok.</p>
+                <p className="text-[10px] text-neutral-500 italic py-2 text-center">{t('db_no_tasks_unscheduled')}</p>
               ) : (
                 <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                   {monthPlanTasks.map(renderTaskRow)}
@@ -1204,9 +1207,9 @@ export const DashboardPage: React.FC = () => {
 
             {/* B. Sadece Planlı Günler Listesi (Akıllı Takvim Odaklayıcı) */}
             <div className="space-y-2 border-t border-neutral-200/50 dark:border-zinc-800/50 pt-3">
-              <span className="text-[10px] font-extrabold tracking-wider uppercase text-neutral-500 dark:text-zinc-500 block">Planlı Günler Odaklayıcı</span>
+              <span className="text-[10px] font-extrabold tracking-wider uppercase text-neutral-500 dark:text-zinc-500 block">{t('db_smart_calendar_focus')}</span>
               {planliGunler.length === 0 ? (
-                <p className="text-[10px] text-neutral-500 italic py-2 text-center">Ayın kalanında planlı gün bulunmuyor.</p>
+                <p className="text-[10px] text-neutral-500 italic py-2 text-center">{t('db_no_planned_days')}</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5 max-h-[160px] overflow-y-auto pr-1">
                   {planliGunler.map(dateStr => {
@@ -1250,7 +1253,7 @@ export const DashboardPage: React.FC = () => {
                     required
                     value={monthFormTitle}
                     onChange={(e) => setMonthFormTitle(e.target.value)}
-                    placeholder="Görev adı..."
+                    placeholder={t('db_task_title_placeholder')}
                     className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-450 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-semibold"
                   />
                   <div className="w-full">
@@ -1301,13 +1304,13 @@ export const DashboardPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-1">
+                <div className="flex justify-end gap-2 pt-1.5">
                   <button
                     type="button"
                     onClick={() => setShowAddFormMonth(false)}
                     className="px-3 py-1 rounded text-xs text-neutral-400 hover:text-white transition-colors"
                   >
-                    İptal
+                    {t('btn_cancel')}
                   </button>
                   {/* Retro Modern Sketch Button */}
                   <button
@@ -1315,7 +1318,7 @@ export const DashboardPage: React.FC = () => {
                     disabled={createTaskMutation.isPending}
                     className="px-4 py-1.5 rounded-md border border-black bg-white text-black text-xs hover:shadow-[3px_3px_0px_0px_rgba(0,0,0)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.15)] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
                   >
-                    {createTaskMutation.isPending ? 'Ekleniyor...' : 'Ekle'}
+                    {createTaskMutation.isPending ? t('btn_add') + '...' : t('btn_add')}
                   </button>
                 </div>
               </form>
@@ -1326,7 +1329,7 @@ export const DashboardPage: React.FC = () => {
                 containerClassName="w-full h-10"
                 className="border-neutral-200 text-xs font-semibold shadow-sm dark:border-neutral-800"
               >
-                + Görev Ekle
+                + {t('db_add_task_form')}
               </MovingBorderButton>
             )}
           </div>

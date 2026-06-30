@@ -651,7 +651,8 @@ export const ProjectsPage: React.FC = () => {
     endDate?: string
     orderIndex: number
   }) => {
-    await addPhaseMutation.mutateAsync(req)
+    if (!selectedProjectId) return
+    await addPhaseMutation.mutateAsync({ projectId: selectedProjectId, request: req })
   }
 
   const handleDeletePhaseFromManager = async (phaseId: number) => {

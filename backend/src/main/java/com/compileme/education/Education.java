@@ -40,4 +40,19 @@ public class Education extends BaseEntity {
 
     @Column(name = "next_study_date")
     private LocalDate nextStudyDate;
+
+    @Column(name = "duration_hours")
+    private Integer durationHours;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "custom_category", length = 100)
+    private String customCategory;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
 }

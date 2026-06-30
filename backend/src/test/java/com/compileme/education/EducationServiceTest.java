@@ -70,7 +70,7 @@ class EducationServiceTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
         when(educationRepository.save(any(Education.class))).thenReturn(education);
 
-        EducationRequest request = new EducationRequest("Rust Language", "Rust Book", null, EducationType.PROGRAMMING, EducationStatus.ACTIVE, LocalDate.now());
+        EducationRequest request = new EducationRequest("Rust Language", "Rust Book", null, EducationType.PROGRAMMING, EducationStatus.ACTIVE, LocalDate.now(), null, null, null, null, null);
         EducationResponse response = educationService.create(request);
 
         assertNotNull(response);

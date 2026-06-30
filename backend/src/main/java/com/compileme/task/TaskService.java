@@ -7,7 +7,6 @@ import com.compileme.task.dto.*;
 import com.compileme.task.mapper.TaskMapper;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,8 +36,7 @@ public class TaskService {
     ) {
         Long userId = currentUserProvider.getCurrentUserId();
         return taskRepository.findAll(
-                        buildTaskSpecification(userId, date, from, to, kind, bucket, projectId, educationId),
-                        taskSort()
+                        buildTaskSpecification(userId, date, from, to, kind, bucket, projectId, educationId)
                 )
                 .stream()
                 .map(TaskMapper::toResponse)
@@ -176,16 +174,17 @@ public class TaskService {
             if (educationId != null) {
                 predicates.add(cb.equal(root.get("educationId"), educationId));
             }
+            if (query != null && !Long.class.equals(query.getResultType())) {
+                query.orderBy(
+                        cb.asc(cb.<Integer>selectCase().when(cb.isNull(root.get("scheduledDate")), 1).otherwise(0)),
+                        cb.asc(root.get("scheduledDate")),
+                        cb.asc(cb.<Integer>selectCase().when(cb.isNull(root.get("scheduledTime")), 1).otherwise(0)),
+                        cb.asc(root.get("scheduledTime")),
+                        cb.asc(root.get("orderIndex"))
+                );
+            }
             return cb.and(predicates.toArray(Predicate[]::new));
         };
-    }
-
-    private Sort taskSort() {
-        return Sort.by(
-                Sort.Order.asc("scheduledDate").nullsLast(),
-                Sort.Order.asc("scheduledTime").nullsLast(),
-                Sort.Order.asc("orderIndex")
-        );
     }
 
     private void validateTaskTargets(TaskKind kind, Long educationId) {

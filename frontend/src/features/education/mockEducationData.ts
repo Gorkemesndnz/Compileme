@@ -289,7 +289,7 @@ export const groupEducationsByType = (educations: Education[]): EducationCategor
     {}
   )
 
-  return Object.keys(grouped)
+  return (Object.keys(grouped) as EducationType[])
     .filter((type) => grouped[type].length > 0)
     .map((type) => ({
       type,
