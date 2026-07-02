@@ -95,7 +95,7 @@ const ProjectTerminalCard: React.FC<{ project: Project }> = ({ project }) => {
 
 export const ProjectsHub: React.FC = () => {
   const { data: projects = [] } = useProjects()
-  const { setProjectOnboardingOpen } = useUiStore()
+  const setProjectOnboardingOpen = useUiStore((state) => state.setProjectOnboardingOpen)
 
   const handleNewProject = () => {
     setProjectOnboardingOpen(true)
@@ -131,7 +131,7 @@ export const ProjectsHub: React.FC = () => {
           whileHover={{ scale: 1.02, y: -4 }}
           className="group flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-white/40 p-6 text-center shadow-sm backdrop-blur-xl transition-all duration-300 hover:border-cyan-500/50 hover:bg-white/60 dark:border-zinc-800 dark:bg-black/20 dark:hover:border-cyan-500/40 dark:hover:bg-black/30"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-50/50 text-zinc-550 shadow-sm transition-all duration-300 group-hover:border-cyan-500/25 group-hover:bg-cyan-500/10 group-hover:text-cyan-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400 dark:group-hover:border-cyan-500/30 dark:group-hover:bg-cyan-500/10 dark:group-hover:text-cyan-400">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-50/50 text-zinc-500 shadow-sm transition-all duration-300 group-hover:border-cyan-500/25 group-hover:bg-cyan-500/10 group-hover:text-cyan-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400 dark:group-hover:border-cyan-500/30 dark:group-hover:bg-cyan-500/10 dark:group-hover:text-cyan-400">
             <Plus className="h-6 w-6" />
           </div>
           <h3 className="mt-4 text-base font-black text-slate-900 dark:text-zinc-150">

@@ -3,15 +3,28 @@ import { Sparkles, Clock, Plus, Pencil, Trash2, Calendar, FileText } from 'lucid
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { FolderData, EducationResource, EducationPractice, ReinforcementTask, Education } from '../types'
+import { DateTimePicker } from '../../dashboard/DateTimePicker'
+import { Education, EducationPractice, EducationResource, FolderData } from '../types'
+
+interface EducationTaskContext {
+  folderId?: string
+  resourceId?: number
+}
 
 interface OverviewTabProps {
   education: Education | undefined
   resources: EducationResource[]
+  folders: FolderData[]
   practices: EducationPractice[]
   localTasks: any[]
   taskTitle: string
   setTaskTitle: (val: string) => void
+  taskFolderId: string
+  setTaskFolderId: (val: string) => void
+  taskResourceId: number | undefined
+  setTaskResourceId: (val: number | undefined) => void
+  taskContexts: Record<string, EducationTaskContext>
+  getTaskContextLabel: (context?: EducationTaskContext) => string
   taskDate: string
   setTaskDate: (val: string) => void
   taskTime: string
@@ -27,13 +40,20 @@ interface OverviewTabProps {
   educationId: number
 }
 
-export const OverviewTab: React.FC<OverviewTabProps> = ({
+const OverviewTabComponent: React.FC<OverviewTabProps> = ({
   education,
   resources,
+  folders,
   practices,
   localTasks,
   taskTitle,
   setTaskTitle,
+  taskFolderId,
+  setTaskFolderId,
+  taskResourceId,
+  setTaskResourceId,
+  taskContexts,
+  getTaskContextLabel,
   taskDate,
   setTaskDate,
   taskTime,
@@ -48,6 +68,19 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   handleDeleteLocalTask,
   educationId,
 }) => {
+  const folderResourceIds = React.useMemo(() => new Set(folders.flatMap((folder) => folder.resourceIds)), [folders])
+  const taskResourceOptions = React.useMemo(() => {
+    if (!taskFolderId) return resources
+    if (taskFolderId === 'uncategorized') {
+      return resources.filter((resource) => !folderResourceIds.has(resource.id))
+    }
+    const folder = folders.find((item) => item.id === taskFolderId)
+    if (!folder) return []
+    return folder.resourceIds
+      .map((resourceId) => resources.find((resource) => resource.id === resourceId))
+      .filter((resource): resource is EducationResource => !!resource)
+  }, [folderResourceIds, folders, resources, taskFolderId])
+
   return (
     <div className="grid grid-cols-12 gap-6 h-full overflow-hidden">
       {/* Roadmap - Sol Blok */}
@@ -102,29 +135,63 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                 className="h-10 px-3 text-xs font-bold"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-500 tracking-wider">Tarih Seç</label>
-                <Input
-                  type="date"
-                  value={taskDate}
-                  onChange={(e) => setTaskDate(e.target.value)}
-                  className="h-10 px-3 text-xs font-bold"
-                />
+                <label className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-500 tracking-wider">Klasör Seç</label>
+                <select
+                  value={taskFolderId}
+                  onChange={(e) => {
+                    setTaskFolderId(e.target.value)
+                    setTaskResourceId(undefined)
+                  }}
+                  className="h-10 rounded-xl border border-slate-200 bg-white/70 px-3 text-xs font-bold text-slate-900 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15 dark:border-zinc-800 dark:bg-zinc-950/70 dark:text-zinc-100"
+                >
+                  <option value="">Tüm kaynaklar</option>
+                  {folders.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </option>
+                  ))}
+                  {resources.some((resource) => !folderResourceIds.has(resource.id)) && (
+                    <option value="uncategorized">Klasörsüz kaynaklar</option>
+                  )}
+                </select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-500 tracking-wider">Saat Seç</label>
-                <Input
-                  type="time"
-                  value={taskTime}
-                  onChange={(e) => setTaskTime(e.target.value)}
-                  className="h-10 px-3 text-xs font-bold"
+                <label className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-500 tracking-wider">Dosya/Link Seç</label>
+                <select
+                  value={taskResourceId ?? ''}
+                  onChange={(e) => setTaskResourceId(e.target.value ? Number(e.target.value) : undefined)}
+                  className="h-10 rounded-xl border border-slate-200 bg-white/70 px-3 text-xs font-bold text-slate-900 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15 dark:border-zinc-800 dark:bg-zinc-950/70 dark:text-zinc-100"
+                >
+                  <option value="">Kaynak seçilmedi</option>
+                  {taskResourceOptions.map((resource) => (
+                    <option key={resource.id} value={resource.id}>
+                      {resource.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-500 tracking-wider flex items-center gap-1">
+                <Calendar className="h-3 w-3 text-cyan-500" /> Planlanan Tarih & Saat
+              </label>
+              <div className="relative">
+                <DateTimePicker
+                  date={taskDate}
+                  time={taskTime}
+                  onDateChange={setTaskDate}
+                  onTimeChange={setTaskTime}
+                  showTime={true}
+                  align="left"
                 />
               </div>
             </div>
             <Button
               type="submit"
-              className="w-full h-10 shadow-[0_0_12px_rgba(6,182,212,0.3)] bg-cyan-500 hover:bg-cyan-600 text-white font-bold"
+              variant="primary"
+              className="w-full h-10 font-bold"
             >
               <Plus className="h-4 w-4 mr-1.5" />
               <span>Ekle</span>
@@ -138,7 +205,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                 Bugün için planlanmış proje görevi yok.
               </p>
             ) : (
-              localTasks.map((t) => (
+              localTasks.map((t) => {
+                const resourceLabel = getTaskContextLabel(taskContexts[String(t.id)])
+                return (
                 <div
                   key={t.id}
                   className="flex items-center justify-between p-3 rounded-xl bg-white/50 dark:bg-zinc-900/35 border border-slate-200/50 dark:border-zinc-800/50 gap-2"
@@ -173,7 +242,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                             onClick={() => setEditingTaskId(null)}
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-[10px] px-2 text-slate-650"
+                            className="h-7 text-[10px] px-2 text-slate-600"
                           >
                             İptal
                           </Button>
@@ -189,7 +258,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             {/* Dynamic Course Title Tag */}
                             <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 shrink-0">
-                              {t.tag}
+                              {resourceLabel || t.tag}
                             </span>
                             {(t.scheduledDate || t.scheduledTime) && (
                               <span className="text-[9px] font-semibold text-slate-500 dark:text-zinc-500 flex items-center gap-0.5 shrink-0">
@@ -227,7 +296,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                     </div>
                   )}
                 </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
@@ -249,3 +319,5 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     </div>
   )
 }
+
+export const OverviewTab = React.memo(OverviewTabComponent)

@@ -2,6 +2,7 @@ import React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { SketchButton } from '@/components/ui/SketchButton'
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean
@@ -52,23 +53,20 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
             </p>
 
             <div className="flex items-center justify-end gap-3 mt-2">
-              <Button
+              <SketchButton
                 type="button"
-                variant="ghost"
+                tone="default"
                 onClick={onClose}
-                size="sm"
               >
                 Vazgeç
-              </Button>
-              <Button
+              </SketchButton>
+              <SketchButton
                 type="button"
-                variant="destructive"
+                tone="destructive"
                 onClick={onConfirm}
-                size="sm"
-                className="shadow-[0_0_12px_rgba(239,68,68,0.3)] font-bold"
               >
                 Her Şeyi Sil
-              </Button>
+              </SketchButton>
             </div>
           </motion.div>
         </motion.div>

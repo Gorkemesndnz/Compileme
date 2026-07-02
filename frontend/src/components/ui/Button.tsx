@@ -67,7 +67,7 @@ GlassButton.displayName = "GlassButton"
 // -------------------------------------------------------------
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'outline' | 'ghost' | 'destructive' | 'glass'
+  variant?: 'default' | 'primary' | 'secondary' | 'outline' | 'ghost' | 'iconAction' | 'dangerGhost' | 'destructive' | 'glass'
   size?: 'sm' | 'md' | 'lg' | 'icon'
   isLoading?: boolean
 }
@@ -100,17 +100,20 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           "inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:pointer-events-none select-none cursor-pointer",
           // Variants
           {
-            "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_rgba(0,255,255,0.1)]": variant === 'default',
-            "border border-border bg-transparent hover:bg-accent hover:text-accent-foreground text-foreground": variant === 'outline',
+            "bg-cyan-500 text-white hover:bg-cyan-600 shadow-md shadow-cyan-500/25 border border-cyan-500/80": variant === 'default' || variant === 'primary',
+            "border border-slate-200/80 bg-white/65 text-slate-900 shadow-sm hover:border-cyan-500/35 hover:bg-white/85 hover:text-cyan-700 dark:border-zinc-800 dark:bg-zinc-950/35 dark:text-zinc-200 dark:hover:border-cyan-500/35 dark:hover:bg-zinc-900/70 dark:hover:text-cyan-300": variant === 'secondary',
+            "border border-border bg-white/50 hover:border-cyan-500/30 hover:bg-white/75 hover:text-cyan-700 text-foreground dark:bg-black/20 dark:hover:bg-zinc-900/45 dark:hover:text-cyan-300": variant === 'outline',
             "bg-transparent hover:bg-accent hover:text-accent-foreground text-muted-foreground hover:text-foreground": variant === 'ghost',
+            "border border-transparent bg-transparent text-slate-500 hover:border-cyan-500/20 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-zinc-400 dark:hover:text-cyan-300": variant === 'iconAction',
+            "border border-transparent bg-transparent text-slate-500 hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-500": variant === 'dangerGhost',
             "bg-destructive text-destructive-foreground hover:bg-destructive/90": variant === 'destructive',
           },
           // Sizes
           {
             "h-8 px-3 text-xs": size === 'sm',
-            "h-10 px-4 py-2 text-sm": size === 'md',
-            "h-12 px-6 text-base": size === 'lg',
-            "h-10 w-10 p-0": size === 'icon',
+            "h-10 px-4 py-2 text-sm rounded-xl": size === 'md',
+            "h-12 px-6 text-base rounded-xl": size === 'lg',
+            "h-9 w-9 p-0 rounded-xl": size === 'icon',
           },
           className
         )}

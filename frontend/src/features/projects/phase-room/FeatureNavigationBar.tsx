@@ -55,7 +55,7 @@ export const FeatureNavigationBar: React.FC<FeatureNavigationBarProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="h-10 inline-flex shrink-0 items-center gap-2.5 rounded-2xl border border-transparent px-4 text-xs font-bold text-zinc-500 transition-all hover:bg-slate-200/40 dark:hover:bg-white/5 hover:text-zinc-850 dark:text-zinc-400 dark:hover:text-zinc-100 cursor-pointer"
+              className="h-10 inline-flex shrink-0 items-center gap-2.5 rounded-2xl border border-transparent px-4 text-xs font-bold text-zinc-500 transition-all hover:bg-slate-200/40 dark:hover:bg-white/5 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 cursor-pointer"
             >
               <Icon className="h-4.5 w-4.5 text-zinc-400 dark:text-zinc-500" />
               {tab.label}

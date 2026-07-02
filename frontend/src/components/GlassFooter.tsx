@@ -115,7 +115,7 @@ export function GlassFooter() {
               {footerLinks.map((section, index) => (
                 <AnimatedContainer key={section.label} delay={0.1 + index * 0.1}>
                   <div>
-                    <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-700 dark:text-slate-350">
+                    <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-700 dark:text-slate-300">
                       {section.label}
                     </h3>
                     <ul className="space-y-3 text-sm">

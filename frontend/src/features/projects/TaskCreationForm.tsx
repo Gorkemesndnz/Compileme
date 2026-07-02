@@ -166,7 +166,7 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* ── Row 1: Başlık (5) + Faz (3) + Tarih&Saat (4) — sabit 3 sütun ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end relative" style={{ zIndex: 30 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end relative" style={{ zIndex: 30 } as any}>
           {/* Görev Başlığı — lg:col-span-5 */}
           <div className="lg:col-span-5">
             <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
@@ -215,7 +215,7 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
                       onClick={() => { setSelectedPhaseId(null); setIsPhaseOpen(false) }}
                       className={cn(
                         "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
-                        "text-neutral-700 hover:bg-neutral-100 dark:text-zinc-300 dark:hover:bg-zinc-850 dark:hover:text-white",
+                        "text-neutral-700 hover:bg-neutral-100 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white",
                         !selectedPhaseId && "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300"
                       )}
                     >
@@ -276,7 +276,7 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
 
         {/* ── Alt Faz Seçimi (Faz seçilince ayrı satırda görünür) ── */}
         {selectedPhaseId && (
-          <div ref={subPhaseRef} className="relative max-w-xs animate-in fade-in slide-in-from-left-2 duration-300" style={{ zIndex: 25 }}>
+          <div ref={subPhaseRef} className="relative max-w-xs animate-in fade-in slide-in-from-left-2 duration-300" style={{ zIndex: 25 } as any}>
             <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
               Alt Faz Seçimi
             </label>
@@ -341,7 +341,7 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
         )}
 
         {/* ── Row 3: Detaylar / Görev Notu ── */}
-        <div className="relative" style={{ zIndex: 10 }}>
+        <div className="relative" style={{ zIndex: 10 } as any}>
           <label className="block text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
             Detaylar / Görev Notu <span className="text-red-500">*</span>
           </label>

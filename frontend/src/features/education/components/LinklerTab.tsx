@@ -19,7 +19,7 @@ interface LinklerTabProps {
   handleAddLink: () => void
 }
 
-export const LinklerTab: React.FC<LinklerTabProps> = ({
+const LinklerTabComponent: React.FC<LinklerTabProps> = ({
   resources,
   isLinkAdderOpen,
   setIsLinkAdderOpen,
@@ -32,9 +32,9 @@ export const LinklerTab: React.FC<LinklerTabProps> = ({
   const linkResources = resources.filter((r) => r.type === 'LINK')
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
       {/* Hızlı Link Ekleme Modülü */}
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-zinc-800 pb-3">
         <div>
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
             Harici Platform Fırlatma Rampası
@@ -45,9 +45,9 @@ export const LinklerTab: React.FC<LinklerTabProps> = ({
         </div>
         <Button
           onClick={() => setIsLinkAdderOpen((prev) => !prev)}
-          variant="glass"
+          variant="secondary"
           size="sm"
-          className="text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 px-3.5 py-1.5 rounded-full"
+          className="font-bold text-cyan-600 dark:text-cyan-400"
         >
           <Plus className="h-4 w-4 mr-1.5" />
           <span>Bağlantı Ekle</span>
@@ -91,7 +91,8 @@ export const LinklerTab: React.FC<LinklerTabProps> = ({
                 <Button
                   type="button"
                   onClick={handleAddLink}
-                  className="w-full h-10 bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition-all"
+                  variant="primary"
+                  className="w-full h-10 text-xs font-bold"
                 >
                   Ekle
                 </Button>
@@ -102,7 +103,7 @@ export const LinklerTab: React.FC<LinklerTabProps> = ({
       </AnimatePresence>
 
       {/* 3D Eklenti Kart Izgarası */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
         {linkResources.map((link) => (
           <div
             key={link.id}
@@ -118,7 +119,7 @@ export const LinklerTab: React.FC<LinklerTabProps> = ({
             <div className="absolute -right-4 -top-4 w-12 h-12 bg-cyan-500/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
 
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-850 text-slate-700 dark:text-zinc-300">
+              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-900 text-slate-700 dark:text-zinc-300">
                 {getBrandIcon(link.url_or_path)}
               </div>
               <span className="text-xs font-black text-slate-900 dark:text-white truncate">
@@ -127,10 +128,10 @@ export const LinklerTab: React.FC<LinklerTabProps> = ({
             </div>
 
             <div className="flex items-center justify-between mt-3">
-              <span className="text-[10px] text-slate-900 dark:text-zinc-300 truncate max-w-[150px] font-mono">
+              <span className="min-w-0 truncate text-[10px] text-slate-900 dark:text-zinc-300 font-mono">
                 {link.url_or_path}
               </span>
-              <ExternalLink className="h-4 w-4 text-slate-400 dark:text-zinc-650 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors" />
+              <ExternalLink className="h-4 w-4 text-slate-400 dark:text-zinc-600 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors" />
             </div>
           </div>
         ))}
@@ -138,3 +139,5 @@ export const LinklerTab: React.FC<LinklerTabProps> = ({
     </div>
   )
 }
+
+export const LinklerTab = React.memo(LinklerTabComponent)

@@ -49,20 +49,21 @@ import {
   useCreateEducationPractice,
   useCreateEducationResource,
   useDeleteEducationResource,
+  useDeleteEducation,
   useEducation,
   useEducationPractices,
   useEducationResources,
+  useUpdateEducation,
   type Education as ApiEducation,
   type EducationPractice as ApiEducationPractice,
   type EducationResource as ApiEducationResource,
   type EducationResourceType as ApiEducationResourceType,
+  type EducationStatus as ApiEducationStatus,
 } from '@/api/education'
 import { useUploadFile } from '@/api/files'
 import { useCreateTask, useTasks, useToggleTaskComplete, useDeleteTask } from '@/api/tasks'
 import { cn } from '@/lib/utils'
 import { mockEducationPractices, mockEducationResources, mockEducations } from './mockEducationData'
-import { DateTimePicker } from '@/features/dashboard/DateTimePicker'
-import { ProjectDocument, useProjectDocuments, useProjects } from '@/api/projects'
 import { StudioModePanel } from './studio/modes'
 import { useEducationPersistenceGuard } from './studio/useEducationPersistenceGuard'
 import {
@@ -80,6 +81,17 @@ import {
   ReinforcementTarget
 } from './types'
 
+import { SketchButton } from '@/components/ui/SketchButton'
+import { Button as MovingBorderButton } from '@/components/ui/moving-border'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/DropdownMenu'
 import { LeftFileTree } from './components/LeftFileTree'
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal'
 import { OverviewTab } from './components/OverviewTab'
@@ -90,6 +102,11 @@ import { CodeTab } from './components/CodeTab'
 import { VocabularyTab } from './components/VocabularyTab'
 import { CheatsheetTab } from './components/CheatsheetTab'
 import { NotlarTab } from './components/NotlarTab'
+import { useStudioFolders } from './studio/hooks/useStudioFolders'
+import { useStudioTasks } from './studio/hooks/useStudioTasks'
+import { useStudioNotes } from './studio/hooks/useStudioNotes'
+import { useStudioCode } from './studio/hooks/useStudioCode'
+import { useStudioLanguage } from './studio/hooks/useStudioLanguage'
 import {
   parseCodeFiles,
   serializeCodeFiles,
@@ -97,11 +114,7 @@ import {
   serializeVocabulary,
   parseCheatsheet,
   serializeCheatsheet,
-  getPlatformIcon,
-  getBrandIcon,
-  getFileIcon,
   getTargetLabel,
-  buildLineNumbers
 } from './components/studioHelpers'
 
 const toLocalEducation = (education: ApiEducation): Education => ({
@@ -161,6 +174,34 @@ const trimCurriculumLabel = (value: string) => {
   return value.slice(start, end).trim()
 }
 
+type EducationTaskContext = {
+  folderId?: string
+  resourceId?: number
+}
+
+const getDefaultFolderIdForResource = (resource: Pick<EducationResource, 'type'>) =>
+  resource.type === 'LINK' ? 'folder-link' : 'folder-pdf'
+
+const reconcileFoldersWithResources = (savedFolders: FolderData[], currentResources: EducationResource[]) => {
+  const resourceIds = new Set(currentResources.map((resource) => resource.id))
+  return savedFolders.map((folder) => ({
+    ...folder,
+    resourceIds: folder.resourceIds.filter((resourceId) => resourceIds.has(resourceId)),
+  }))
+}
+
+const EDU_STATUS_LABELS: Record<ApiEducationStatus, string> = {
+  ACTIVE: 'Çalışılıyor',
+  PAUSED: 'Duraklatıldı',
+  DONE: 'Tamamlandı',
+}
+
+const EDU_STATUS_DOT_STYLES: Record<ApiEducationStatus, string> = {
+  ACTIVE: 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]',
+  PAUSED: 'bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.7)]',
+  DONE: 'bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.7)]',
+}
+
 export const EducationStudio: React.FC = () => {
   const navigate = useNavigate()
   const params = useParams<{ id: string }>()
@@ -172,7 +213,7 @@ export const EducationStudio: React.FC = () => {
   const createTaskMutation = useCreateTask()
   const toggleTaskMutation = useToggleTaskComplete()
   const deleteTaskMutation = useDeleteTask()
-  const { data: projects = [] } = useProjects()
+  const deleteEducationMutation = useDeleteEducation()
   const { data: persistedEducation } = useEducation(Number.isFinite(educationId) ? educationId : undefined)
   const { data: persistedResources = [], isSuccess: resourcesLoaded } = useEducationResources(educationId)
   const { data: persistedPractices = [], isSuccess: practicesLoaded } = useEducationPractices(educationId)
@@ -190,139 +231,275 @@ export const EducationStudio: React.FC = () => {
     () => persistedEducation ? toLocalEducation(persistedEducation) : fallbackEducation,
     [fallbackEducation, persistedEducation]
   )
-
-  // DB'den bu eğitime ait görevleri çek
-  const { data: dbTasks = [] } = useTasks({ educationId })
+const { data: dbTasks = [] } = useTasks({ educationId })
   const { isPersistedEducation, persistedTaskIds } = useEducationPersistenceGuard(educationId, dbTasks)
 
-  // Yerel veri durumları
+  // Shared source-of-truth states
   const [resources, setResources] = React.useState<EducationResource[]>([])
-  const [practices, setPractices] = React.useState<EducationPractice[]>([])
-
   const [selectedResourceId, setSelectedResourceId] = React.useState<number | null | undefined>(null)
-  const [selectedPracticeId, setSelectedPracticeId] = React.useState<number | null>(null)
   const [activeTab, setActiveTab] = React.useState<'overview' | 'files' | 'links' | 'reinforce' | 'primary' | 'notes'>('overview')
-  const [notesDraft, setNotesDraft] = React.useState('')
-  const [noteTitleDraft, setNoteTitleDraft] = React.useState('')
-  const [activeResourceNoteId, setActiveResourceNoteId] = React.useState<string | null>(null)
-  const [saveState, setSaveState] = React.useState<'idle' | 'saving' | 'saved'>('idle')
 
-  // Modals & Dropdowns
+  // UI state
   const [isImporterOpen, setIsImporterOpen] = React.useState(false)
   const [importText, setImportText] = React.useState('')
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false)
 
-  // Task Form State
-  const [taskTitle, setTaskTitle] = React.useState('')
-  const [taskDate, setTaskDate] = React.useState('')
-  const [taskTime, setTaskTime] = React.useState('')
+  // ── Inline Edit State (title, description, source) ──
+  const updateEducationMutation = useUpdateEducation()
+  const [editingField, setEditingField] = React.useState<'title' | 'description' | 'source' | null>(null)
+  const [editForm, setEditForm] = React.useState({ title: '', description: '', source: '' })
+  const cancelledEditRef = React.useRef<string | null>(null)
 
-  // Interactive Task Scheduler State
-  const [localTasks, setLocalTasks] = React.useState<any[]>([])
-  const [editingTaskId, setEditingTaskId] = React.useState<number | string | null>(null)
-  const [editingTaskTitle, setEditingTaskTitle] = React.useState('')
+  // Sync editForm when education data loads
+  React.useEffect(() => {
+    if (education) {
+      setEditForm({
+        title: education.title,
+        description: education.description || '',
+        source: education.source || '',
+      })
+    }
+  }, [education])
 
-  // Code Studio States
-  const [activeFileName, setActiveFileName] = React.useState('Main.java')
+  const cancelInlineEdit = React.useCallback((field: 'title' | 'description' | 'source') => {
+    if (!education) return
+    cancelledEditRef.current = field
+    setEditForm((f) => ({
+      ...f,
+      [field]: field === 'title' ? education.title : field === 'description' ? (education.description || '') : (education.source || ''),
+    }))
+    setEditingField(null)
+  }, [education])
 
-  // Language States
-  const [activeLevel, setActiveLevel] = React.useState<LanguageLevel>('A1_A2')
-  const [word, setWord] = React.useState('')
-  const [meaning, setMeaning] = React.useState('')
-  const [wordType, setWordType] = React.useState<VocabularyType>('Noun')
-  const [isTranslateOpen, setIsTranslateOpen] = React.useState(false)
-  const [translateInput, setTranslateInput] = React.useState('')
-  const [translateResult, setTranslateResult] = React.useState('')
-  const [flippedCards, setFlippedCards] = React.useState<Record<number, boolean>>({})
+  const saveInlineField = React.useCallback(async (field: 'title' | 'description' | 'source') => {
+    if (!education) return
+    if (cancelledEditRef.current === field) {
+      cancelledEditRef.current = null
+      return
+    }
+    const nextTitle = editForm.title.trim()
+    const nextDescription = editForm.description.trim()
+    const nextSource = editForm.source.trim()
+    if (!nextTitle) {
+      toast.error('Eğitim başlığı boş bırakılamaz.')
+      cancelInlineEdit('title')
+      return
+    }
+    const previousValue = field === 'title' ? education.title : field === 'description' ? (education.description || '') : (education.source || '')
+    const nextValue = field === 'title' ? nextTitle : field === 'description' ? nextDescription : nextSource
+    setEditingField(null)
+    if (nextValue === previousValue) return
 
-  // Cheatsheet States
-  const [keyConcept, setKeyConcept] = React.useState('')
-  const [conceptDescription, setConceptDescription] = React.useState('')
+    try {
+      await updateEducationMutation.mutateAsync({
+        id: educationId,
+        request: {
+          title: nextTitle,
+          source: nextSource || undefined,
+          type: education.type,
+          description: nextDescription || undefined,
+        },
+      })
+      toast.success(
+        field === 'title' ? 'Eğitim başlığı güncellendi.' :
+        field === 'description' ? 'Açıklama güncellendi.' :
+        'Kaynak güncellendi.'
+      )
+    } catch {
+      setEditForm((f) => ({ ...f, [field]: previousValue }))
+      toast.error('Değişiklik kaydedilemedi.')
+    }
+  }, [education, editForm, educationId, cancelInlineEdit, updateEducationMutation])
 
-  // Folders State
-  const [folders, setFolders] = React.useState<FolderData[]>([])
-  const [foldersOpen, setFoldersOpen] = React.useState<Record<string, boolean>>({
-    'folder-pdf': true,
-    'folder-link': true
+  const handleStatusChange = React.useCallback(async (status: ApiEducationStatus) => {
+    if (!education || status === education.status || updateEducationMutation.isPending) return
+    const previousStatus = education.status
+    try {
+      await updateEducationMutation.mutateAsync({
+        id: educationId,
+        request: {
+          title: education.title,
+          type: education.type,
+          status,
+        },
+      })
+      toast.success(`Eğitim durumu: ${EDU_STATUS_LABELS[status]}`)
+    } catch {
+      toast.error('Durum güncellenemedi.')
+    }
+  }, [education, educationId, updateEducationMutation])
+
+  // UX Safety & Navigation Guard
+  const isDirtyRef = React.useRef(false)
+
+  const confirmNavigation = React.useCallback(() => {
+    if (isDirtyRef.current) {
+      return window.confirm('Kaydedilmemiş değişiklikleriniz var. Ayrılmak istediğinizden emin misiniz?')
+    }
+    return true
+  }, [])
+
+  // Call the custom hooks
+  const notesState = useStudioNotes({
+    educationId,
+    isPersistedEducation,
+    education,
+    resources,
+    selectedResourceId,
+    setSelectedResourceId,
+    activeTab,
+    setActiveTab,
+    setActiveFileName: (name) => {
+      if (typeof name === 'function') {
+        codeState.setActiveFileName(name)
+      } else {
+        codeState.setActiveFileName(name)
+      }
+    },
+    setCodeDraft: (draft) => {
+      if (typeof draft === 'function') {
+        codeState.setCodeDraft(draft)
+      } else {
+        codeState.setCodeDraft(draft)
+      }
+    },
+    confirmNavigation,
+    createPracticeMutation,
   })
 
-  // Drag & Drop States
-  const [draggedFolderIndex, setDraggedFolderIndex] = React.useState<number | null>(null)
-  const [draggedResourceInfo, setDraggedResourceInfo] = React.useState<{ folderId: string; resourceId: number } | null>(null)
+  const foldersState = useStudioFolders({
+    educationId,
+    isPersistedEducation,
+    resources,
+    setResources,
+    practices: notesState.practices,
+    setPractices: notesState.setPractices,
+    selectedResourceId,
+    setSelectedResourceId,
+    selectedPracticeId: notesState.selectedPracticeId,
+    setSelectedPracticeId: notesState.setSelectedPracticeId,
+    activeTab,
+    setActiveTab,
+    reinforcements: notesState.reinforcements,
+    setReinforcements: notesState.setReinforcements,
+    resourceNoteItems: notesState.resourceNoteItems,
+    setResourceNoteItems: notesState.setResourceNoteItems,
+    createResourceMutation,
+    deleteResourceMutation,
+    uploadFileMutation,
+    activeResourceNoteId: notesState.activeResourceNoteId,
+    setActiveResourceNoteId: notesState.setActiveResourceNoteId,
+    setNoteTitleDraft: notesState.setNoteTitleDraft,
+    setNotesDraft: notesState.setNotesDraft,
+  })
 
-  // Links state
-  const [newLinkName, setNewLinkName] = React.useState('')
-  const [newLinkUrl, setNewLinkUrl] = React.useState('')
-  const [isLinkAdderOpen, setIsLinkAdderOpen] = React.useState(false)
+  const tasksState = useStudioTasks({
+    educationId,
+    isPersistedEducation,
+    education,
+    selectedPractice: notesState.selectedPractice,
+    folders: foldersState.folders,
+    resources,
+    dbTasks,
+    persistedTaskIds,
+    createTaskMutation,
+    toggleTaskMutation,
+    deleteTaskMutation,
+  })
 
-  // -- NEW TRACKING STATES & PERSISTENCE HELPER FUNCTIONS --
-  const [completedResources, setCompletedResources] = React.useState<Record<number, boolean>>({})
-  const [resourceNotes, setResourceNotes] = React.useState<Record<number | string, string>>({})
-  const [resourceNoteItems, setResourceNoteItems] = React.useState<Record<string, ResourceNote[]>>({})
-  const [activeNotesResourceId, setActiveNotesResourceId] = React.useState<number | null>(null)
-  const [reinforcements, setReinforcements] = React.useState<Record<string, ReinforcementTask[]>>({})
-  const [activeReinforceResourceId, setActiveReinforceResourceId] = React.useState<number | null>(null)
-  const [selectedProjectId, setSelectedProjectId] = React.useState<number | undefined>(undefined)
-  const [reinforcementSearch, setReinforcementSearch] = React.useState('')
-  const [selectedReinforcementTargetId, setSelectedReinforcementTargetId] = React.useState('')
-  const [newReinforcementTitle, setNewReinforcementTitle] = React.useState('')
-  const [isFolderCreatorOpen, setIsFolderCreatorOpen] = React.useState(false)
-  const [newFolderName, setNewFolderName] = React.useState('')
-  const [replacingResourceId, setReplacingResourceId] = React.useState<number | null>(null)
+  const codeState = useStudioCode({
+    selectedPractice: notesState.selectedPractice,
+    handleUpdatePractice: notesState.handleUpdatePractice,
+    confirmNavigation,
+  })
 
-  // UX Safety, Left Panel File Tree & CRUD State Declarations
-  const [codeDraft, setCodeDraft] = React.useState<string | null>(null)
-  const [selectedFolderIdForDropdown, setSelectedFolderIdForDropdown] = React.useState<string>('')
-  const [treeExpandedNodes, setTreeExpandedNodes] = React.useState<Record<string, boolean>>({})
-  const [treeLoadingNodes, setTreeLoadingNodes] = React.useState<Record<string, boolean>>({})
-  const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
-    isOpen: boolean
-    type: 'folder' | 'resource'
-    targetId: string | number
-    title: string
-    warningText: string
-  } | null>(null)
+  const languageState = useStudioLanguage({
+    selectedPractice: notesState.selectedPractice,
+    handleUpdatePractice: notesState.handleUpdatePractice,
+  })
 
-  const saveResources = (newResources: EducationResource[]) => {
-    setResources(newResources)
-    if (!isPersistedEducation) {
-      localStorage.setItem(`resources-${educationId}`, JSON.stringify(newResources))
+  // Statistics counters and memoized properties
+  const completedTasks = React.useMemo(() => {
+    return tasksState.localTasks.filter(t => t.status === 'DONE').length
+  }, [tasksState.localTasks])
+
+  const totalTasks = React.useMemo(() => {
+    return tasksState.localTasks.length
+  }, [tasksState.localTasks])
+
+  const weeklyTaskRatio = React.useMemo(() => {
+    return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+  }, [completedTasks, totalTasks])
+
+  const completedResourcesCount = React.useMemo(() => {
+    return resources.filter(r => foldersState.completedResources[r.id]).length
+  }, [resources, foldersState.completedResources])
+
+  const totalResources = React.useMemo(() => {
+    return resources.length
+  }, [resources])
+
+  const totalCodeFiles = React.useMemo(() => {
+    let count = 0
+    notesState.practices.forEach(p => {
+      try {
+        const files = JSON.parse(p.code || '[]')
+        if (Array.isArray(files)) count += files.length
+      } catch {}
+    })
+    return count
+  }, [notesState.practices])
+
+  const totalVocabWords = React.useMemo(() => {
+    let count = 0
+    notesState.practices.forEach(p => {
+      try {
+        const cards = JSON.parse(p.code || '[]')
+        if (Array.isArray(cards)) count += cards.length
+      } catch {}
+    })
+    return count
+  }, [notesState.practices])
+
+  const totalCheatItems = React.useMemo(() => {
+    let count = 0
+    notesState.practices.forEach(p => {
+      try {
+        const items = JSON.parse(p.code || '[]')
+        if (Array.isArray(items)) count += items.length
+      } catch {}
+    })
+    return count
+  }, [notesState.practices])
+
+  const tabOptions = React.useMemo(() => {
+    const base = [
+      { id: 'overview', label: 'Plan & Müfredat' },
+      { id: 'files', label: 'Dosyalar' },
+      { id: 'links', label: 'Bağlantılar' },
+      { id: 'reinforce', label: 'Pekiştirme' },
+    ]
+    if (education?.type === 'PROGRAMMING') {
+      base.push({ id: 'primary', label: 'Kod Yaz' })
+    } else if (education?.type === 'LANGUAGE') {
+      base.push({ id: 'primary', label: 'Kelime Pratiği' })
+    } else {
+      base.push({ id: 'primary', label: 'Hap Bilgiler' })
     }
-  }
+    return base
+  }, [education?.type])
 
-  const savePractices = (newPractices: EducationPractice[]) => {
-    setPractices(newPractices)
-    if (!isPersistedEducation) {
-      localStorage.setItem(`practices-${educationId}`, JSON.stringify(newPractices))
-    }
-  }
+  const handleTabChange = React.useCallback((tabId: any) => {
+    if (!confirmNavigation()) return
+    setActiveTab(tabId)
+  }, [confirmNavigation])
 
-  const saveFolders = (newFolders: FolderData[]) => {
-    setFolders(newFolders)
-    localStorage.setItem(`folders-${educationId}`, JSON.stringify(newFolders))
-  }
+  // Synchronize dirty reference state
+  React.useEffect(() => {
+    isDirtyRef.current = codeState.isCodeDirty || notesState.notesDraft.trim() !== ''
+  }, [codeState.isCodeDirty, notesState.notesDraft])
 
-  const saveCompletedResources = (newCompleted: Record<number, boolean>) => {
-    setCompletedResources(newCompleted)
-    localStorage.setItem(`completed-resources-${educationId}`, JSON.stringify(newCompleted))
-  }
-
-  const saveResourceNotes = (newNotes: Record<number | string, string>) => {
-    setResourceNotes(newNotes)
-    localStorage.setItem(`resource-notes-${educationId}`, JSON.stringify(newNotes))
-  }
-
-  const saveResourceNoteItems = (newItems: Record<string, ResourceNote[]>) => {
-    setResourceNoteItems(newItems)
-    localStorage.setItem(`resource-note-items-${educationId}`, JSON.stringify(newItems))
-  }
-
-  const saveReinforcements = (newReinforcements: Record<string, ReinforcementTask[]>) => {
-    setReinforcements(newReinforcements)
-    localStorage.setItem(`reinforcements-${educationId}`, JSON.stringify(newReinforcements))
-  }
-
-  // Eğitimin verilerini yerel state ile bağla
+  // Sync data from db or local storage to state
   React.useEffect(() => {
     if (!education) return
 
@@ -330,21 +507,26 @@ export const EducationStudio: React.FC = () => {
       const initialResources = persistedResources.map(toLocalResource)
       const initialPractices = persistedPractices.map(toLocalPractice)
       setResources(initialResources)
-      setPractices(initialPractices)
+      notesState.setPractices(initialPractices)
 
-      const pdfIds = initialResources.filter(r => r.type === 'PDF' || r.type === 'SLIDE' || r.type === 'FILE').map(r => r.id)
-      const linkIds = initialResources.filter(r => r.type === 'LINK').map(r => r.id)
-      setFolders([
-        { id: 'folder-pdf', name: 'Ders Kitaplari & Dokumanlar', resourceIds: pdfIds },
-        { id: 'folder-link', name: 'Yardimci Web Kaynaklari & Baglantilar', resourceIds: linkIds }
-      ])
+      const savedFolders = localStorage.getItem(`folders-${educationId}`)
+      if (savedFolders) {
+        foldersState.setFolders(reconcileFoldersWithResources(JSON.parse(savedFolders), initialResources))
+      } else {
+        const pdfIds = initialResources.filter(r => r.type === 'PDF' || r.type === 'SLIDE' || r.type === 'FILE').map(r => r.id)
+        const linkIds = initialResources.filter(r => r.type === 'LINK').map(r => r.id)
+        foldersState.setFolders([
+          { id: 'folder-pdf', name: 'Ders Kitaplari & Dokumanlar', resourceIds: pdfIds },
+          { id: 'folder-link', name: 'Yardimci Web Kaynaklari & Baglantilar', resourceIds: linkIds }
+        ])
+      }
 
       const completedMap: Record<number, boolean> = {}
       initialResources.forEach(res => {
         const resPractices = initialPractices.filter(p => p.resource_id === res.id)
         completedMap[res.id] = resPractices.length > 0 && resPractices.every(p => p.completed)
       })
-      setCompletedResources(completedMap)
+      foldersState.setCompletedResources(completedMap)
 
       const notesMap: Record<number | string, string> = {}
       const generalPractice = initialPractices.find(p => p.resource_id === null)
@@ -352,19 +534,19 @@ export const EducationStudio: React.FC = () => {
       initialPractices.forEach(p => {
         if (p.resource_id !== null) notesMap[p.resource_id] = p.notes || ''
       })
-      setResourceNotes(notesMap)
+      notesState.setResourceNotes(notesMap)
 
       if (initialPractices.length > 0) {
-        setSelectedPracticeId(initialPractices[0].id)
+        notesState.setSelectedPracticeId(initialPractices[0].id)
         setSelectedResourceId(initialPractices[0].resource_id)
       } else {
-        setSelectedPracticeId(null)
+        notesState.setSelectedPracticeId(null)
         setSelectedResourceId(null)
       }
       return
     }
 
-    // 1. Resources
+    // Local Storage Loading
     const savedResources = localStorage.getItem(`resources-${educationId}`)
     let initialResources: EducationResource[] = []
     if (savedResources) {
@@ -375,7 +557,6 @@ export const EducationStudio: React.FC = () => {
     }
     setResources(initialResources)
 
-    // 2. Practices
     const savedPractices = localStorage.getItem(`practices-${educationId}`)
     let initialPractices: EducationPractice[] = []
     if (savedPractices) {
@@ -384,12 +565,11 @@ export const EducationStudio: React.FC = () => {
       initialPractices = mockEducationPractices.filter((p) => p.education_id === educationId)
       localStorage.setItem(`practices-${educationId}`, JSON.stringify(initialPractices))
     }
-    setPractices(initialPractices)
+    notesState.setPractices(initialPractices)
 
-    // 3. Folders
     const savedFolders = localStorage.getItem(`folders-${educationId}`)
     if (savedFolders) {
-      setFolders(JSON.parse(savedFolders))
+      foldersState.setFolders(JSON.parse(savedFolders))
     } else {
       const pdfIds = initialResources.filter(r => r.type === 'PDF').map(r => r.id)
       const linkIds = initialResources.filter(r => r.type === 'LINK').map(r => r.id)
@@ -397,30 +577,28 @@ export const EducationStudio: React.FC = () => {
         { id: 'folder-pdf', name: 'Ders Kitapları & PDF Dokümanları', resourceIds: pdfIds },
         { id: 'folder-link', name: 'Yardımcı Web Kaynakları & Bağlantılar', resourceIds: linkIds }
       ]
-      setFolders(defaultFolders)
+      foldersState.setFolders(defaultFolders)
       localStorage.setItem(`folders-${educationId}`, JSON.stringify(defaultFolders))
     }
 
-    // 4. Completed Resources
     const savedCompleted = localStorage.getItem(`completed-resources-${educationId}`)
     if (savedCompleted) {
-      setCompletedResources(JSON.parse(savedCompleted))
+      foldersState.setCompletedResources(JSON.parse(savedCompleted))
     } else {
       const completedMap: Record<number, boolean> = {}
       initialResources.forEach(res => {
         const resPractices = initialPractices.filter(p => p.resource_id === res.id)
         completedMap[res.id] = resPractices.length > 0 && resPractices.every(p => p.completed)
       })
-      setCompletedResources(completedMap)
+      foldersState.setCompletedResources(completedMap)
       localStorage.setItem(`completed-resources-${educationId}`, JSON.stringify(completedMap))
     }
 
-    // 5. Resource Notes
     const savedNotes = localStorage.getItem(`resource-notes-${educationId}`)
     let notesMap: Record<number | string, string> = {}
     if (savedNotes) {
       notesMap = JSON.parse(savedNotes)
-      setResourceNotes(notesMap)
+      notesState.setResourceNotes(notesMap)
     } else {
       const generalPractice = initialPractices.find(p => p.resource_id === null)
       if (generalPractice) {
@@ -431,13 +609,13 @@ export const EducationStudio: React.FC = () => {
           notesMap[p.resource_id] = p.notes || ''
         }
       })
-      setResourceNotes(notesMap)
+      notesState.setResourceNotes(notesMap)
       localStorage.setItem(`resource-notes-${educationId}`, JSON.stringify(notesMap))
     }
 
     const savedNoteItems = localStorage.getItem(`resource-note-items-${educationId}`)
     if (savedNoteItems) {
-      setResourceNoteItems(JSON.parse(savedNoteItems))
+      notesState.setResourceNoteItems(JSON.parse(savedNoteItems))
     } else {
       const now = new Date().toISOString()
       const noteItems: Record<string, ResourceNote[]> = {}
@@ -452,32 +630,34 @@ export const EducationStudio: React.FC = () => {
           updatedAt: now
         }]
       })
-      setResourceNoteItems(noteItems)
+      notesState.setResourceNoteItems(noteItems)
       localStorage.setItem(`resource-note-items-${educationId}`, JSON.stringify(noteItems))
     }
 
-    // 6. Reinforcements
     const savedReinforcements = localStorage.getItem(`reinforcements-${educationId}`)
     if (savedReinforcements) {
-      setReinforcements(JSON.parse(savedReinforcements))
+      notesState.setReinforcements(JSON.parse(savedReinforcements))
     } else {
-      setReinforcements({})
+      notesState.setReinforcements({})
     }
 
     if (initialPractices.length > 0) {
-      setSelectedPracticeId(initialPractices[0].id)
+      notesState.setSelectedPracticeId(initialPractices[0].id)
       setSelectedResourceId(initialPractices[0].resource_id)
     } else {
-      setSelectedPracticeId(null)
+      notesState.setSelectedPracticeId(null)
       setSelectedResourceId(null)
     }
   }, [educationId, education, isPersistedEducation, persistedPractices, persistedResources, practicesLoaded, resourcesLoaded])
 
-  // Local tasks synchronizer
+  // Local tasks sync
   React.useEffect(() => {
+    const savedContexts = localStorage.getItem(`education-task-context-${educationId}`)
+    tasksState.setTaskContexts(savedContexts ? JSON.parse(savedContexts) : {})
+
     const saved = localStorage.getItem(`local-tasks-${educationId}`)
     if (saved) {
-      setLocalTasks(JSON.parse(saved))
+      tasksState.setLocalTasks(JSON.parse(saved))
     } else if (dbTasks && dbTasks.length > 0) {
       const mapped = dbTasks.map((t: any) => ({
         id: t.id,
@@ -487,904 +667,163 @@ export const EducationStudio: React.FC = () => {
         scheduledTime: t.scheduledTime || '',
         tag: education?.title || 'Eğitim'
       }))
-      setLocalTasks(mapped)
+      tasksState.setLocalTasks(mapped)
       localStorage.setItem(`local-tasks-${educationId}`, JSON.stringify(mapped))
     }
   }, [dbTasks, educationId, education?.title])
 
-  const selectedPractice = React.useMemo(
-    () => practices.find((p) => p.id === selectedPracticeId),
-    [practices, selectedPracticeId]
-  )
+  const handleTreeNodeClick = React.useCallback((nodeId: string) => {
+    if (!confirmNavigation()) return
 
-  React.useEffect(() => {
-    if (selectedProjectId === undefined && projects.length > 0) {
-      setSelectedProjectId(projects[0].id)
-    }
-  }, [projects, selectedProjectId])
-
-  const { data: projectDocuments = [] } = useProjectDocuments(selectedProjectId)
-
-  const reinforcementTargets = React.useMemo<ReinforcementTarget[]>(() => {
-    const resourceTargets = resources.map((resource) => ({
-      id: `resource:${resource.id}`,
-      type: 'resource' as const,
-      label: resource.name,
-      resource
-    }))
-
-    const selectedProject = projects.find((project) => project.id === selectedProjectId)
-    const documentTargets = projectDocuments.map((document) => ({
-      id: `project-document:${document.id}`,
-      type: 'project-document' as const,
-      label: document.title,
-      projectName: selectedProject?.name || 'Proje',
-      document
-    }))
-
-    return [...resourceTargets, ...documentTargets]
-  }, [projectDocuments, projects, resources, selectedProjectId])
-
-  React.useEffect(() => {
-    if (!selectedReinforcementTargetId && reinforcementTargets.length > 0) {
-      setSelectedReinforcementTargetId(reinforcementTargets[0].id)
-    }
-  }, [reinforcementTargets, selectedReinforcementTargetId])
-
-  const selectedReinforcementTarget = React.useMemo(
-    () => reinforcementTargets.find((target) => target.id === selectedReinforcementTargetId),
-    [reinforcementTargets, selectedReinforcementTargetId]
-  )
-
-  const activeNoteResourceKey = selectedResourceId === null || selectedResourceId === undefined
-    ? 'general'
-    : String(selectedResourceId)
-
-  const activeResourceNotes = React.useMemo(
-    () => resourceNoteItems[activeNoteResourceKey] || [],
-    [activeNoteResourceKey, resourceNoteItems]
-  )
-  const activeResourceNote = React.useMemo(
-    () => activeResourceNotes.find((note) => note.id === activeResourceNoteId) || activeResourceNotes[0] || null,
-    [activeResourceNoteId, activeResourceNotes]
-  )
-
-  // Not taslağını pratik değiştikçe güncelle
-  React.useEffect(() => {
-    if (activeResourceNote) {
-      setActiveResourceNoteId(activeResourceNote.id)
-      setNoteTitleDraft(activeResourceNote.title)
-      setNotesDraft(activeResourceNote.content)
-      return
-    }
-    setNoteTitleDraft('')
-    setNotesDraft(selectedPractice?.notes ?? '')
-  }, [activeNoteResourceKey, activeResourceNote?.id, selectedPracticeId, selectedPractice?.notes])
-
-  // Debounced auto-save notlar için - PASSED (Manüel kayıt aktif)
-
-  // Genel veri güncelleme handler'ı
-  const handleUpdatePractice = React.useCallback(
-    async (practiceId: number, updatedFields: Partial<EducationPractice>) => {
-      const current = practices.find((p) => p.id === practiceId)
-      if (!current) return
-
-      const merged = { ...current, ...updatedFields }
-      setPractices((prev) => prev.map((p) => (p.id === practiceId ? merged : p)))
-      if (!isPersistedEducation) {
-        return
-      }
-
-      try {
-        await apiClient.patch(`/educations/practices/${practiceId}`, {
-          title: merged.title,
-          completed: merged.completed,
-          code: merged.code,
-          notes: merged.notes,
-          resourceId: merged.resource_id,
-          orderIndex: merged.order_index ?? 0,
-        })
-      } catch (error) {
-        toast.error('Güncelleme arka planda saklanamadı.')
-      }
-    },
-    [isPersistedEducation, practices]
-  )
-
-  const createPracticeFromDraft = React.useCallback(
-    async (draft: Omit<EducationPractice, 'id'>) => {
-      if (isPersistedEducation) {
-        const created = await createPracticeMutation.mutateAsync({
-          title: draft.title,
-          completed: draft.completed,
-          code: draft.code,
-          notes: draft.notes,
-          resourceId: draft.resource_id,
-          orderIndex: draft.order_index,
-        })
-        return toLocalPractice(created)
-      }
-
-      return {
-        ...draft,
-        id: Date.now(),
-      }
-    },
-    [createPracticeMutation, isPersistedEducation]
-  )
-
-  // Toplu Müfredat İçe Aktarma (Syllabus Parser)
-  const handleImportCurriculum = async () => {
-    const lines = importText
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-
-    if (lines.length === 0) {
-      toast.error('Lütfen en az bir konu başlığı ekleyin.')
+    if (nodeId === 'study-plan' || nodeId === 'study-cheatsheet') {
+      setSelectedResourceId(null)
+      notesState.setSelectedPracticeId(null)
+      setActiveTab(nodeId === 'study-plan' ? 'overview' : 'primary')
       return
     }
 
-    const nextResourceId = Math.max(Date.now(), ...resources.map((r) => r.id)) + 1
-    const newResources: EducationResource[] = []
-
-    lines.forEach((line, idx) => {
-      const urlRegex = /(https?:\/\/[^\s]+)/
-      const match = line.match(urlRegex)
-      let name = line
-      let url = `imported://${line.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-      let type: ApiEducationResourceType = 'FILE'
-
-      if (match) {
-        url = match[1]
-        name = trimCurriculumLabel(line.replace(url, '').trim()) || url
-        type = 'LINK'
-      } else if (line.toLowerCase().includes('.pdf')) {
-        type = 'PDF'
-        url = `/files/${line.toLowerCase().replace(/[^a-z0-9.]+/g, '-')}`
-      } else if (
-        line.toLowerCase().includes('video') ||
-        line.toLowerCase().includes('watch') ||
-        line.toLowerCase().includes('youtube') ||
-        line.toLowerCase().includes('oynatma')
-      ) {
-        type = 'LINK'
-      }
-
-      newResources.push({
-        id: nextResourceId + idx,
-        education_id: educationId,
-        name,
-        type,
-        url_or_path: url,
-      })
-    })
-
-    if (isPersistedEducation) {
-      try {
-        await Promise.all(newResources.map((resource, index) =>
-          createResourceMutation.mutateAsync({
-            name: resource.name,
-            type: resource.type,
-            urlOrPath: resource.url_or_path,
-            orderIndex: resources.length + index,
-          })
-        ))
-        setImportText('')
-        setIsImporterOpen(false)
-        toast.success(`${newResources.length} yeni kaynak mufredata eklendi!`)
-      } catch {
-        toast.error('Kaynaklar sunucuya kaydedilemedi.')
-      }
+    if (nodeId.startsWith('folder-')) {
       return
     }
 
-    const updatedResources = [...resources, ...newResources]
-    saveResources(updatedResources)
+    const resourceId = Number(nodeId)
+    const resource = resources.find((r) => r.id === resourceId)
+    if (!resource) return
 
-    const pdfIds = newResources.filter(r => r.type === 'PDF' || r.type === 'FILE' || r.type === 'SLIDE').map(r => r.id)
-    const linkIds = newResources.filter(r => r.type === 'LINK').map(r => r.id)
+    setSelectedResourceId(resourceId)
 
-    // Put them in folder-pdf or folder-link if folders exist, otherwise uncategorized
-    const updatedFolders = folders.map(f => {
-      if (f.id === 'folder-pdf') {
-        return { ...f, resourceIds: [...f.resourceIds, ...pdfIds] }
-      }
-      if (f.id === 'folder-link') {
-        return { ...f, resourceIds: [...f.resourceIds, ...linkIds] }
-      }
-      return f
-    })
-    saveFolders(updatedFolders)
+    if (resource.type === 'LINK') {
+      setActiveTab('links')
+      return
+    }
 
+    if (resource.type === 'PDF' || resource.type === 'SLIDE' || resource.type === 'FILE') {
+      setActiveTab('files')
+    }
+  }, [confirmNavigation, resources, notesState.setSelectedPracticeId])
+
+  const handleCreateFolderRequest = React.useCallback(() => {
+    foldersState.setIsFolderCreatorOpen(true)
+  }, [foldersState])
+
+  const handleUploadFileRequest = React.useCallback((folderId?: string) => {
+    foldersState.setSelectedFolderId(folderId || 'uncategorized')
+    foldersState.setReplacingResourceId(null)
+    fileInputRef.current?.click()
+  }, [foldersState])
+
+  const handleReplaceFileRequest = React.useCallback((resId: number) => {
+    foldersState.setReplacingResourceId(resId)
+    const replaceInput = document.getElementById('replace-file-input') as HTMLInputElement
+    replaceInput?.click()
+  }, [foldersState])
+
+  const handleAddLinkRequest = React.useCallback((folderId?: string) => {
+    foldersState.setSelectedFolderId(folderId || 'uncategorized')
+    foldersState.setIsLinkAdderOpen(true)
+  }, [foldersState])
+
+  const handleImportCurriculumRequest = React.useCallback(() => {
     setImportText('')
+    setIsImporterOpen(true)
+  }, [])
+
+  const handleImportCurriculumSubmit = React.useCallback(() => {
+    void foldersState.handleImportCurriculum(importText)
     setIsImporterOpen(false)
-    toast.success(`${newResources.length} yeni kaynak müfredata eklendi!`)
-  }
+  }, [foldersState, importText])
 
-  // Tekil Dosya Yükle
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleToggleTaskComplete = React.useCallback((id: number | string) => {
+    void tasksState.handleToggleLocalTask(id)
+  }, [tasksState])
 
-    if (isPersistedEducation) {
-      try {
-        const uploaded = await uploadFileMutation.mutateAsync(file)
-        await createResourceMutation.mutateAsync({
-          name: file.name,
-          type: getResourceTypeForFileName(file.name),
-          urlOrPath: uploaded.downloadUrl || `/api/files/${uploaded.id}`,
-          orderIndex: resources.length,
-        })
-        toast.success('Dosya basariyla yuklendi!')
-      } catch {
-        toast.error('Dosya sunucuya yuklenemedi.')
-      }
+  const handleSaveTaskEdit = React.useCallback((id: number | string) => {
+    void tasksState.handleSaveLocalTaskEdit(id)
+  }, [tasksState])
+
+  const handleDeleteTaskRequest = React.useCallback((id: number | string) => {
+    void tasksState.handleDeleteLocalTask(id)
+  }, [tasksState])
+
+  const handleTreeNodeDragOver = React.useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+  }, [])
+
+  const handleTreeNodeDrop = React.useCallback((e: React.DragEvent, targetFolderId: string) => {
+    e.preventDefault()
+    if (!foldersState.draggedResourceInfo) return
+    const { folderId: sourceFolderId, resourceId } = foldersState.draggedResourceInfo
+
+    if (sourceFolderId === targetFolderId) {
+      foldersState.setDraggedResourceInfo(null)
       return
     }
 
-    const newResource: EducationResource = {
-      id: Date.now(),
-      education_id: educationId,
-      name: file.name,
-      type: getResourceTypeForFileName(file.name),
-      url_or_path: URL.createObjectURL(file)
-    }
+    let updatedFolders = [...foldersState.folders]
 
-    const updatedResources = [...resources, newResource]
-    saveResources(updatedResources)
-
-    const targetFolderId = newResource.type === 'LINK' ? 'folder-link' : 'folder-pdf'
-    const folderExists = folders.some(f => f.id === targetFolderId)
-
-    if (folderExists) {
-      const updatedFolders = folders.map(f => {
-        if (f.id === targetFolderId) {
-          return { ...f, resourceIds: [...f.resourceIds, newResource.id] }
-        }
-        return f
-      })
-      saveFolders(updatedFolders)
-    }
-
-    toast.success('Dosya başarıyla yüklendi!')
-  }
-
-  // Yeni Klasör Oluştur
-  const handleCreateFolder = () => {
-    const name = newFolderName.trim()
-    if (!name) {
-      toast.error('Klasör ismi boş olamaz.')
-      return
-    }
-    const newFolder: FolderData = {
-      id: `folder-${Date.now()}`,
-      name,
-      resourceIds: []
-    }
-    const updatedFolders = [...folders, newFolder]
-    saveFolders(updatedFolders)
-    setFoldersOpen(prev => ({ ...prev, [newFolder.id]: true }))
-    setNewFolderName('')
-    setIsFolderCreatorOpen(false)
-    toast.success('Yeni klasör oluşturuldu.')
-  }
-
-  // Klasör Yeniden Adlandır
-  const handleRenameFolder = (folderId: string) => {
-    const folder = folders.find(f => f.id === folderId)
-    if (!folder) return
-    const newName = window.prompt('Klasör için yeni bir isim girin:', folder.name)
-    if (newName && newName.trim()) {
-      const updated = folders.map(f => f.id === folderId ? { ...f, name: newName.trim() } : f)
-      saveFolders(updated)
-      toast.success('Klasör adı güncellendi.')
-    }
-  }
-
-  // Klasör Sil (Cascade Warning Modal tetikler)
-  const handleDeleteFolder = (folderId: string) => {
-    const folder = folders.find(f => f.id === folderId)
-    if (!folder) return
-
-    const fileCount = folder.resourceIds.length
-    let taskCount = 0
-    let noteCount = 0
-
-    folder.resourceIds.forEach((resId) => {
-      const actualTaskKey = reinforcements[`resource:${resId}`] ? `resource:${resId}` : (reinforcements[String(resId)] ? String(resId) : `resource:${resId}`)
-      taskCount += (reinforcements[actualTaskKey] || []).length
-
-      const actualNoteKey = resourceNoteItems[`resource:${resId}`] ? `resource:${resId}` : (resourceNoteItems[String(resId)] ? String(resId) : `resource:${resId}`)
-      noteCount += (resourceNoteItems[actualNoteKey] || []).length
-    })
-
-    if (fileCount > 0 || taskCount > 0 || noteCount > 0) {
-      setDeleteConfirmation({
-        isOpen: true,
-        type: 'folder',
-        targetId: folderId,
-        title: `"${folder.name}" Klasörünü Sil`,
-        warningText: `Bu klasörü silmek altındaki ${fileCount} dosyayı, ${taskCount} pekiştirme görevini ve ${noteCount} notu kalıcı olarak silecektir. Devam etmek istiyor musunuz?`
-      })
-    } else {
-      if (window.confirm('Bu boş klasörü silmek istediğinize emin misiniz?')) {
-        void executeDeleteFolder(folderId)
-      }
-    }
-  }
-
-  const executeDeleteFolder = async (folderId: string) => {
-    const folder = folders.find(f => f.id === folderId)
-    if (!folder) return
-
-    let updatedResources = [...resources]
-    let updatedPractices = [...practices]
-    let updatedReinforcements = { ...reinforcements }
-    let updatedNoteItems = { ...resourceNoteItems }
-
-    if (isPersistedEducation) {
-      await Promise.all(folder.resourceIds.map((resId) => deleteResourceMutation.mutateAsync(resId)))
-    }
-
-    folder.resourceIds.forEach((resId) => {
-      updatedResources = updatedResources.filter(r => r.id !== resId)
-      updatedPractices = updatedPractices.filter(p => p.resource_id !== resId)
-      delete updatedReinforcements[`resource:${resId}`]
-      delete updatedReinforcements[String(resId)]
-      delete updatedNoteItems[`resource:${resId}`]
-      delete updatedNoteItems[String(resId)]
-    })
-
-    const updatedFolders = folders.filter(f => f.id !== folderId)
-    saveFolders(updatedFolders)
-    saveResources(updatedResources)
-    savePractices(updatedPractices)
-    saveReinforcements(updatedReinforcements)
-    saveResourceNoteItems(updatedNoteItems)
-    toast.success('Klasör ve altındaki tüm içerikler silindi.')
-  }
-
-  // Dosya Yeniden Adlandır
-  const handleRenameResource = (resId: number) => {
-    const res = resources.find(r => r.id === resId)
-    if (!res) return
-    const newName = window.prompt('Dosya için yeni bir isim girin:', res.name)
-    if (newName && newName.trim()) {
-      const updated = resources.map(r => r.id === resId ? { ...r, name: newName.trim() } : r)
-      saveResources(updated)
-      toast.success('Dosya adı güncellendi.')
-    }
-  }
-
-  // Dosya Sil (Cascade Warning Modal tetikler)
-  const handleDeleteResource = (resId: number) => {
-    const res = resources.find(r => r.id === resId)
-    if (!res) return
-
-    const actualTaskKey = reinforcements[`resource:${resId}`] ? `resource:${resId}` : (reinforcements[String(resId)] ? String(resId) : `resource:${resId}`)
-    const taskCount = (reinforcements[actualTaskKey] || []).length
-
-    const actualNoteKey = resourceNoteItems[`resource:${resId}`] ? `resource:${resId}` : (resourceNoteItems[String(resId)] ? String(resId) : `resource:${resId}`)
-    const noteCount = (resourceNoteItems[actualNoteKey] || []).length
-
-    if (taskCount > 0 || noteCount > 0) {
-      setDeleteConfirmation({
-        isOpen: true,
-        type: 'resource',
-        targetId: resId,
-        title: `"${res.name}" Dosyasını Sil`,
-        warningText: `Bu dosyayı silmek bağlı olan ${taskCount} pekiştirme görevini ve ${noteCount} notu kalıcı olarak silecektir. Devam etmek istiyor musunuz?`
-      })
-    } else {
-      if (window.confirm('Bu dosyayı silmek istediğinize emin misiniz?')) {
-        void executeDeleteResource(resId)
-      }
-    }
-  }
-
-  const executeDeleteResource = async (resId: number) => {
-    if (isPersistedEducation) {
-      await deleteResourceMutation.mutateAsync(resId)
-    }
-
-    const updatedResources = resources.filter(r => r.id !== resId)
-    const updatedPractices = practices.filter(p => p.resource_id !== resId)
-
-    const updatedReinforcements = { ...reinforcements }
-    delete updatedReinforcements[`resource:${resId}`]
-    delete updatedReinforcements[String(resId)]
-
-    const updatedNoteItems = { ...resourceNoteItems }
-    delete updatedNoteItems[`resource:${resId}`]
-    delete updatedNoteItems[String(resId)]
-
-    const updatedFolders = folders.map(f => ({
-      ...f,
-      resourceIds: f.resourceIds.filter(id => id !== resId)
-    }))
-
-    saveFolders(updatedFolders)
-    saveResources(updatedResources)
-    savePractices(updatedPractices)
-    saveReinforcements(updatedReinforcements)
-    saveResourceNoteItems(updatedNoteItems)
-    toast.success('Dosya ve tüm bağlı veriler silindi.')
-  }
-
-  // Dosyayı Değiştir (Replace Resource)
-  const triggerReplaceFile = (resId: number) => {
-    setReplacingResourceId(resId)
-    const input = document.getElementById('replace-file-input') as HTMLInputElement
-    if (input) {
-      input.click()
-    }
-  }
-
-  const handleFileReplace = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || replacingResourceId === null) return
-
-    const updated = resources.map(res => {
-      if (res.id === replacingResourceId) {
-        return {
-          ...res,
-          name: file.name,
-          type: getResourceTypeForFileName(file.name),
-          url_or_path: URL.createObjectURL(file)
-        }
-      }
-      return res
-    })
-    saveResources(updated)
-    setReplacingResourceId(null)
-    toast.success('Dosya başarıyla değiştirildi!')
-  }
-
-  // Not Eylemleri
-  const getNoteForResource = (resId: number | string) => {
-    return resourceNotes[resId] || ''
-  }
-
-  const handleUpdateNoteForResource = (resId: number | string, content: string) => {
-    const updated = { ...resourceNotes, [resId]: content }
-    saveResourceNotes(updated)
-
-    // Sync to practice if practice exists
-    if (resId === 'general') {
-      const generalPractice = practices.find(p => p.resource_id === null)
-      if (generalPractice) {
-        void handleUpdatePractice(generalPractice.id, { notes: content })
-      }
-    } else {
-      const practice = practices.find(p => p.resource_id === Number(resId))
-      if (practice) {
-        void handleUpdatePractice(practice.id, { notes: content })
-      }
-    }
-  }
-
-  const handleCreateNoteForResource = (resourceKey: string, title?: string) => {
-    const now = new Date().toISOString()
-    const nextNote: ResourceNote = {
-      id: `note-${resourceKey}-${Date.now()}`,
-      resourceId: resourceKey === 'general' ? 'general' : Number(resourceKey),
-      title: title?.trim() || 'Yeni Not',
-      content: '',
-      createdAt: now,
-      updatedAt: now
-    }
-    const updated = {
-      ...resourceNoteItems,
-      [resourceKey]: [...(resourceNoteItems[resourceKey] || []), nextNote]
-    }
-    saveResourceNoteItems(updated)
-    setActiveResourceNoteId(nextNote.id)
-    setNoteTitleDraft(nextNote.title)
-    setNotesDraft('')
-    setActiveTab('notes')
-    toast.success('Yeni not başlığı oluşturuldu.')
-  }
-
-  const handleDeleteNoteForResource = (resourceKey: string, noteId: string) => {
-    const nextNotes = (resourceNoteItems[resourceKey] || []).filter((note) => note.id !== noteId)
-    const updated = {
-      ...resourceNoteItems,
-      [resourceKey]: nextNotes
-    }
-    saveResourceNoteItems(updated)
-    const fallback = nextNotes[0]
-    setActiveResourceNoteId(fallback?.id || null)
-    setNoteTitleDraft(fallback?.title || '')
-    setNotesDraft(fallback?.content || '')
-    saveResourceNotes({
-      ...resourceNotes,
-      [resourceKey]: nextNotes.map((note) => `# ${note.title}\n${note.content}`).join('\n\n')
-    })
-    toast.success('Not silindi.')
-  }
-
-  const handleOpenNotesForResource = (res: EducationResource) => {
-    if (!confirmNavigation()) return
-    const resourceKey = String(res.id)
-    setSelectedResourceId(res.id)
-    const notesForResource = resourceNoteItems[resourceKey] || []
-    if (notesForResource.length > 0) {
-      const firstNote = notesForResource[0]
-      setActiveResourceNoteId(firstNote.id)
-      setNoteTitleDraft(firstNote.title)
-      setNotesDraft(firstNote.content)
-    } else {
-      handleCreateNoteForResource(resourceKey, `${res.name} Notu`)
-    }
-    setActiveTab('notes')
-  }
-
-  // Kod Editörüne Yönlendir
-  const handleOpenCodeForResource = async (res: EducationResource) => {
-    if (!confirmNavigation()) return
-    let practice = practices.find(p => p.resource_id === res.id)
-    if (!practice) {
-      // Create new practice if not exists
-      const newPractice = await createPracticeFromDraft({
-        education_id: educationId,
-        resource_id: res.id,
-        title: `${res.name} Pratik & Kod`,
-        completed: false,
-        code: serializeCodeFiles([{
-          name: 'Main.java',
-          content: `// Pratik Kaynağı: ${res.name}\n// Bu kaynak için pratik kodlarınızı buraya yazın.\n\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("CompileMe pratik basariyla olusturuldu.");\n    }\n}`
-        }]),
-        notes: getNoteForResource(res.id),
-        order_index: practices.length + 1
-      })
-      const updatedPractices = [...practices, newPractice]
-      savePractices(updatedPractices)
-      practice = newPractice
-    }
-
-    setSelectedPracticeId(practice.id)
-    setSelectedResourceId(res.id)
-    setActiveFileName('Main.java')
-    setActiveTab('primary')
-    toast.success(`Kod editörü açıldı: ${res.name}`)
-  }
-
-  // Pekiştirme Görevleri Eylemleri
-  const handleAddReinforceTask = (targetId: string | number, title: string) => {
-    const targetKey = typeof targetId === 'number' ? `resource:${targetId}` : targetId
-    const taskList = reinforcements[targetKey] || []
-    if (taskList.length >= 10) {
-      toast.error('En fazla 10 pekiştirme görevi ekleyebilirsiniz.')
-      return
-    }
-    const newTask: ReinforcementTask = {
-      id: `reinforce-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      title,
-      completed: false,
-      codeFileName: `Pekistirme_${targetKey.replace(/[^a-zA-Z0-9]/g, '_')}_${taskList.length + 1}.java`
-    }
-    const updated = {
-      ...reinforcements,
-      [targetKey]: [...taskList, newTask]
-    }
-    saveReinforcements(updated)
-    toast.success('Pekiştirme projesi eklendi.')
-  }
-
-  const handleToggleReinforceTask = (targetId: string | number, taskId: string) => {
-    const targetKey = typeof targetId === 'number' ? `resource:${targetId}` : targetId
-    const taskList = reinforcements[targetKey] || []
-    const updatedList = taskList.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
-    const updated = {
-      ...reinforcements,
-      [targetKey]: updatedList
-    }
-    saveReinforcements(updated)
-  }
-
-  const handleDeleteReinforceTask = (targetId: string | number, taskId: string) => {
-    const targetKey = typeof targetId === 'number' ? `resource:${targetId}` : targetId
-    const taskList = reinforcements[targetKey] || []
-    const updatedList = taskList.filter(t => t.id !== taskId)
-    const updated = {
-      ...reinforcements,
-      [targetKey]: updatedList
-    }
-    saveReinforcements(updated)
-    toast.success('Pekiştirme projesi silindi.')
-  }
-
-  const handleWriteCodeForReinforce = (res: EducationResource, task: ReinforcementTask) => {
-    let practice = practices.find(p => p.resource_id === res.id)
-    if (!practice) {
-      const newPractice: EducationPractice = {
-        id: Date.now(),
-        education_id: educationId,
-        resource_id: res.id,
-        title: `${res.name} Pratik & Kod`,
-        completed: false,
-        code: serializeCodeFiles([{
-          name: task.codeFileName,
-          content: `// Pekiştirme Projesi: ${task.title}\n// Bu dosyadaki kod ve pratik projesi parent-child ilişkisiyle bağlıdır.\n\npublic class Pekistirme {\n    public static void main(String[] args) {\n        System.out.println("Pekiştirme projesi çalışıyor");\n    }\n}`
-        }]),
-        notes: getNoteForResource(res.id),
-        order_index: practices.length + 1
-      }
-      const updatedPractices = [...practices, newPractice]
-      savePractices(updatedPractices)
-      practice = newPractice
-    } else {
-      const files = parseCodeFiles(practice.code)
-      if (!files.some(f => f.name === task.codeFileName)) {
-        files.push({
-          name: task.codeFileName,
-          content: `// Pekiştirme Projesi: ${task.title}\n// Bu dosyadaki kod ve pratik projesi parent-child ilişkisiyle bağlıdır.\n\npublic class Pekistirme {\n    public static void main(String[] args) {\n        System.out.println("Pekiştirme projesi çalışıyor");\n    }\n}`
-        })
-        const updatedPractice = { ...practice, code: serializeCodeFiles(files) }
-        savePractices(practices.map(p => p.id === updatedPractice.id ? updatedPractice : p))
-        practice = updatedPractice
-      }
-    }
-
-    setSelectedPracticeId(practice.id)
-    setSelectedResourceId(res.id)
-    setActiveFileName(task.codeFileName)
-    setActiveTab('primary')
-    setActiveReinforceResourceId(null)
-    toast.success(`Pekiştirme kod editöründe açıldı: ${task.codeFileName}`)
-  }
-
-  // Sürükle Bırak: Dosyayı Klasör Başlığına Bırak
-  const ensurePracticeForTarget = (target: ReinforcementTarget, task?: ReinforcementTask) => {
-    const targetLabel = getTargetLabel(target)
-    let practice = target.type === 'resource'
-      ? practices.find(p => p.resource_id === target.resource.id)
-      : practices.find(p => p.title === `[Pekiştirme] ${targetLabel}`)
-
-    if (!practice) {
-      const newPractice: EducationPractice = {
-        id: Date.now(),
-        education_id: educationId,
-        resource_id: target.type === 'resource' ? target.resource.id : null,
-        title: target.type === 'resource' ? `${target.resource.name} Pratik & Kod` : `[Pekiştirme] ${targetLabel}`,
-        completed: false,
-        code: serializeCodeFiles([{
-          name: task?.codeFileName || 'Main.java',
-          content: `// Bağlı kaynak: ${targetLabel}\n${task ? `// Pekiştirme: ${task.title}\n` : ''}\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("CompileMe bağlı kod alanı");\n    }\n}`
-        }]),
-        notes: target.type === 'resource' ? getNoteForResource(target.resource.id) : target.document.content || '',
-        order_index: practices.length + 1
-      }
-      const updatedPractices = [...practices, newPractice]
-      savePractices(updatedPractices)
-      practice = newPractice
-    } else if (task) {
-      const files = parseCodeFiles(practice.code)
-      if (!files.some(f => f.name === task.codeFileName)) {
-        files.push({
-          name: task.codeFileName,
-          content: `// Bağlı kaynak: ${targetLabel}\n// Pekiştirme: ${task.title}\n\npublic class Pekistirme {\n    public static void main(String[] args) {\n        System.out.println("Pekiştirme projesi çalışıyor");\n    }\n}`
-        })
-        const updatedPractice = { ...practice, code: serializeCodeFiles(files) }
-        savePractices(practices.map(p => p.id === practice?.id ? updatedPractice : p))
-        practice = updatedPractice
-      }
-    }
-
-    return practice
-  }
-
-  const handleWriteCodeForTarget = (target: ReinforcementTarget, task?: ReinforcementTask) => {
-    const practice = ensurePracticeForTarget(target, task)
-    if (!practice) return
-
-    setSelectedPracticeId(practice.id)
-    setSelectedResourceId(target.type === 'resource' ? target.resource.id : null)
-    setActiveFileName(task?.codeFileName || parseCodeFiles(practice.code)[0]?.name || 'Main.java')
-    setActiveTab('primary')
-    setActiveReinforceResourceId(null)
-    toast.success(`Kod editöründe açıldı: ${task?.codeFileName || getTargetLabel(target)}`)
-  }
-
-  const handleDropdown1Change = (folderId: string) => {
-    setSelectedFolderIdForDropdown(folderId)
-  }
-
-  const handleDropdown2Change = (targetId: string) => {
-    const target = reinforcementTargets.find((item) => item.id === targetId)
-    if (target) {
-      handleWriteCodeForTarget(target)
-    }
-  }
-
-  const handleDropdown3Change = (taskId: string) => {
-    if (taskId === 'direct') return
-    const target = reinforcementTargets.find((item) => item.id === `resource:${selectedResourceId}`)
-    const task = selectedResourceId ? (reinforcements[`resource:${selectedResourceId}`] || []).find((item) => item.id === taskId) : undefined
-    if (target && task) {
-      handleWriteCodeForTarget(target, task)
-    }
-  }
-
-  const handleDropResourceOnFolderHeader = (e: React.DragEvent, targetFolderId: string) => {
-    const type = e.dataTransfer.getData('text/plain')
-    if (type !== 'resource' || !draggedResourceInfo) return
-
-    const { folderId: sourceFolderId, resourceId } = draggedResourceInfo
-    if (sourceFolderId === targetFolderId) return
-
-    let updatedFolders = [...folders]
-
-    // Kaynaktan çıkar
     if (sourceFolderId !== 'uncategorized') {
-      updatedFolders = updatedFolders.map(f => {
+      updatedFolders = updatedFolders.map((f) => {
         if (f.id === sourceFolderId) {
-          return { ...f, resourceIds: f.resourceIds.filter(id => id !== resourceId) }
+          return {
+            ...f,
+            resourceIds: f.resourceIds.filter((id) => id !== resourceId)
+          }
         }
         return f
       })
     }
 
-    // Hedefe ekle
     if (targetFolderId !== 'uncategorized') {
-      updatedFolders = updatedFolders.map(f => {
+      updatedFolders = updatedFolders.map((f) => {
         if (f.id === targetFolderId) {
-          const newIds = [...f.resourceIds.filter(id => id !== resourceId), resourceId]
+          const newIds = Array.from(new Set([...f.resourceIds, resourceId]))
           return { ...f, resourceIds: newIds }
         }
         return f
       })
     }
 
-    saveFolders(updatedFolders)
-    setDraggedResourceInfo(null)
+    foldersState.saveFolders(updatedFolders)
+    foldersState.setDraggedResourceInfo(null)
     toast.success('Dosya klasöre taşındı.')
-  }
+  }, [foldersState])
 
-  // Görev Planlayıcı
-  const handleAddTask = async (e: React.FormEvent) => {
-    if (e) e.preventDefault()
-    const title = taskTitle.trim()
-    if (!title) {
-      toast.error('Görev başlığı girmelisiniz.')
-      return
+  const cycleStatus = React.useCallback(() => {
+    if (!education) return
+    const statusCycle: Record<string, 'ACTIVE' | 'PAUSED' | 'DONE'> = {
+      PAUSED: 'ACTIVE',
+      ACTIVE: 'DONE',
+      DONE: 'PAUSED',
     }
+    const next = statusCycle[education.status] || 'ACTIVE'
+    education.status = next
+    toast.success(`Eğitim durumu "${next === 'PAUSED' ? 'Duraklatıldı' : next === 'ACTIVE' ? 'Çalışılıyor' : 'Tamamlandı'}" olarak güncellendi!`)
+    setResources([...resources])
+  }, [education, resources])
 
-    const newTask = {
-      id: Date.now(),
-      title,
-      status: 'TODO' as const,
-      scheduledDate: taskDate,
-      scheduledTime: taskTime,
-      tag: education?.title || 'Java Spring Boot'
-    }
+  const getStatusLabel = React.useCallback((status: string) => {
+    if (status === 'PAUSED') return 'Duraklatildi'
+    if (status === 'ACTIVE') return 'Çalışılıyor'
+    if (status === 'DONE') return 'Tamamlandı'
+    return 'Çalışılıyor'
+  }, [])
 
-    const updated = [newTask, ...localTasks]
-    setLocalTasks(updated)
-    localStorage.setItem(`local-tasks-${educationId}`, JSON.stringify(updated))
-
-    if (isPersistedEducation) {
-    try {
-      await createTaskMutation.mutateAsync({
-        title,
-        notes: `${education?.title || 'Java Spring Boot'} / ${selectedPractice?.title || 'Genel Etüt'}`,
-        status: 'TODO',
-        kind: 'EDUCATION',
-        scheduledDate: taskDate || undefined,
-        scheduledTime: taskTime || undefined,
-        planningBucket: taskDate ? 'DAY' : 'UNSCHEDULED',
-        educationId: educationId,
-      })
-    } catch {
-      // Suppress backend error to remain fully responsive locally
-    }
-    } else {
-      toast.info('Bu egitim henuz veritabaninda yok; gorev yerel demo listesine eklendi.')
-    }
-
-    setTaskTitle('')
-    setTaskDate('')
-    setTaskTime('')
-    toast.success('Çalışma görevi eklendi.')
-  }
-
-  // Görev Toggles, Edits & Deletions
-  const handleToggleLocalTask = async (id: number | string) => {
-    const updated = localTasks.map(t => {
-      if (t.id === id) {
-        return { ...t, status: t.status === 'DONE' ? 'TODO' : 'DONE' }
-      }
-      return t
-    })
-    setLocalTasks(updated)
-    localStorage.setItem(`local-tasks-${educationId}`, JSON.stringify(updated))
-    toast.success('Görev durumu güncellendi.')
-
-    if (typeof id === 'number' && persistedTaskIds.has(id)) {
-      try {
-        await toggleTaskMutation.mutateAsync(id)
-      } catch {
-        // Silently allow local state only
-      }
-    }
-  }
-
-  const handleSaveLocalTaskEdit = (id: number | string) => {
-    const title = editingTaskTitle.trim()
-    if (!title) {
-      toast.error('Görev başlığı boş olamaz.')
-      return
-    }
-    const updated = localTasks.map(t => {
-      if (t.id === id) {
-        return { ...t, title }
-      }
-      return t
-    })
-    setLocalTasks(updated)
-    localStorage.setItem(`local-tasks-${educationId}`, JSON.stringify(updated))
-    setEditingTaskId(null)
-    toast.success('Görev güncellendi.')
-  }
-
-  const handleDeleteLocalTask = async (id: number | string) => {
-    const updated = localTasks.filter(t => t.id !== id)
-    setLocalTasks(updated)
-    localStorage.setItem(`local-tasks-${educationId}`, JSON.stringify(updated))
-    toast.success('Görev silindi.')
-
-    if (typeof id === 'number' && persistedTaskIds.has(id)) {
-      try {
-        await deleteTaskMutation.mutateAsync(id)
-      } catch {
-        // Silently allow local state only
-      }
-    }
-  }
-
-  // Links tab adder helper
-  const handleAddLink = () => {
-    const name = newLinkName.trim()
-    let url = newLinkUrl.trim()
-    if (!name || !url) {
-      toast.error('Lütfen tüm alanları doldurun.')
-      return
-    }
-
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url
-    }
-
-    const newResource: EducationResource = {
-      id: Date.now(),
-      education_id: educationId,
-      name,
-      type: 'LINK',
-      url_or_path: url
-    }
-
-    setResources(prev => [...prev, newResource])
-    setNewLinkName('')
-    setNewLinkUrl('')
-    setIsLinkAdderOpen(false)
-    toast.success('Yeni platform bağlantısı eklendi!')
-  }
-
-  // Dropdown Actions: Sil ve İndir
-  const handleDeleteEducation = () => {
+  const handleDeleteEducation = React.useCallback(() => {
     if (!education) return
     if (window.confirm('Bu eğitimi silmek istediğinize emin misiniz?')) {
-      const idx = mockEducations.findIndex((item) => item.id === educationId)
-      if (idx !== -1) {
-        mockEducations.splice(idx, 1)
-        toast.success('Eğitim başarıyla silindi.')
-        navigate('/education')
-      }
+      deleteEducationMutation.mutate(educationId, {
+        onSuccess: () => {
+          toast.success('Eğitim başarıyla silindi.')
+          navigate('/education')
+        },
+        onError: () => {
+          toast.error('Eğitim silinirken bir hata oluştu.')
+        }
+      })
     }
-  }
+  }, [education, educationId, navigate, deleteEducationMutation])
 
-  const handleDownloadMarkdown = () => {
+  const handleDownloadMarkdown = React.useCallback(() => {
     if (!education) return
     let md = `# ${education.title}\n`
     md += `**Kaynak:** ${education.source}\n`
@@ -1398,7 +837,7 @@ export const EducationStudio: React.FC = () => {
     md += `\n`
 
     md += `## Notlar & Pratikler\n`
-    practices.forEach((p) => {
+    notesState.practices.forEach((p) => {
       md += `### ${p.title}\n`
       if (p.completed) {
         md += `*Durum: Tamamlandı*\n`
@@ -1432,493 +871,12 @@ export const EducationStudio: React.FC = () => {
     link.click()
     document.body.removeChild(link)
     toast.success('Ders notları Markdown olarak indirildi!')
-  }
-
-  const cycleStatus = () => {
-    if (!education) return
-    const statusCycle: Record<string, 'ACTIVE' | 'PAUSED' | 'DONE'> = {
-      PAUSED: 'ACTIVE',
-      ACTIVE: 'DONE',
-      DONE: 'PAUSED',
-    }
-    const next = statusCycle[education.status] || 'ACTIVE'
-    education.status = next
-    toast.success(`Eğitim durumu "${next === 'PAUSED' ? 'Duraklatıldı' : next === 'ACTIVE' ? 'Çalışılıyor' : 'Tamamlandı'}" olarak güncellendi!`)
-    setResources([...resources])
-  }
-
-  const getStatusLabel = (status: string) => {
-    if (status === 'PAUSED') return 'Duraklatildi'
-    if (status === 'ACTIVE') return 'Çalışılıyor'
-    if (status === 'DONE') return 'Tamamlandı'
-    return 'Çalışılıyor'
-  }
-
-  // Drag and drop handlers
-  const handleDragStartFolder = (e: React.DragEvent, index: number) => {
-    setDraggedFolderIndex(index)
-    e.dataTransfer.setData('text/plain', 'folder')
-  }
-
-  const handleDropFolder = (e: React.DragEvent, targetIndex: number) => {
-    const type = e.dataTransfer.getData('text/plain')
-    if (type !== 'folder' || draggedFolderIndex === null) return
-
-    const updated = [...folders]
-    const [removed] = updated.splice(draggedFolderIndex, 1)
-    updated.splice(targetIndex, 0, removed)
-    saveFolders(updated)
-    setDraggedFolderIndex(null)
-    toast.success('Klasör sırası güncellendi.')
-  }
-
-  const handleDragStartResource = (e: React.DragEvent, folderId: string, resourceId: number) => {
-    setDraggedResourceInfo({ folderId, resourceId })
-    e.dataTransfer.setData('text/plain', 'resource')
-  }
-
-  const handleDropResource = (e: React.DragEvent, targetFolderId: string, targetIndex: number) => {
-    const type = e.dataTransfer.getData('text/plain')
-    if (type !== 'resource' || !draggedResourceInfo) return
-
-    const { folderId: sourceFolderId, resourceId } = draggedResourceInfo
-
-    let updatedFolders = [...folders]
-
-    // 1. Remove resource from source folder if source is a folder
-    if (sourceFolderId !== 'uncategorized') {
-      updatedFolders = updatedFolders.map(f => {
-        if (f.id === sourceFolderId) {
-          return { ...f, resourceIds: f.resourceIds.filter(id => id !== resourceId) }
-        }
-        return f
-      })
-    }
-
-    // 2. Add resource to target folder if target is a folder
-    if (targetFolderId !== 'uncategorized') {
-      updatedFolders = updatedFolders.map(f => {
-        if (f.id === targetFolderId) {
-          const newIds = [...f.resourceIds]
-          // Remove duplicates
-          const filtered = newIds.filter(id => id !== resourceId)
-          filtered.splice(targetIndex, 0, resourceId)
-          return { ...f, resourceIds: filtered }
-        }
-        return f
-      })
-    }
-
-    saveFolders(updatedFolders)
-    setDraggedResourceInfo(null)
-    toast.success('Dosya başarıyla taşındı.')
-  }
-
-  // Stat calculations
-  const totalTasks = dbTasks.length
-  const completedTasks = dbTasks.filter((t) => t.status === 'DONE').length
-  const weeklyTaskRatio = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-  const totalResources = resources.length
-  const completedResourcesCount = resources.filter((res) => !!completedResources[res.id]).length
-
-  const dynamicProgressPercent = totalResources > 0 ? Math.round((completedResourcesCount / totalResources) * 100) : 0
-  if (education) {
-    education.progress_percent = dynamicProgressPercent
-  }
-
-  const totalCodeFiles = practices.reduce((sum, p) => sum + parseCodeFiles(p.code).length, 0)
-  const totalVocabWords = practices.reduce((sum, p) => sum + parseVocabulary(p.code).length, 0)
-  const totalCheatItems = practices.reduce((sum, p) => sum + parseCheatsheet(p.code).length, 0)
-
-  if (!education) {
-    return (
-      <div className="flex items-center justify-center h-96 text-slate-900 dark:text-white font-bold">
-        Eğitim bulunamadı.
-      </div>
-    )
-  }
-
-  const tabOptions = [
-    { id: 'overview' as const, label: '📊 Overview' },
-    { id: 'files' as const, label: '📂 Dosyalar' },
-    { id: 'links' as const, label: '🔗 Linkler' },
-    { id: 'reinforce' as const, label: 'Pekistirmeler' },
-    {
-      id: 'primary' as const,
-      label:
-        education.type === 'PROGRAMMING'
-          ? '💻 Code'
-          : education.type === 'LANGUAGE'
-            ? '🎴 Kelimeler'
-            : '💡 Kavramlar',
-    },
-    { id: 'notes' as const, label: '📝 Notlar' },
-  ]
-
-  // Code Studio Files Helper
-  const codeFiles = parseCodeFiles(selectedPractice?.code ?? '')
-  const activeFile = codeFiles.find((f) => f.name === activeFileName) || codeFiles[0] || { name: 'Main.java', content: '' }
-
-  // --- UX SAFETY NAVIGATION CONTROLS & HELPERS ---
-  const isCodeDirty = codeDraft !== null && codeDraft !== activeFile.content
-
-  const isNotesDirty = React.useMemo(() => {
-    if (!activeResourceNote) return false
-    return notesDraft !== activeResourceNote.content || noteTitleDraft !== activeResourceNote.title
-  }, [activeResourceNote, notesDraft, noteTitleDraft])
-
-  const confirmNavigation = (): boolean => {
-    if (isCodeDirty || isNotesDirty) {
-      return window.confirm('Kaydedilmemiş değişiklikleriniz var. Ayrılmak istediğinize emin misiniz?')
-    }
-    return true
-  }
-
-  const handleTabChange = (tab: any) => {
-    if (!confirmNavigation()) return
-    setActiveTab(tab)
-  }
-
-  const handleFileTabChange = (fileName: string) => {
-    if (!confirmNavigation()) return
-    setActiveFileName(fileName)
-    setCodeDraft(null)
-  }
-
-  const handleToggleTreeNode = async (nodeId: string) => {
-    if (treeExpandedNodes[nodeId]) {
-      setTreeExpandedNodes((prev) => ({ ...prev, [nodeId]: false }))
-    } else {
-      setTreeLoadingNodes((prev) => ({ ...prev, [nodeId]: true }))
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      setTreeLoadingNodes((prev) => ({ ...prev, [nodeId]: false }))
-      setTreeExpandedNodes((prev) => ({ ...prev, [nodeId]: true }))
-    }
-  }
-
-  const handleTreeNodeClick = (type: 'file' | 'task' | 'note', targetId: string, itemId?: string | number) => {
-    if (!confirmNavigation()) return
-
-    if (type === 'file') {
-      const numId = Number(targetId)
-      setSelectedResourceId(numId)
-      const match = practices.find((p) => p.resource_id === numId)
-      if (match) {
-        setSelectedPracticeId(match.id)
-      }
-      setActiveTab('files')
-    } else if (type === 'task') {
-      const resId = Number(targetId.replace('resource:', ''))
-      setSelectedResourceId(resId)
-      const match = practices.find((p) => p.resource_id === resId)
-      if (match) {
-        setSelectedPracticeId(match.id)
-        const tasks = reinforcements[targetId] || []
-        const task = tasks.find(t => t.id === itemId)
-        if (task && task.codeFileName) {
-          setActiveFileName(task.codeFileName)
-        }
-      }
-      setActiveTab('primary')
-      setCodeDraft(null)
-    } else if (type === 'note') {
-      const resId = targetId === 'general' ? null : Number(targetId.replace('resource:', ''))
-      setSelectedResourceId(resId)
-      const match = practices.find((p) => p.resource_id === resId)
-      if (match) {
-        setSelectedPracticeId(match.id)
-      }
-      if (itemId) {
-        setActiveResourceNoteId(String(itemId))
-        const notes = resourceNoteItems[targetId] || []
-        const note = notes.find(n => n.id === itemId)
-        if (note) {
-          setNoteTitleDraft(note.title)
-          setNotesDraft(note.content)
-        }
-      }
-      setActiveTab('notes')
-    }
-  }
-
-  // --- CRUD ACTIONS FOR TASKS & NOTES ---
-  const handleRenameTask = (actualKey: string, taskId: string) => {
-    const list = reinforcements[actualKey] || []
-    const task = list.find(t => t.id === taskId)
-    if (!task) return
-    const newTitle = window.prompt('Pekiştirme görevi için yeni bir başlık girin:', task.title)
-    if (newTitle && newTitle.trim()) {
-      const updated = list.map(t => t.id === taskId ? { ...t, title: newTitle.trim() } : t)
-      const updatedReinforcements = { ...reinforcements, [actualKey]: updated }
-      saveReinforcements(updatedReinforcements)
-      toast.success('Pekiştirme görevi adı güncellendi.')
-    }
-  }
-
-  const handleDeleteTask = (actualKey: string, taskId: string) => {
-    if (!window.confirm('Bu pekiştirme görevini silmek istediğinize emin misiniz?')) return
-    const list = reinforcements[actualKey] || []
-    const updated = list.filter(t => t.id !== taskId)
-    const updatedReinforcements = { ...reinforcements, [actualKey]: updated }
-    saveReinforcements(updatedReinforcements)
-    toast.success('Pekiştirme görevi silindi.')
-  }
-
-  const handleRenameNote = (actualKey: string, noteId: string) => {
-    const list = resourceNoteItems[actualKey] || []
-    const note = list.find(n => n.id === noteId)
-    if (!note) return
-    const newTitle = window.prompt('Not için yeni bir başlık girin:', note.title)
-    if (newTitle && newTitle.trim()) {
-      const updated = list.map(n => n.id === noteId ? { ...n, title: newTitle.trim(), updatedAt: new Date().toISOString() } : n)
-      const updatedNoteItems = { ...resourceNoteItems, [actualKey]: updated }
-      saveResourceNoteItems(updatedNoteItems)
-      if (activeResourceNoteId === noteId) {
-        setNoteTitleDraft(newTitle.trim())
-      }
-      toast.success('Not adı güncellendi.')
-    }
-  }
-
-  const handleDeleteNote = (actualKey: string, noteId: string) => {
-    if (!window.confirm('Bu notu silmek istediğinize emin misiniz?')) return
-    const list = resourceNoteItems[actualKey] || []
-    const updated = list.filter(n => n.id !== noteId)
-    const updatedNoteItems = { ...resourceNoteItems, [actualKey]: updated }
-    saveResourceNoteItems(updatedNoteItems)
-    if (activeResourceNoteId === noteId) {
-      setActiveResourceNoteId(null)
-      setNoteTitleDraft('')
-      setNotesDraft('')
-    }
-    toast.success('Not silindi.')
-  }
-
-  const handleNoteTopicChange = (val: string) => {
-    if (!confirmNavigation()) return
-    if (val === 'general') {
-      setSelectedResourceId(null)
-      const match = practices.find((p) => p.resource_id === null)
-      if (match) setSelectedPracticeId(match.id)
-    } else {
-      const numId = Number(val)
-      setSelectedResourceId(numId)
-      const match = practices.find((p) => p.resource_id === numId)
-      if (match) setSelectedPracticeId(match.id)
-    }
-  }
-
-  const handleNoteItemClick = (noteId: string) => {
-    if (!confirmNavigation()) return
-    setActiveResourceNoteId(noteId)
-    const currentNotes = resourceNoteItems[activeNoteResourceKey] || []
-    const note = currentNotes.find(n => n.id === noteId)
-    if (note) {
-      setNoteTitleDraft(note.title)
-      setNotesDraft(note.content)
-    }
-  }
-
-  const handleSaveNotes = async () => {
-    if (!activeResourceNoteId) return
-    setSaveState('saving')
-    const now = new Date().toISOString()
-    const currentNotes = resourceNoteItems[activeNoteResourceKey] || []
-    const updatedNotesForResource = currentNotes.map((note) =>
-      note.id === activeResourceNoteId
-        ? {
-            ...note,
-            title: noteTitleDraft.trim() || 'Başlıksız Not',
-            content: notesDraft,
-            updatedAt: now
-          }
-        : note
-    )
-    const updatedNoteItems = {
-      ...resourceNoteItems,
-      [activeNoteResourceKey]: updatedNotesForResource
-    }
-    saveResourceNoteItems(updatedNoteItems)
-
-    const mergedContent = updatedNotesForResource
-      .map((note) => `# ${note.title}\n\n${note.content}`)
-      .join('\n\n---\n\n')
-    const updatedLegacyNotes = { ...resourceNotes, [activeNoteResourceKey]: mergedContent }
-    saveResourceNotes(updatedLegacyNotes)
-
-    const practiceForNotes = activeNoteResourceKey === 'general'
-      ? practices.find(p => p.resource_id === null)
-      : practices.find(p => p.resource_id === Number(activeNoteResourceKey))
-
-    if (!practiceForNotes) {
-      setSaveState('saved')
-      toast.success('Not kaydedildi.')
-      return
-    }
-
-    if (!isPersistedEducation) {
-      setPractices((prev) =>
-        prev.map((p) => (p.id === practiceForNotes.id ? { ...p, notes: mergedContent } : p))
-      )
-      setSaveState('saved')
-      toast.success('Not kaydedildi.')
-      return
-    }
-
-    try {
-      await apiClient.patch(`/educations/practices/${practiceForNotes.id}`, {
-        title: practiceForNotes.title,
-        completed: practiceForNotes.completed,
-        code: practiceForNotes.code,
-        notes: mergedContent,
-        resourceId: practiceForNotes.resource_id,
-        orderIndex: practiceForNotes.order_index ?? 0,
-      })
-      setPractices((prev) =>
-        prev.map((p) => (p.id === practiceForNotes.id ? { ...p, notes: mergedContent } : p))
-      )
-      setSaveState('saved')
-      toast.success('Not başarıyla kaydedildi.')
-    } catch {
-      setSaveState('saved')
-      toast.error('Not kaydedilirken bir hata oluştu.')
-    }
-  }
-
-  const handleCodeChange = (newVal: string) => {
-    if (!selectedPractice) return
-    const updated = codeFiles.map((f) => (f.name === activeFile.name ? { ...f, content: newVal } : f))
-    void handleUpdatePractice(selectedPractice.id, { code: serializeCodeFiles(updated) })
-  }
-
-  const handleAddNewFile = () => {
-    if (!selectedPractice) return
-    const name = window.prompt('Dosya ismi girin (Örn: Model.java):', 'Model.java')?.trim()
-    if (!name) return
-
-    if (codeFiles.some((f) => f.name === name)) {
-      toast.error('Aynı isimde başka bir dosya zaten mevcut.')
-      return
-    }
-
-    const updated = [...codeFiles, { name, content: '// ' + name + ' dosyası oluşturuldu.' }]
-    void handleUpdatePractice(selectedPractice.id, { code: serializeCodeFiles(updated) })
-    setActiveFileName(name)
-    toast.success('Yeni kod dosyası oluşturuldu.')
-  }
-
-  const handleSaveCodeDirectly = () => {
-    if (!selectedPractice) return
-    const targetContent = codeDraft ?? activeFile.content
-    const updated = codeFiles.map((f) => (f.name === activeFile.name ? { ...f, content: targetContent } : f))
-    void handleUpdatePractice(selectedPractice.id, { code: serializeCodeFiles(updated) })
-    setCodeDraft(null)
-    toast.success('Kod değişiklikleri kaydedildi.')
-  }
-
-  // Language Vocabulary Helpers
-  const vocabulary = parseVocabulary(selectedPractice?.code ?? '')
-  const levelVocabulary = vocabulary
-  const getNextReviewDate = (box: VocabularyCard['box']) => {
-    const daysByBox: Record<VocabularyCard['box'], number> = {
-      1: 1,
-      2: 3,
-      3: 7,
-    }
-    const next = new Date()
-    next.setDate(next.getDate() + daysByBox[box])
-    return next.toISOString().slice(0, 10)
-  }
-
-  const handleAddVocabWord = () => {
-    if (!selectedPractice) return
-    const w = word.trim()
-    const m = meaning.trim()
-    if (!w || !m) {
-      toast.error('Kelime ve Türkçe karşılığı doldurulmalıdır.')
-      return
-    }
-
-    const newCard: VocabularyCard = {
-      id: Date.now(),
-      word: w,
-      meaning: m,
-      type: wordType,
-      box: 1,
-      nextReview: getNextReviewDate(1),
-    }
-
-    const updated = [...vocabulary, newCard]
-    void handleUpdatePractice(selectedPractice.id, { code: serializeVocabulary(updated) })
-    setWord('')
-    setMeaning('')
-    toast.success('Yeni kelime desteye eklendi.')
-  }
-
-  const handleLeitnerResult = (vocabId: number, boxUpdate: 'known' | 'forgot') => {
-    if (!selectedPractice) return
-    const updated = vocabulary.map((v) => {
-      if (v.id !== vocabId) return v
-      const nextBox = boxUpdate === 'known' ? (Math.min(3, v.box + 1) as VocabularyCard['box']) : 1
-      return {
-        ...v,
-        box: nextBox,
-        nextReview: getNextReviewDate(nextBox),
-      }
-    })
-    void handleUpdatePractice(selectedPractice.id, { code: serializeVocabulary(updated) })
-    toast.success(
-      boxUpdate === 'known' ? 'Kelime bir üst kutuya taşındı!' : 'Kelime 1. Kutuya geri döndü.'
-    )
-  }
-
-  const handleQuickTranslate = async () => {
-    const text = translateInput.trim()
-    if (!text) return
-    setTranslateResult('Çeviriliyor...')
-    setTimeout(() => {
-      setTranslateResult(`İngilizce: "${text}"\nTürkçe: "[Simüle Çeviri] ${text} öğreniminde pratik yapıyorum."`)
-    }, 500)
-  }
-
-  // Cheatsheet Helpers
-  const cheatsheet = parseCheatsheet(selectedPractice?.code ?? '')
-
-  const handleAddCheatItem = () => {
-    if (!selectedPractice) return
-    const c = keyConcept.trim()
-    const d = conceptDescription.trim()
-    if (!c || !d) {
-      toast.error('Kavram ve açıklama alanları doldurulmalıdır.')
-      return
-    }
-
-    const newItem: CheatsheetItem = {
-      id: Date.now(),
-      keyConcept: c,
-      description: d,
-    }
-    const updated = [...cheatsheet, newItem]
-    void handleUpdatePractice(selectedPractice.id, { code: serializeCheatsheet(updated) })
-    setKeyConcept('')
-    setConceptDescription('')
-    toast.success('Hap bilgi eklendi.')
-  }
-
-  const handleDeleteCheatItem = (itemId: number) => {
-    if (!selectedPractice) return
-    const updated = cheatsheet.filter((item) => item.id !== itemId)
-    void handleUpdatePractice(selectedPractice.id, { code: serializeCheatsheet(updated) })
-    toast.success('Hap bilgi silindi.')
-  }
-
-  const toggleFolderState = (folderId: string) => {
-    setFoldersOpen(prev => ({ ...prev, [folderId]: !prev[folderId] }))
-  }
+  }, [education, resources, notesState.practices])
 
   // Sub-tab renders
   // --- 4-LEVEL LEFT FILE TREE ---
   const renderTabContent = () => {
+    if (!education) return null
     const commonProps = {
       resources,
       education,
@@ -1930,85 +888,72 @@ export const EducationStudio: React.FC = () => {
         return (
           <OverviewTab
             {...commonProps}
-            practices={practices}
-            localTasks={localTasks}
-            taskTitle={taskTitle}
-            setTaskTitle={setTaskTitle}
-            taskDate={taskDate}
-            setTaskDate={setTaskDate}
-            taskTime={taskTime}
-            setTaskTime={setTaskTime}
-            handleAddTask={handleAddTask}
-            handleToggleLocalTask={handleToggleLocalTask}
-            editingTaskId={editingTaskId}
-            setEditingTaskId={setEditingTaskId}
-            editingTaskTitle={editingTaskTitle}
-            setEditingTaskTitle={setEditingTaskTitle}
-            handleSaveLocalTaskEdit={handleSaveLocalTaskEdit}
-            handleDeleteLocalTask={handleDeleteLocalTask}
+            practices={notesState.practices}
+            localTasks={tasksState.localTasks}
+            taskTitle={tasksState.taskTitle}
+            setTaskTitle={tasksState.setTaskTitle}
+            folders={foldersState.folders}
+            taskFolderId={tasksState.taskFolderId}
+            setTaskFolderId={tasksState.setTaskFolderId}
+            taskResourceId={tasksState.taskResourceId}
+            setTaskResourceId={tasksState.setTaskResourceId}
+            taskContexts={tasksState.taskContexts}
+            getTaskContextLabel={tasksState.getTaskContextLabel}
+            taskDate={tasksState.taskDate}
+            setTaskDate={tasksState.setTaskDate}
+            taskTime={tasksState.taskTime}
+            setTaskTime={tasksState.setTaskTime}
+            handleAddTask={tasksState.handleAddTask}
+            handleToggleLocalTask={handleToggleTaskComplete}
+            editingTaskId={tasksState.editingTaskId}
+            setEditingTaskId={tasksState.setEditingTaskId}
+            editingTaskTitle={tasksState.editingTaskTitle}
+            setEditingTaskTitle={tasksState.setEditingTaskTitle}
+            handleSaveLocalTaskEdit={handleSaveTaskEdit}
+            handleDeleteLocalTask={handleDeleteTaskRequest}
           />
         )
       case 'files':
         return (
           <DosyalarTab
             {...commonProps}
-            folders={folders}
-            foldersOpen={foldersOpen}
-            toggleFolderState={toggleFolderState}
-            completedResources={completedResources}
-            saveCompletedResources={saveCompletedResources}
-            handleRenameFolder={handleRenameFolder}
-            handleDeleteFolder={handleDeleteFolder}
-            handleRenameResource={handleRenameResource}
-            handleDeleteResource={handleDeleteResource}
-            handleOpenNotesForResource={handleOpenNotesForResource}
-            handleOpenCodeForResource={handleOpenCodeForResource}
-            triggerReplaceFile={triggerReplaceFile}
-            setActiveReinforceResourceId={setActiveReinforceResourceId}
-            fileInputRef={fileInputRef}
-            handleFileUpload={handleFileUpload}
-            handleFileReplace={handleFileReplace}
-            setIsFolderCreatorOpen={setIsFolderCreatorOpen}
-            setIsImporterOpen={setIsImporterOpen}
-            handleDragStartFolder={handleDragStartFolder}
-            handleDragStartResource={handleDragStartResource}
-            handleDropFolder={handleDropFolder}
-            handleDropResource={handleDropResource}
-            handleDropResourceOnFolderHeader={handleDropResourceOnFolderHeader}
+            folders={foldersState.folders}
+            selectedResourceId={selectedResourceId}
+            completedResources={foldersState.completedResources}
+            saveCompletedResources={foldersState.saveCompletedResources}
+            handleRenameResource={foldersState.handleRenameResource}
+            handleDeleteResource={foldersState.handleDeleteResource}
+            handleOpenNotesForResource={notesState.handleOpenNotesForResource}
+            handleOpenCodeForResource={notesState.handleOpenCodeForResource}
+            triggerReplaceFile={handleReplaceFileRequest}
+            setActiveReinforceResourceId={notesState.setActiveReinforceResourceId}
           />
         )
       case 'links':
         return (
           <LinklerTab
             {...commonProps}
-            isLinkAdderOpen={isLinkAdderOpen}
-            setIsLinkAdderOpen={setIsLinkAdderOpen}
-            newLinkName={newLinkName}
-            setNewLinkName={setNewLinkName}
-            newLinkUrl={newLinkUrl}
-            setNewLinkUrl={setNewLinkUrl}
-            handleAddLink={handleAddLink}
+            isLinkAdderOpen={foldersState.isLinkAdderOpen}
+            setIsLinkAdderOpen={foldersState.setIsLinkAdderOpen}
+            newLinkName={foldersState.newLinkName}
+            setNewLinkName={foldersState.setNewLinkName}
+            newLinkUrl={foldersState.newLinkUrl}
+            setNewLinkUrl={foldersState.setNewLinkUrl}
+            handleAddLink={foldersState.handleAddLink}
           />
         )
       case 'reinforce':
         return (
           <ReinforcementsTab
             {...commonProps}
-            reinforcementTargets={reinforcementTargets}
-            reinforcementSearch={reinforcementSearch}
-            setReinforcementSearch={setReinforcementSearch}
-            selectedProjectId={selectedProjectId}
-            setSelectedProjectId={setSelectedProjectId}
-            projects={projects}
-            selectedReinforcementTargetId={selectedReinforcementTargetId}
-            setSelectedReinforcementTargetId={setSelectedReinforcementTargetId}
-            reinforcements={reinforcements}
-            newReinforcementTitle={newReinforcementTitle}
-            setNewReinforcementTitle={setNewReinforcementTitle}
-            handleAddReinforceTask={handleAddReinforceTask}
-            handleToggleReinforceTask={handleToggleReinforceTask}
-            handleDeleteReinforceTask={handleDeleteReinforceTask}
-            handleWriteCodeForTarget={handleWriteCodeForTarget}
+            selectedResourceId={selectedResourceId}
+            reinforcements={notesState.reinforcements}
+            newReinforcementTitle={notesState.newReinforcementTitle}
+            setNewReinforcementTitle={notesState.setNewReinforcementTitle}
+            handleAddReinforceTask={notesState.handleAddReinforceTask}
+            handleToggleReinforceTask={notesState.handleToggleReinforceTask}
+            handleDeleteReinforceTask={notesState.handleDeleteReinforceTask}
+            handleWriteCodeForTarget={notesState.handleWriteCodeForTarget}
           />
         )
       case 'primary':
@@ -2017,22 +962,15 @@ export const EducationStudio: React.FC = () => {
             <StudioModePanel type={education.type}>
               <CodeTab
                 {...commonProps}
-                selectedPractice={selectedPractice}
-                codeFiles={codeFiles}
-                activeFile={activeFile}
-                codeDraft={codeDraft}
-                setCodeDraft={setCodeDraft}
-                activeFileName={activeFileName}
-                handleFileTabChange={handleFileTabChange}
-                handleSaveCodeDirectly={handleSaveCodeDirectly}
-                isCodeDirty={isCodeDirty}
-                folders={folders}
-                reinforcementTargets={reinforcementTargets}
-                reinforcements={reinforcements}
-                selectedFolderIdForDropdown={selectedFolderIdForDropdown}
-                handleDropdown1Change={handleDropdown1Change}
-                handleDropdown2Change={handleDropdown2Change}
-                handleDropdown3Change={handleDropdown3Change}
+                selectedPractice={notesState.selectedPractice}
+                activeFile={codeState.activeFile}
+                codeDraft={codeState.codeDraft}
+                setCodeDraft={codeState.setCodeDraft}
+                activeFileName={codeState.activeFileName}
+                handleSaveCodeDirectly={codeState.handleSaveCodeDirectly}
+                isCodeDirty={codeState.isCodeDirty}
+                folders={foldersState.folders}
+                reinforcements={notesState.reinforcements}
               />
             </StudioModePanel>
           )
@@ -2040,19 +978,19 @@ export const EducationStudio: React.FC = () => {
           return (
             <StudioModePanel type={education.type}>
               <VocabularyTab
-                vocabularyCards={vocabulary}
-                activeLevel={activeLevel}
-                setActiveLevel={setActiveLevel}
-                word={word}
-                setWord={setWord}
-                meaning={meaning}
-                setMeaning={setMeaning}
-                wordType={wordType}
-                setWordType={setWordType}
-                handleAddVocabWord={handleAddVocabWord}
-                handleLeitnerResult={handleLeitnerResult}
-                flippedCards={flippedCards}
-                setFlippedCards={setFlippedCards}
+                vocabularyCards={languageState.vocabulary}
+                activeLevel={languageState.activeLevel}
+                setActiveLevel={languageState.setActiveLevel}
+                word={languageState.word}
+                setWord={languageState.setWord}
+                meaning={languageState.meaning}
+                setMeaning={languageState.setMeaning}
+                wordType={languageState.wordType}
+                setWordType={languageState.setWordType}
+                handleAddVocabWord={languageState.handleAddVocabWord}
+                handleLeitnerResult={languageState.handleLeitnerResult}
+                flippedCards={languageState.flippedCards}
+                setFlippedCards={languageState.setFlippedCards}
               />
             </StudioModePanel>
           )
@@ -2060,13 +998,13 @@ export const EducationStudio: React.FC = () => {
           return (
             <StudioModePanel type={education.type}>
               <CheatsheetTab
-                cheatsheetItems={cheatsheet}
-                keyConcept={keyConcept}
-                setKeyConcept={setKeyConcept}
-                conceptDescription={conceptDescription}
-                setConceptDescription={setConceptDescription}
-                handleAddCheatItem={handleAddCheatItem}
-                handleDeleteCheatItem={handleDeleteCheatItem}
+                cheatsheetItems={languageState.cheatsheet}
+                keyConcept={languageState.keyConcept}
+                setKeyConcept={languageState.setKeyConcept}
+                conceptDescription={languageState.conceptDescription}
+                setConceptDescription={languageState.setConceptDescription}
+                handleAddCheatItem={languageState.handleAddCheatItem}
+                handleDeleteCheatItem={languageState.handleDeleteCheatItem}
               />
             </StudioModePanel>
           )
@@ -2076,24 +1014,22 @@ export const EducationStudio: React.FC = () => {
           <NotlarTab
             {...commonProps}
             selectedResourceId={selectedResourceId}
-            handleNoteTopicChange={handleNoteTopicChange}
-            saveState={saveState}
-            isNotesDirty={isNotesDirty}
-            handleSaveNotes={handleSaveNotes}
-            activeNoteResourceKey={activeNoteResourceKey}
-            resourceNoteItems={resourceNoteItems}
-            handleNoteItemClick={handleNoteItemClick}
-            activeResourceNoteId={activeResourceNoteId}
-            handleCreateNoteForResource={handleCreateNoteForResource}
-            handleDeleteNoteForResource={handleDeleteNoteForResource}
-            noteTitleDraft={noteTitleDraft}
-            setNoteTitleDraft={setNoteTitleDraft}
-            notesDraft={notesDraft}
-            setNotesDraft={setNotesDraft}
-            translateInput={translateInput}
-            setTranslateInput={setTranslateInput}
-            translateResult={translateResult}
-            handleQuickTranslate={handleQuickTranslate}
+            saveState={notesState.saveState}
+            isNotesDirty={notesState.notesDraft.trim() !== ''}
+            handleSaveNotes={notesState.handleSaveNotes}
+            activeNoteResourceKey={notesState.activeNotesResourceId ? String(notesState.activeNotesResourceId) : ''}
+            resourceNoteItems={notesState.resourceNoteItems}
+            activeResourceNoteId={notesState.activeResourceNoteId}
+            handleCreateNoteForResource={notesState.handleCreateNoteForResource}
+            handleDeleteNoteForResource={notesState.handleDeleteNoteForResource}
+            noteTitleDraft={notesState.noteTitleDraft}
+            setNoteTitleDraft={notesState.setNoteTitleDraft}
+            notesDraft={notesState.notesDraft}
+            setNotesDraft={notesState.setNotesDraft}
+            translateInput={languageState.translateInput}
+            setTranslateInput={languageState.setTranslateInput}
+            translateResult={languageState.translateResult}
+            handleQuickTranslate={languageState.handleQuickTranslate}
           />
         )
       default:
@@ -2110,78 +1046,226 @@ export const EducationStudio: React.FC = () => {
     )
   }
 
+  if (!education) {
+    return (
+      <div className="flex items-center justify-center h-screen text-slate-500">
+        Eğitim yükleniyor veya bulunamadı...
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="education-studio flex flex-col gap-6 w-full">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={foldersState.handleFileUpload}
+        className="hidden"
+        accept=".pdf,.ppt,.pptx,.png,.jpg,.jpeg,.gif"
+      />
+      <input
+        type="file"
+        id="replace-file-input"
+        onChange={foldersState.handleFileUpload}
+        className="hidden"
+      />
       {/* ──────────────────────────────────────────────────────────────────
           ÜST GRUP (HEADER & STATS PANEL)
           ────────────────────────────────────────────────────────────────── */}
       <div className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/20 backdrop-blur-xl shadow-2xl flex flex-col gap-6 shrink-0">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {/* Sol Üst Köşe - Şık ChevronLeft Geri Butonu */}
-            <button
-              onClick={() => navigate('/education')}
-              className="flex items-center justify-center h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 border border-slate-200/50 dark:border-zinc-800/50 text-slate-900 dark:text-zinc-350 hover:text-slate-950 dark:hover:text-white transition-all backdrop-blur-md shadow-md"
-              aria-label="Geri git"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          {/* Sol: Geri + Başlık + Açıklama + Kaynak */}
+          <div className="flex-1 min-w-0 flex flex-col items-start gap-1">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">
+              Eğitim Çalışma Odası
+            </p>
 
-            {/* Üst Merkez - Eğitim Başlığı & Durum Rozeti */}
-            <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-              <span>{education.title}</span>
+            {/* ─── Başlık (inline edit) ─── */}
+            <div className="flex items-center gap-3 mt-2 w-full">
               <button
-                onClick={cycleStatus}
-                className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border transition-all duration-300 bg-amber-500/10 text-amber-500 border-amber-500/20"
+                onClick={() => navigate('/education')}
+                className="flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-white/10 hover:bg-white/20 border border-slate-200/50 dark:border-zinc-800/50 text-slate-900 dark:text-zinc-300 hover:text-slate-950 dark:hover:text-white transition-all backdrop-blur-md shadow-md"
+                aria-label="Geri git"
               >
-                {getStatusLabel(education.status)}
+                <ChevronLeft className="h-5 w-5" />
               </button>
-            </h1>
+
+              {editingField === 'title' ? (
+                <input
+                  autoFocus
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+                  onBlur={() => void saveInlineField('title')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+                    if (e.key === 'Escape') cancelInlineEdit('title')
+                  }}
+                  aria-label="Eğitim başlığını düzenle"
+                  className="w-full border-none bg-transparent p-0 text-2xl font-black text-neutral-950 outline-none focus:ring-0 sm:text-3xl dark:text-white"
+                />
+              ) : (
+                <div className="group/name relative inline-flex items-center gap-3 min-w-0">
+                  <h1 className="truncate text-2xl font-black text-neutral-950 sm:text-3xl dark:text-white">
+                    {education.title}
+                  </h1>
+                  <MovingBorderButton
+                    onClick={() => setEditingField('title')}
+                    borderRadius="0.5rem"
+                    duration={2000}
+                    containerClassName="h-8 w-8 shrink-0 translate-y-[2px] opacity-0 transition-all duration-200 group-hover/name:opacity-100"
+                    className="p-0"
+                    title="Eğitim başlığını düzenle"
+                  >
+                    <Pencil className="h-4 w-4 text-zinc-400" />
+                  </MovingBorderButton>
+                </div>
+              )}
+            </div>
+
+            {/* ─── Açıklama (inline edit) ─── */}
+            {editingField === 'description' ? (
+              <textarea
+                autoFocus
+                value={editForm.description}
+                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                onBlur={() => void saveInlineField('description')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur() }
+                  if (e.key === 'Escape') cancelInlineEdit('description')
+                }}
+                aria-label="Açıklamayı düzenle"
+                rows={2}
+                className="mt-1 w-full resize-none border-none bg-transparent p-0 text-sm leading-6 text-neutral-700 outline-none focus:ring-0 dark:text-neutral-300 ml-[52px]"
+              />
+            ) : (
+              <div className="group/desc relative mt-1 flex items-start gap-3 ml-[52px]">
+                <span className="text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+                  {education.description || 'Açıklama eklenmemiş. Tıklayarak ekleyebilirsiniz.'}
+                </span>
+                <MovingBorderButton
+                  onClick={() => setEditingField('description')}
+                  borderRadius="0.5rem"
+                  duration={2000}
+                  containerClassName="h-7 w-7 shrink-0 opacity-0 transition-all duration-200 group-hover/desc:opacity-100"
+                  className="p-0"
+                  title="Açıklamayı düzenle"
+                >
+                  <Pencil className="h-3.5 w-3.5 text-zinc-400" />
+                </MovingBorderButton>
+              </div>
+            )}
+
+            {/* ─── Kaynak (inline edit) ─── */}
+            {editingField === 'source' ? (
+              <input
+                autoFocus
+                value={editForm.source}
+                onChange={(e) => setEditForm((f) => ({ ...f, source: e.target.value }))}
+                onBlur={() => void saveInlineField('source')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+                  if (e.key === 'Escape') cancelInlineEdit('source')
+                }}
+                aria-label="Kaynağı düzenle"
+                placeholder="Kaynak adı girin..."
+                className="mt-0.5 w-full border-none bg-transparent p-0 text-xs leading-5 text-cyan-700 outline-none focus:ring-0 dark:text-cyan-300 ml-[52px]"
+              />
+            ) : education.source ? (
+              <div className="group/src relative mt-0.5 flex items-center gap-2 ml-[52px]">
+                <BookOpen className="h-3.5 w-3.5 text-cyan-600/60 dark:text-cyan-400/60 shrink-0" />
+                <span className="text-xs font-medium text-cyan-700 dark:text-cyan-300">
+                  {education.source}
+                </span>
+                <MovingBorderButton
+                  onClick={() => setEditingField('source')}
+                  borderRadius="0.5rem"
+                  duration={2000}
+                  containerClassName="h-6 w-6 shrink-0 opacity-0 transition-all duration-200 group-hover/src:opacity-100"
+                  className="p-0"
+                  title="Kaynağı düzenle"
+                >
+                  <Pencil className="h-3 w-3 text-zinc-400" />
+                </MovingBorderButton>
+              </div>
+            ) : (
+              <div className="group/src relative mt-0.5 flex items-center gap-2 ml-[52px]">
+                <span className="text-xs text-neutral-500 dark:text-neutral-500 italic">
+                  Kaynak eklenmemiş
+                </span>
+                <MovingBorderButton
+                  onClick={() => setEditingField('source')}
+                  borderRadius="0.5rem"
+                  duration={2000}
+                  containerClassName="h-6 w-6 shrink-0 opacity-0 transition-all duration-200 group-hover/src:opacity-100"
+                  className="p-0"
+                  title="Kaynak ekle"
+                >
+                  <Pencil className="h-3 w-3 text-zinc-400" />
+                </MovingBorderButton>
+              </div>
+            )}
           </div>
 
-          {/* Sağ Üst Köşe - Üç Nokta Dropdown Butonu */}
-          <div className="relative">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center justify-center h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 border border-slate-200/50 dark:border-zinc-800/50 text-slate-900 dark:text-zinc-350 hover:text-slate-950 dark:hover:text-white transition-all backdrop-blur-md shadow-md"
-              aria-label="Daha fazla seçenek"
-            >
-              <MoreVertical className="h-5 w-5" />
-            </button>
-            <AnimatePresence>
-              {isDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-200/60 dark:border-zinc-800/40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl shadow-2xl p-2 z-50 overflow-hidden"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsDropdownOpen(false)
-                        handleDownloadMarkdown()
-                      }}
-                      className="w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 transition-all flex items-center gap-2"
-                    >
-                      <span>Markdown Olarak İndir</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsDropdownOpen(false)
-                        handleDeleteEducation()
-                      }}
-                      className="w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-500 hover:bg-rose-500/10 transition-all flex items-center gap-2"
-                    >
-                      <span>Eğitimi Sil</span>
-                    </button>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
+          {/* Sağ: Durum Dropdown + Üç Nokta Menü */}
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Status Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                disabled={updateEducationMutation.isPending || !!editingField}
+                className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <MovingBorderButton
+                  as="div"
+                  borderRadius="0.75rem"
+                  duration={2600}
+                  containerClassName="h-10 min-w-[142px]"
+                  className="gap-2 px-4 font-bold"
+                >
+                  <span className={cn('h-2.5 w-2.5 rounded-full', EDU_STATUS_DOT_STYLES[education.status as ApiEducationStatus])} />
+                  {EDU_STATUS_LABELS[education.status as ApiEducationStatus]}
+                </MovingBorderButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={8} className="w-52 rounded-xl border-border/70 bg-popover/90 p-1.5 shadow-2xl backdrop-blur-xl">
+                <DropdownMenuRadioGroup value={education.status} onValueChange={(value) => void handleStatusChange(value as ApiEducationStatus)}>
+                  {(Object.keys(EDU_STATUS_LABELS) as ApiEducationStatus[]).map((status) => (
+                    <DropdownMenuRadioItem key={status} value={status} className="rounded-lg py-2.5 font-semibold">
+                      <span className={cn('mr-2 h-2.5 w-2.5 rounded-full', EDU_STATUS_DOT_STYLES[status])} />
+                      {EDU_STATUS_LABELS[status]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Üç Nokta Menü */}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger
+                disabled={updateEducationMutation.isPending || !!editingField}
+                className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Eğitim ayarları"
+              >
+                <MovingBorderButton
+                  as="div"
+                  borderRadius="0.75rem"
+                  duration={2600}
+                  containerClassName="h-10 w-10"
+                  className="p-0"
+                >
+                  <MoreVertical className="h-4 w-4 text-neutral-600 dark:text-neutral-300" />
+                </MovingBorderButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={8} className="w-60 rounded-xl border-border/70 bg-popover/90 p-1.5 shadow-2xl backdrop-blur-xl">
+                <DropdownMenuItem onSelect={handleDownloadMarkdown} className="rounded-lg py-2.5">
+                  <FileText className="mr-2 h-4 w-4 text-cyan-600 dark:text-cyan-300" />
+                  Markdown olarak dışa aktar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleDeleteEducation} className="rounded-lg py-2.5 text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-300">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eğitimi sil
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -2247,7 +1331,7 @@ export const EducationStudio: React.FC = () => {
             <div className="w-20 h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-full overflow-hidden shrink-0">
               <div
                 className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 shadow-[0_0_10px_#06b6d4] transition-all duration-500"
-                style={{ width: `${education.progress_percent}%` }}
+                style={{ width: `${education.progress_percent}%` } as any}
               />
             </div>
           </div>
@@ -2276,26 +1360,34 @@ export const EducationStudio: React.FC = () => {
           {/* Sol Panel: File Tree */}
           <div className="w-80 shrink-0 hidden md:block h-full overflow-hidden">
             <LeftFileTree
-              folders={folders}
+              folders={foldersState.folders}
               resources={resources}
+              selectedFolderId={foldersState.selectedFolderId}
+              handleSelectFolder={foldersState.setSelectedFolderId}
               selectedResourceId={selectedResourceId}
               activeTab={activeTab}
-              activeFileName={activeFileName}
-              activeResourceNoteId={activeResourceNoteId}
-              reinforcements={reinforcements}
-              resourceNoteItems={resourceNoteItems}
-              treeExpandedNodes={treeExpandedNodes}
-              treeLoadingNodes={treeLoadingNodes}
-              handleToggleTreeNode={handleToggleTreeNode}
+              activeFileName={codeState.activeFileName}
+              activeResourceNoteId={notesState.activeResourceNoteId}
+              reinforcements={notesState.reinforcements}
+              resourceNoteItems={notesState.resourceNoteItems}
+              treeExpandedNodes={foldersState.treeExpandedNodes}
+              treeLoadingNodes={foldersState.treeLoadingNodes}
+              handleToggleTreeNode={foldersState.handleToggleTreeNode}
               handleTreeNodeClick={handleTreeNodeClick}
-              handleRenameFolder={handleRenameFolder}
-              handleDeleteFolder={handleDeleteFolder}
-              handleRenameResource={handleRenameResource}
-              handleDeleteResource={handleDeleteResource}
-              handleRenameTask={handleRenameTask}
-              handleDeleteTask={handleDeleteTask}
-              handleRenameNote={handleRenameNote}
-              handleDeleteNote={handleDeleteNote}
+              handleRenameFolder={foldersState.handleRenameFolder}
+              handleDeleteFolder={foldersState.handleDeleteFolder}
+              handleRenameResource={foldersState.handleRenameResource}
+              handleDeleteResource={foldersState.handleDeleteResource}
+              handleRenameTask={notesState.handleRenameTask}
+              handleDeleteTask={notesState.handleDeleteTask}
+              handleRenameNote={notesState.handleRenameNote}
+              handleDeleteNote={notesState.handleDeleteNote}
+              handleCreateFolderRequest={handleCreateFolderRequest}
+              handleUploadFileRequest={handleUploadFileRequest}
+              handleAddLinkRequest={handleAddLinkRequest}
+              handleImportCurriculumRequest={handleImportCurriculumRequest}
+              handleCreateReinforcementForResource={notesState.handleCreateReinforcementForResource}
+              handleCreateNoteForResource={notesState.handleCreateNoteForResource}
             />
           </div>
 
@@ -2319,16 +1411,16 @@ export const EducationStudio: React.FC = () => {
 
       {/* Cascade Deletion Confirmation Modal */}
       <DeleteConfirmationModal
-        isOpen={!!deleteConfirmation?.isOpen}
-        title={deleteConfirmation?.title || ''}
-        warningText={deleteConfirmation?.warningText || ''}
-        onClose={() => setDeleteConfirmation(null)}
+        isOpen={!!foldersState.deleteConfirmation?.isOpen}
+        title={foldersState.deleteConfirmation?.title || ''}
+        warningText={foldersState.deleteConfirmation?.warningText || ''}
+        onClose={() => foldersState.setDeleteConfirmation(null)}
         onConfirm={() => {
-          if (deleteConfirmation) {
-            if (deleteConfirmation.type === 'folder') {
-              void executeDeleteFolder(String(deleteConfirmation.targetId))
+          if (foldersState.deleteConfirmation) {
+            if (foldersState.deleteConfirmation.type === 'folder') {
+              void foldersState.executeDeleteFolder(String(foldersState.deleteConfirmation.targetId))
             } else {
-              void executeDeleteResource(Number(deleteConfirmation.targetId))
+              void foldersState.executeDeleteResource(Number(foldersState.deleteConfirmation.targetId))
             }
           }
         }}
@@ -2364,7 +1456,7 @@ export const EducationStudio: React.FC = () => {
               </div>
 
               <div className="mt-4 space-y-3">
-                <p className="text-xs text-slate-900 dark:text-zinc-350 leading-relaxed">
+                <p className="text-xs text-slate-900 dark:text-zinc-300 leading-relaxed">
                   Gemini veya diğer LLM modellerinden aldığınız konu başlığı metnini aşağıya yapıştırın.
                   Her bir satır dinamik olarak check-list konusuna dönüştürülecektir.
                 </p>
@@ -2377,18 +1469,20 @@ export const EducationStudio: React.FC = () => {
               </div>
 
               <div className="mt-5 flex justify-end gap-3">
-                <button
+                <SketchButton
+                  type="button"
+                  tone="default"
                   onClick={() => setIsImporterOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all"
                 >
                   İptal
-                </button>
-                <button
-                  onClick={handleImportCurriculum}
-                  className="px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition-all"
+                </SketchButton>
+                <SketchButton
+                  type="button"
+                  onClick={handleImportCurriculumSubmit}
+                  className="border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
                 >
                   Müfredatı Böl
-                </button>
+                </SketchButton>
               </div>
             </motion.div>
           </motion.div>
@@ -2399,7 +1493,7 @@ export const EducationStudio: React.FC = () => {
           FOLDER CREATOR MODAL
           ────────────────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {isFolderCreatorOpen && (
+        {foldersState.isFolderCreatorOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -2417,7 +1511,7 @@ export const EducationStudio: React.FC = () => {
                   📁 Yeni Klasör Oluştur
                 </h3>
                 <button
-                  onClick={() => setIsFolderCreatorOpen(false)}
+                  onClick={() => foldersState.setIsFolderCreatorOpen(false)}
                   className="p-1 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all"
                 >
                   <X className="h-4 w-4" />
@@ -2428,29 +1522,31 @@ export const EducationStudio: React.FC = () => {
                 <label className="block text-[10px] font-extrabold uppercase text-slate-500 dark:text-zinc-400 tracking-wider">Klasör Adı</label>
                 <input
                   type="text"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
+                  value={foldersState.newFolderName}
+                  onChange={(e) => foldersState.setNewFolderName(e.target.value)}
                   placeholder="Örn: SQL Egzersizleri, Proje Notları..."
                   className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-cyan-500/50 outline-none"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleCreateFolder()
+                    if (e.key === 'Enter') foldersState.handleCreateFolder()
                   }}
                 />
               </div>
 
               <div className="mt-5 flex justify-end gap-3">
-                <button
-                  onClick={() => setIsFolderCreatorOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all"
+                <SketchButton
+                  type="button"
+                  tone="default"
+                  onClick={() => foldersState.setIsFolderCreatorOpen(false)}
                 >
                   İptal
-                </button>
-                <button
-                  onClick={handleCreateFolder}
-                  className="px-4 py-2 rounded-xl bg-cyan-500 text-white text-xs font-bold shadow-[0_0_12px_rgba(6,182,212,0.3)] hover:bg-cyan-600 transition-all cursor-pointer border-none"
+                </SketchButton>
+                <SketchButton
+                  type="button"
+                  onClick={foldersState.handleCreateFolder}
+                  className="bg-cyan-500 text-white shadow-[0_0_12px_rgba(6,182,212,0.3)] hover:bg-cyan-600 border-cyan-600"
                 >
                   Oluştur
-                </button>
+                </SketchButton>
               </div>
             </motion.div>
           </motion.div>
@@ -2461,10 +1557,10 @@ export const EducationStudio: React.FC = () => {
           DOCUMENT NOTES MODAL
           ────────────────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {activeNotesResourceId !== null && (() => {
-          const res = resources.find(r => r.id === activeNotesResourceId)
+        {notesState.activeNotesResourceId !== null && (() => {
+          const res = resources.find(r => r.id === notesState.activeNotesResourceId)
           if (!res) return null
-          const noteText = getNoteForResource(res.id)
+          const noteText = notesState.getNoteForResource(res.id)
           return (
             <motion.div
               initial={{ opacity: 0 }}
@@ -2483,7 +1579,7 @@ export const EducationStudio: React.FC = () => {
                     📝 Belge Notları: {res.name}
                   </h3>
                   <button
-                    onClick={() => setActiveNotesResourceId(null)}
+                    onClick={() => notesState.setActiveNotesResourceId(null)}
                     className="p-1 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all shrink-0"
                   >
                     <X className="h-4 w-4" />
@@ -2491,13 +1587,13 @@ export const EducationStudio: React.FC = () => {
                 </div>
                 <textarea
                   value={noteText}
-                  onChange={(e) => handleUpdateNoteForResource(res.id, e.target.value)}
+                  onChange={(e) => notesState.handleUpdateNoteForResource(res.id, e.target.value)}
                   placeholder="Bu dökümana veya ders kaynağına ait notlarınızı buraya kaydedin (Otomatik kaydedilir)..."
                   className="w-full h-56 resize-none p-3 border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-black/20 text-xs font-bold leading-5 text-slate-950 dark:text-white outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
                 />
                 <div className="flex justify-end gap-2">
                   <button
-                    onClick={() => setActiveNotesResourceId(null)}
+                    onClick={() => notesState.setActiveNotesResourceId(null)}
                     className="px-4 py-2 rounded-xl bg-cyan-500 text-white text-xs font-bold shadow-[0_0_12px_rgba(6,182,212,0.3)] hover:bg-cyan-600 transition-all cursor-pointer border-none"
                   >
                     Kapat
@@ -2513,10 +1609,10 @@ export const EducationStudio: React.FC = () => {
           REINFORCEMENT MODAL
           ────────────────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {activeReinforceResourceId !== null && (() => {
-          const res = resources.find(r => r.id === activeReinforceResourceId)
+        {notesState.activeReinforceResourceId !== null && (() => {
+          const res = resources.find(r => r.id === notesState.activeReinforceResourceId)
           if (!res) return null
-          const taskList = reinforcements[`resource:${res.id}`] || reinforcements[res.id] || []
+          const taskList = notesState.reinforcements[`resource:${res.id}`] || notesState.reinforcements[res.id] || []
           return (
             <motion.div
               initial={{ opacity: 0 }}
@@ -2540,7 +1636,7 @@ export const EducationStudio: React.FC = () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => setActiveReinforceResourceId(null)}
+                    onClick={() => notesState.setActiveReinforceResourceId(null)}
                     className="p-1 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all shrink-0"
                   >
                     <X className="h-4 w-4" />
@@ -2558,7 +1654,7 @@ export const EducationStudio: React.FC = () => {
                         if (e.key === 'Enter') {
                           const val = (e.target as HTMLInputElement).value.trim()
                           if (val) {
-                            handleAddReinforceTask(res.id, val)
+                            notesState.handleAddReinforceTask(res.id, val)
                             ;(e.target as HTMLInputElement).value = ''
                           }
                         }
@@ -2571,7 +1667,7 @@ export const EducationStudio: React.FC = () => {
                         const input = document.getElementById('new-reinforce-input') as HTMLInputElement
                         const val = input?.value.trim()
                         if (val) {
-                          handleAddReinforceTask(res.id, val)
+                          notesState.handleAddReinforceTask(res.id, val)
                           input.value = ''
                         }
                       }}
@@ -2598,7 +1694,7 @@ export const EducationStudio: React.FC = () => {
                         <span>{compCount}/{taskList.length} (%{pct})</span>
                       </div>
                       <div className="w-full h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-cyan-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-cyan-500 transition-all duration-300" style={{ width: `${pct}%` } as any} />
                       </div>
                     </div>
                   )
@@ -2607,7 +1703,7 @@ export const EducationStudio: React.FC = () => {
                 {/* Tasks List */}
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {taskList.length === 0 ? (
-                    <p className="text-xs text-slate-900 dark:text-zinc-350 text-center py-6">
+                    <p className="text-xs text-slate-900 dark:text-zinc-300 text-center py-6">
                       Henüz bir pekiştirme projesi yazmadınız.
                     </p>
                   ) : (
@@ -2620,7 +1716,7 @@ export const EducationStudio: React.FC = () => {
                           <input
                             type="checkbox"
                             checked={task.completed}
-                            onChange={() => handleToggleReinforceTask(res.id, task.id)}
+                            onChange={() => notesState.handleToggleReinforceTask(res.id, task.id)}
                             className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-zinc-700 bg-transparent cursor-pointer"
                           />
                           <span className={cn(
@@ -2634,7 +1730,7 @@ export const EducationStudio: React.FC = () => {
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
-                            onClick={() => handleWriteCodeForReinforce(res, task)}
+                            onClick={() => notesState.handleWriteCodeForTarget({ id: String(res.id), type: 'resource', label: res.name, resource: res }, task)}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-[10px] font-bold"
                           >
                             <Code2 className="h-3 w-3" />
@@ -2642,7 +1738,7 @@ export const EducationStudio: React.FC = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteReinforceTask(res.id, task.id)}
+                            onClick={() => notesState.handleDeleteReinforceTask(res.id, task.id)}
                             className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -2655,7 +1751,7 @@ export const EducationStudio: React.FC = () => {
 
                 <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-zinc-800">
                   <button
-                    onClick={() => setActiveReinforceResourceId(null)}
+                    onClick={() => notesState.setActiveReinforceResourceId(null)}
                     className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-zinc-900 text-slate-900 dark:text-white text-xs font-bold hover:bg-slate-200 dark:hover:bg-zinc-800 transition-all cursor-pointer border-none"
                   >
                     Kapat

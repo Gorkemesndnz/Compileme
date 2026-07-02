@@ -35,12 +35,12 @@ export function Button({
       )}
       style={{
         borderRadius: borderRadius,
-      }}
+      } as any}
       {...otherProps}
     >
       <div
         className="absolute inset-0"
-        style={{ borderRadius: `calc(${borderRadius} * 0.96)` }}
+        style={{ borderRadius: `calc(${borderRadius} * 0.96)` } as any}
       >
         <MovingBorder duration={duration} rx="30%" ry="30%">
           <div
@@ -61,7 +61,7 @@ export function Button({
         )}
         style={{
           borderRadius: `calc(${borderRadius} * 0.96)`,
-        }}
+        } as any}
       >
         {children}
       </div>
@@ -153,7 +153,7 @@ export const MovingBorder = ({
           left: 0,
           display: "inline-block",
           transform,
-        }}
+        } as any}
       >
         {children}
       </motion.div>

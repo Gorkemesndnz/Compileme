@@ -51,6 +51,7 @@ export interface EducationResource {
   type: EducationResourceType
   url_or_path: string
   level?: LanguageLevel
+  order_index?: number
 }
 
 export interface EducationPractice {

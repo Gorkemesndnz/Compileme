@@ -6,7 +6,6 @@ import {
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import mermaid from 'mermaid'
 import {
   Project,
   ProjectPhase,
@@ -34,12 +33,11 @@ import {
   removeColumn,
 } from './schema-utils'
 
-// ── Mermaid initialization ──────────────────────────────────────────
-
+let mermaidInstance: any = null
 let mermaidInitialized = false
 
-function initMermaid(isDark: boolean) {
-  mermaid.initialize({
+function initMermaid(m: any, isDark: boolean) {
+  m.initialize({
     startOnLoad: false,
     theme: isDark ? 'dark' : 'default',
     er: {
@@ -98,13 +96,20 @@ export const PhaseSchemaTab: React.FC<PhaseSchemaTabProps> = ({
     if (schemaView !== 'diagram' || schema.tables.length === 0) return
 
     const renderDiagram = async () => {
-      if (!mermaidInitialized || ((mermaid as any)._config?.theme === 'dark') !== isDark) {
-        initMermaid(isDark)
-      }
-
       try {
+        let activeMermaid = mermaidInstance
+        if (!activeMermaid) {
+          const mermaidModule = await import('mermaid')
+          mermaidInstance = mermaidModule.default || mermaidModule
+          activeMermaid = mermaidInstance
+        }
+
+        if (!mermaidInitialized || (activeMermaid._config?.theme === 'dark') !== isDark) {
+          initMermaid(activeMermaid, isDark)
+        }
+
         const id = `mermaid-er-${phase.id}-${Date.now()}`
-        const { svg } = await mermaid.render(id, mermaidCode)
+        const { svg } = await activeMermaid.render(id, mermaidCode)
         if (diagramRef.current) {
           diagramRef.current.innerHTML = svg
           // Style SVG for responsive

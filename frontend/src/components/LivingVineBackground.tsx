@@ -17,7 +17,7 @@ export const LivingVineBackground: React.FC<LivingVineBackgroundProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const mousePosRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-  const { theme } = useUiStore();
+  const theme = useUiStore((state) => state.theme);
   const pathHistoryRef = useRef<{ x: number; y: number }[]>([]);
   const branchesRef = useRef<any[]>([]);
 

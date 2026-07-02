@@ -119,7 +119,7 @@ interface SidebarProjectNodeProps {
   variants: any
 }
 
-const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
+const SidebarProjectNodeComponent: React.FC<SidebarProjectNodeProps> = ({
   project,
   activeProjectId,
   pathname,
@@ -128,11 +128,10 @@ const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
   isCollapsed,
   variants
 }) => {
-  const navigate = useNavigate()
-  const { data: phases = [] } = useProjectPhases(project.id)
-  const { data: documents = [] } = useProjectDocuments(project.id)
-
   const [isExpanded, setIsExpanded] = React.useState(project.id === activeProjectId)
+  const navigate = useNavigate()
+  const { data: phases = [] } = useProjectPhases(project.id, { enabled: isExpanded })
+  const { data: documents = [] } = useProjectDocuments(project.id, { enabled: isExpanded })
   const [expandedPhases, setExpandedPhases] = React.useState<Record<number, boolean>>({})
 
   const isProjectActive = project.id === activeProjectId && pathname.startsWith('/projects')
@@ -191,9 +190,9 @@ const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
       {/* Lvl 2: Project Row */}
       <div
         className={cn(
-          'group/project flex h-8 w-full items-center justify-between rounded-md px-2 text-left text-slate-650 transition-all hover:bg-zinc-500/10 hover:text-slate-950 dark:text-neutral-400 dark:hover:bg-zinc-800/40 dark:hover:text-white',
+          'group/project flex h-8 w-full items-center justify-between rounded-md px-2 text-left text-slate-600 transition-all hover:bg-zinc-500/10 hover:text-slate-950 dark:text-neutral-400 dark:hover:bg-zinc-800/40 dark:hover:text-white',
           isProjectExactlyActive && 'bg-zinc-500/10 font-bold text-slate-950 dark:bg-zinc-800/50 dark:text-white',
-          isProjectActive && !isProjectExactlyActive && 'bg-zinc-500/5 text-slate-900 dark:bg-zinc-800/20 dark:text-zinc-250'
+          isProjectActive && !isProjectExactlyActive && 'bg-zinc-500/5 text-slate-900 dark:bg-zinc-800/20 dark:text-zinc-300'
         )}
       >
         <button
@@ -241,7 +240,7 @@ const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
                 <div key={phase.id} className="flex flex-col w-full pl-2 ml-2 border-l border-zinc-200/50 dark:border-zinc-800/40">
                   <div
                     className={cn(
-                      'group/phase flex h-8 w-full items-center justify-between rounded-md px-1.5 text-left text-slate-550 transition-all hover:bg-zinc-500/5 hover:text-slate-900 dark:text-neutral-500 dark:hover:bg-zinc-800/20 dark:hover:text-zinc-300',
+                      'group/phase flex h-8 w-full items-center justify-between rounded-md px-1.5 text-left text-slate-500 transition-all hover:bg-zinc-500/5 hover:text-slate-900 dark:text-neutral-500 dark:hover:bg-zinc-800/20 dark:hover:text-zinc-300',
                       isPhaseExactlyActive && 'bg-zinc-500/10 font-bold text-slate-950 dark:bg-zinc-800/40 dark:text-white',
                       isPhaseActive && !isPhaseExactlyActive && 'bg-zinc-500/5 text-slate-800 dark:bg-zinc-800/10 dark:text-zinc-300'
                     )}
@@ -253,7 +252,7 @@ const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
                     >
                       <span className={cn(
                         'h-1.5 w-1.5 shrink-0 rounded-sm',
-                        phase.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400 dark:bg-zinc-650'
+                        phase.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400 dark:bg-zinc-600'
                       )} />
                       <span className="truncate">{phase.name}</span>
                     </button>
@@ -262,7 +261,7 @@ const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
                       <button
                         type="button"
                         onClick={(e) => togglePhaseExpand(phase.id, e)}
-                        className="flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:bg-zinc-500/10 hover:text-slate-900 focus-visible:outline-none dark:text-neutral-500 dark:hover:bg-zinc-850/50 dark:hover:text-white"
+                        className="flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:bg-zinc-500/10 hover:text-slate-900 focus-visible:outline-none dark:text-neutral-500 dark:hover:bg-zinc-900/50 dark:hover:text-white"
                       >
                         <ChevronRight
                           className={cn(
@@ -316,18 +315,18 @@ const SidebarProjectNode: React.FC<SidebarProjectNodeProps> = ({
   )
 }
 
+const SidebarProjectNode = React.memo(SidebarProjectNodeComponent)
+
 export const Sidebar: React.FC = () => {
-  const {
-    theme,
-    setTheme,
-    language,
-    setLanguage,
-    activeProjectId,
-    setActiveProjectId,
-    setProjectOnboardingOpen,
-    sidebarOpen,
-    setSidebarOpen,
-  } = useUiStore()
+  const theme = useUiStore((state) => state.theme)
+  const setTheme = useUiStore((state) => state.setTheme)
+  const language = useUiStore((state) => state.language)
+  const setLanguage = useUiStore((state) => state.setLanguage)
+  const activeProjectId = useUiStore((state) => state.activeProjectId)
+  const setActiveProjectId = useUiStore((state) => state.setActiveProjectId)
+  const setProjectOnboardingOpen = useUiStore((state) => state.setProjectOnboardingOpen)
+  const sidebarOpen = useUiStore((state) => state.sidebarOpen)
+  const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
 
   const { t } = useTranslation()
 
@@ -344,10 +343,11 @@ export const Sidebar: React.FC = () => {
     OTHER: false,
   })
   const [isAnySidebarMenuOpen, setIsAnySidebarMenuOpen] = useState(false)
+  const isPointerInsideSidebarRef = React.useRef(false)
   const location = useLocation()
   const navigate = useNavigate()
   const pathname = location.pathname
-  const searchParams = new URLSearchParams(location.search)
+  const searchParams = React.useMemo(() => new URLSearchParams(location.search), [location.search])
 
   const { data: projects = [] } = useProjects()
   const { data: rawEducations = [] } = useEducations()
@@ -414,6 +414,14 @@ export const Sidebar: React.FC = () => {
     { to: '/focus', label: t('sidebar_focus'), icon: Timer },
   ]
 
+  const handleSidebarMenuOpenChange = (open: boolean) => {
+    setIsAnySidebarMenuOpen(open)
+
+    if (!open && !isPointerInsideSidebarRef.current) {
+      setIsCollapsed(true)
+    }
+  }
+
   return (
     <motion.div
       className={cn(
@@ -423,8 +431,12 @@ export const Sidebar: React.FC = () => {
       animate={isCollapsed ? "closed" : "open"}
       variants={sidebarVariants}
       transition={transitionProps}
-      onMouseEnter={() => setIsCollapsed(false)}
+      onMouseEnter={() => {
+        isPointerInsideSidebarRef.current = true
+        setIsCollapsed(false)
+      }}
       onMouseLeave={() => {
+        isPointerInsideSidebarRef.current = false
         if (!isAnySidebarMenuOpen) {
           setIsCollapsed(true)
         }
@@ -440,7 +452,7 @@ export const Sidebar: React.FC = () => {
             {/* Top Logo / Workspace Area */}
             <div className="flex h-[54px] w-full shrink-0 border-b border-border p-2">
               <div className="flex w-full items-center">
-                <DropdownMenu modal={false} onOpenChange={setIsAnySidebarMenuOpen}>
+                <DropdownMenu modal={false} onOpenChange={handleSidebarMenuOpenChange}>
                   <DropdownMenuTrigger className="w-full focus:outline-none" asChild>
                     <button className="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/40 text-left transition-colors cursor-pointer">
                       <Avatar className="rounded size-5 bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xs">
@@ -704,7 +716,7 @@ export const Sidebar: React.FC = () => {
               {/* Bottom Footer - Settings & Account */}
               <div className="flex flex-col p-2 gap-1 border-t border-border bg-muted/10">
                 {/* Theme Selector Dropdown */}
-                <DropdownMenu modal={false} onOpenChange={setIsAnySidebarMenuOpen}>
+                <DropdownMenu modal={false} onOpenChange={handleSidebarMenuOpenChange}>
                   <DropdownMenuTrigger asChild>
                     <button className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground cursor-pointer select-none">
                       {theme === 'dark' ? (
@@ -739,7 +751,7 @@ export const Sidebar: React.FC = () => {
                 </DropdownMenu>
 
                 {/* Language Selector Dropdown */}
-                <DropdownMenu modal={false} onOpenChange={setIsAnySidebarMenuOpen}>
+                <DropdownMenu modal={false} onOpenChange={handleSidebarMenuOpenChange}>
                   <DropdownMenuTrigger asChild>
                     <button className="flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground cursor-pointer select-none">
                       <Globe className="h-4 w-4 shrink-0 text-slate-500 dark:text-zinc-400" />
@@ -776,7 +788,7 @@ export const Sidebar: React.FC = () => {
                 </Link>
                 
                 <div>
-                  <DropdownMenu modal={false} onOpenChange={setIsAnySidebarMenuOpen}>
+                  <DropdownMenu modal={false} onOpenChange={handleSidebarMenuOpenChange}>
                     <DropdownMenuTrigger className="w-full focus:outline-none" asChild>
                       <button className="flex h-9 w-full flex-row items-center gap-2 rounded-md px-2 py-1.5 text-left text-slate-700 transition-all hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground">
                         <Avatar className="size-5 bg-secondary border border-border">

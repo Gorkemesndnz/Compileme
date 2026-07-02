@@ -2,6 +2,7 @@ import React from 'react'
 import {
   BookOpen,
   CheckCircle2,
+  Check,
   FileUp,
   Layers3,
   Link2,
@@ -19,6 +20,7 @@ import {
   FolderPlus
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/PageHeader'
 import { useEducations, useCreateEducation, type EducationResourceType } from '@/api/education'
 import { apiClient } from '@/api/client'
@@ -49,6 +51,37 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   OTHER: <Sparkles className="h-4 w-4" />,
 }
 
+const resolveCategoryInput = (input: string): { type: EducationType; customCategory?: string } => {
+  const trimmed = input.trim()
+  const lower = trimmed.toLowerCase()
+  if (!trimmed) {
+    return { type: 'OTHER', customCategory: '' }
+  }
+
+  // Exact or close match for predefined types
+  if (['yazılım', 'programlama', 'yazılım / programlama', 'programming', 'yazilim'].includes(lower)) {
+    return { type: 'PROGRAMMING' }
+  }
+  if (['yabancı dil', 'dil', 'ingilizce', 'almanca', 'language', 'yabanci dil'].includes(lower)) {
+    return { type: 'LANGUAGE' }
+  }
+  if (['frontend geliştirme', 'frontend', 'arayüz', 'front-end'].includes(lower)) {
+    return { type: 'FRONTEND' }
+  }
+  if (['mobil geliştirme', 'mobil', 'mobile', 'mobil uygulama'].includes(lower)) {
+    return { type: 'MOBILE' }
+  }
+
+  // Check if it matches one of the labels directly
+  if (lower === 'yazılım / programlama') return { type: 'PROGRAMMING' }
+  if (lower === 'yabancı dil') return { type: 'LANGUAGE' }
+  if (lower === 'frontend geliştirme') return { type: 'FRONTEND' }
+  if (lower === 'mobil geliştirme') return { type: 'MOBILE' }
+
+  // Otherwise, it's custom
+  return { type: 'OTHER', customCategory: trimmed }
+}
+
 const getResourceTypeForFileName = (fileName: string): EducationResourceType => {
   const normalized = fileName.toLowerCase()
   if (normalized.endsWith('.pdf')) return 'PDF'
@@ -74,8 +107,7 @@ const createResourceDirect = async (
 }
 
 const EmptyEducationOnboarding: React.FC<{ onCreated: () => void }> = ({ onCreated }) => {
-  const [category, setCategory] = React.useState<EducationType>('PROGRAMMING')
-  const [customCategory, setCustomCategory] = React.useState('')
+  const [categoryInput, setCategoryInput] = React.useState('')
   const [title, setTitle] = React.useState('')
   const [description, setDescription] = React.useState('')
   const [startDate, setStartDate] = React.useState('')
@@ -127,18 +159,20 @@ const EmptyEducationOnboarding: React.FC<{ onCreated: () => void }> = ({ onCreat
       return
     }
 
-    if (category === 'OTHER' && !customCategory.trim()) {
-      toast.error('Lütfen özel kategori adını girin.')
+    if (!categoryInput.trim()) {
+      toast.error('Lütfen bir kategori girin veya seçin.')
       return
     }
+
+    const resolved = resolveCategoryInput(categoryInput)
 
     createMutation.mutate({
       title: title.trim(),
       source: source.trim() || undefined,
       sourceUrl: sourceUrl.trim() || undefined,
-      type: category,
+      type: resolved.type,
       status: 'ACTIVE',
-      customCategory: category === 'OTHER' ? customCategory.trim() : undefined,
+      customCategory: resolved.customCategory,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
       description: description.trim() || undefined,
@@ -211,60 +245,46 @@ const EmptyEducationOnboarding: React.FC<{ onCreated: () => void }> = ({ onCreat
       <div className="mt-8 grid gap-8 md:grid-cols-12">
         {/* Sol Kolon */}
         <div className="md:col-span-7 space-y-5">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">Eğitim Kategorisi *</span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {categoryOptions.map((type) => {
-                const isSelected = category === type
-                if (isSelected) {
+            <Input
+              placeholder="Örn: Mobil Uygulama, Yapay Zeka..."
+              value={categoryInput}
+              onChange={(e) => setCategoryInput(e.target.value)}
+              className="font-semibold bg-white/80 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+            />
+            <div className="pt-1.5 space-y-1.5">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-500 dark:text-cyan-400">Önerilen Kategoriler</span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: 'Yazılım / Programlama', value: 'Yazılım / Programlama' },
+                  { label: 'Yabancı Dil', value: 'Yabancı Dil' },
+                  { label: 'Frontend Geliştirme', value: 'Frontend Geliştirme' },
+                  { label: 'Mobil Geliştirme', value: 'Mobil Geliştirme' },
+                  { label: 'Yapay Zeka', value: 'Yapay Zeka' },
+                  { label: 'Siber Güvenlik', value: 'Siber Güvenlik' },
+                  { label: 'Tasarım / UI/UX', value: 'Tasarım / UI/UX' },
+                ].map((pill) => {
+                  const isSelected = categoryInput.trim().toLowerCase() === pill.value.toLowerCase()
                   return (
-                    <MovingBorderButton
-                      key={type}
+                    <button
+                      key={pill.value}
                       type="button"
-                      borderRadius="1rem"
-                      duration={2500}
-                      onClick={() => setCategory(type)}
-                      containerClassName="w-full h-[76px] cursor-pointer select-none"
-                      className="flex flex-col items-center justify-center gap-1.5 w-full h-full font-bold text-cyan-600 dark:text-cyan-400 border-cyan-500/40 dark:border-cyan-400/30"
+                      onClick={() => setCategoryInput(pill.value)}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-bold transition-all duration-200 cursor-pointer select-none",
+                        isSelected
+                          ? "bg-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                          : "bg-slate-100 dark:bg-zinc-900 border border-slate-200/60 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:border-slate-300 dark:hover:border-zinc-700"
+                      )}
                     >
-                      {CATEGORY_ICONS[type]}
-                      <span className="text-[10px] text-center leading-none">{EDUCATION_TYPE_LABELS[type]}</span>
-                    </MovingBorderButton>
+                      {pill.label}
+                    </button>
                   )
-                }
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setCategory(type)}
-                    className="flex flex-col items-center justify-center gap-1.5 w-full h-[76px] rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/30 text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:border-slate-350 dark:hover:border-zinc-700 transition-all duration-200 cursor-pointer select-none"
-                  >
-                    {CATEGORY_ICONS[type]}
-                    <span className="text-[10px] text-center leading-none">{EDUCATION_TYPE_LABELS[type]}</span>
-                  </button>
-                )
-              })}
+                })}
+              </div>
             </div>
           </div>
-
-          <AnimatePresence>
-            {category === 'OTHER' && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-1.5 overflow-hidden"
-              >
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">Özel Kategori Adı *</span>
-                <Input
-                  placeholder="Örn: Mobil Uygulama, Yapay Zeka..."
-                  value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
-                  className="font-semibold bg-white/80 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           <div className="space-y-1.5">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">Eğitim Adı *</span>
@@ -336,21 +356,34 @@ const EmptyEducationOnboarding: React.FC<{ onCreated: () => void }> = ({ onCreat
                   placeholder="https://..."
                   value={sourceUrl}
                   onChange={(e) => setSourceUrl(e.target.value)}
-                  className="font-semibold bg-white/80 dark:bg-zinc-955/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                  className="font-semibold bg-white/80 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
                 />
               </div>
             </div>
 
             {/* Dosya / Klasör Oluşturma */}
             <div className="space-y-4 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 p-4 bg-slate-50/50 dark:bg-zinc-900/10">
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={createFolder}
-                  onChange={(e) => setCreateFolder(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-350 text-cyan-500 focus:ring-cyan-500"
-                />
-                <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 flex items-center gap-1.5">
+              <label className="flex items-center gap-3 cursor-pointer group select-none">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={createFolder}
+                    onChange={(e) => setCreateFolder(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={cn(
+                    "w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200 shadow-sm",
+                    createFolder
+                      ? "bg-cyan-500 border-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.45)]"
+                      : "border-slate-300 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/45 text-transparent hover:border-slate-400 dark:hover:border-zinc-700"
+                  )}>
+                    <Check className={cn(
+                      "h-3.5 w-3.5 stroke-[3px] transition-transform duration-200",
+                      createFolder ? "scale-100" : "scale-0"
+                    )} />
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 flex items-center gap-1.5 group-hover:text-slate-900 dark:group-hover:text-zinc-100 transition-colors">
                   <FolderPlus className="h-4 w-4 text-cyan-500" /> Kaynaklar için Klasör Oluştur
                 </span>
               </label>
@@ -396,7 +429,7 @@ const EmptyEducationOnboarding: React.FC<{ onCreated: () => void }> = ({ onCreat
                       </div>
 
                       {uploadedFiles.length > 0 && (
-                        <div className="mt-2 max-h-[100px] overflow-y-auto space-y-1.5 pr-1">
+                        <div className="mt-2 max-h-[100px] overflow-y-auto scrollbar-thin space-y-1.5 pr-1">
                           {uploadedFiles.map((file, idx) => (
                             <div
                               key={idx}
@@ -448,8 +481,7 @@ export const EducationHub: React.FC = () => {
   const createMutation = useCreateEducation()
 
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
-  const [modalCategory, setModalCategory] = React.useState<EducationType>('PROGRAMMING')
-  const [modalCustomCategory, setModalCustomCategory] = React.useState('')
+  const [modalCategoryInput, setModalCategoryInput] = React.useState('')
   const [newTitle, setNewTitle] = React.useState('')
   const [newSource, setNewSource] = React.useState('')
   const [newSourceUrl, setNewSourceUrl] = React.useState('')
@@ -491,9 +523,14 @@ export const EducationHub: React.FC = () => {
     return Math.round(educations.reduce((sum, item) => sum + item.progress_percent, 0) / educations.length)
   }, [educations])
 
+  const activeCategoriesCount = React.useMemo(() => {
+    const uniqueTypes = new Set(educations.map((e) => e.type))
+    return uniqueTypes.size
+  }, [educations])
+
   const handleOpenCreateModal = (category: EducationType) => {
-    setModalCategory(category)
-    setModalCustomCategory('')
+    const defaultLabel = EDUCATION_TYPE_LABELS[category] || ''
+    setModalCategoryInput(defaultLabel === 'Diğer Konular' ? '' : defaultLabel)
     setNewTitle('')
     setNewSource('')
     setNewSourceUrl('')
@@ -518,18 +555,20 @@ export const EducationHub: React.FC = () => {
       return
     }
 
-    if (modalCategory === 'OTHER' && !modalCustomCategory.trim()) {
-      toast.error('Lütfen özel kategori adını girin.')
+    if (!modalCategoryInput.trim()) {
+      toast.error('Lütfen bir kategori girin veya seçin.')
       return
     }
+
+    const resolved = resolveCategoryInput(modalCategoryInput)
 
     createMutation.mutate({
       title: newTitle.trim(),
       source: newSource.trim() || undefined,
       sourceUrl: newSourceUrl.trim() || undefined,
-      type: modalCategory,
+      type: resolved.type,
       status: 'ACTIVE',
-      customCategory: modalCategory === 'OTHER' ? modalCustomCategory.trim() : undefined,
+      customCategory: resolved.customCategory,
       startDate: newStartDate || undefined,
       endDate: newEndDate || undefined,
       description: newDescription.trim() || undefined,
@@ -587,6 +626,18 @@ export const EducationHub: React.FC = () => {
       <PageHeader
         title="Eğitim Komuta Merkezi"
         subtitle="Kaynaklar, pratikler ve modüler çalışma odaları için ana yönetim üssü."
+        action={
+          <MovingBorderButton
+            type="button"
+            borderRadius="0.75rem"
+            duration={2000}
+            onClick={() => handleOpenCreateModal('PROGRAMMING')}
+            containerClassName="w-36 h-10 cursor-pointer select-none"
+            className="flex items-center justify-center gap-1.5 w-full h-full font-extrabold text-cyan-600 dark:text-cyan-400 border-cyan-500/30 dark:border-cyan-400/20"
+          >
+            <Plus className="h-4 w-4 stroke-[3px]" /> Yeni Eğitim Ekle
+          </MovingBorderButton>
+        }
       />
 
       {educations.length === 0 ? (
@@ -596,7 +647,7 @@ export const EducationHub: React.FC = () => {
           <section className="grid gap-4 md:grid-cols-3">
             {[
               { label: 'Aktif Eğitim', value: activeCount, icon: PlayCircle },
-              { label: 'Toplam Kategori', value: categoryOptions.length, icon: Layers3 },
+              { label: 'Toplam Kategori', value: activeCategoriesCount, icon: Layers3 },
               { label: 'Ortalama İlerleme', value: `${averageProgress}%`, icon: CheckCircle2 },
             ].map((metric) => {
               const Icon = metric.icon
@@ -619,6 +670,9 @@ export const EducationHub: React.FC = () => {
             {categoryOptions.map((type) => {
               const groupEducations = educations.filter((e) => e.type === type)
               const groupLabel = EDUCATION_TYPE_LABELS[type] || type
+              
+              if (groupEducations.length === 0) return null
+
               return (
                 <div key={type} className="space-y-5">
                   <div className="flex items-center gap-2 text-slate-950 dark:text-slate-100 font-sans">
@@ -632,10 +686,6 @@ export const EducationHub: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-7">
-                    <AddEducationCard
-                      categoryLabel={groupLabel}
-                      onClick={() => handleOpenCreateModal(type)}
-                    />
                     {groupEducations.map((education) => (
                       <EducationCard key={education.id} education={education} />
                     ))}
@@ -652,12 +702,12 @@ export const EducationHub: React.FC = () => {
           <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950 text-slate-800 dark:text-zinc-200">
             <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-zinc-800 pb-3">
               <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
-                {CATEGORY_ICONS[modalCategory]}
+                <BookOpen className="h-5 w-5" />
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900 dark:text-white font-sans">Yeni Çalışma Odası Oluştur</h3>
                 <p className="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 mt-0.5">
-                  Kategori: {EDUCATION_TYPE_LABELS[modalCategory] || modalCategory}
+                  Yeni bir eğitim odası yapılandırın
                 </p>
               </div>
             </div>
@@ -675,18 +725,46 @@ export const EducationHub: React.FC = () => {
                   />
                 </div>
 
-                {modalCategory === 'OTHER' && (
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">Özel Kategori Adı *</span>
-                    <Input
-                      type="text"
-                      value={modalCustomCategory}
-                      onChange={(e) => setModalCustomCategory(e.target.value)}
-                      placeholder="Örn: Mobil, Tasarım..."
-                      className="font-semibold bg-white/80 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
-                    />
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">Eğitim Kategorisi *</span>
+                  <Input
+                    placeholder="Örn: Mobil Uygulama, Yapay Zeka..."
+                    value={modalCategoryInput}
+                    onChange={(e) => setModalCategoryInput(e.target.value)}
+                    className="font-semibold bg-white/80 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                  />
+                  <div className="pt-1.5 space-y-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-500 dark:text-cyan-400">Önerilen Kategoriler</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'Yazılım / Programlama', value: 'Yazılım / Programlama' },
+                        { label: 'Yabancı Dil', value: 'Yabancı Dil' },
+                        { label: 'Frontend Geliştirme', value: 'Frontend Geliştirme' },
+                        { label: 'Mobil Geliştirme', value: 'Mobil Geliştirme' },
+                        { label: 'Yapay Zeka', value: 'Yapay Zeka' },
+                        { label: 'Siber Güvenlik', value: 'Siber Güvenlik' },
+                        { label: 'Tasarım / UI/UX', value: 'Tasarım / UI/UX' },
+                      ].map((pill) => {
+                        const isSelected = modalCategoryInput.trim().toLowerCase() === pill.value.toLowerCase()
+                        return (
+                          <button
+                            key={pill.value}
+                            type="button"
+                            onClick={() => setModalCategoryInput(pill.value)}
+                            className={cn(
+                              "px-3 py-1 rounded-full text-[10px] font-bold transition-all duration-200 cursor-pointer select-none",
+                              isSelected
+                                ? "bg-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                                : "bg-slate-100 dark:bg-zinc-900 border border-slate-200/60 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:border-slate-300 dark:hover:border-zinc-700"
+                            )}
+                          >
+                            {pill.label}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                )}
+                </div>
 
                 {/* Tarih Seçimi */}
                 <div className="grid grid-cols-2 gap-3.5">
@@ -744,21 +822,34 @@ export const EducationHub: React.FC = () => {
                       value={newSourceUrl}
                       onChange={(e) => setNewSourceUrl(e.target.value)}
                       placeholder="https://..."
-                      className="font-semibold bg-white/80 dark:bg-zinc-955/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                      className="font-semibold bg-white/80 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
                     />
                   </div>
                 </div>
 
                 {/* Dosya / Klasör Oluşturma */}
                 <div className="space-y-3 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 p-3.5 bg-slate-50/50 dark:bg-zinc-900/10">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={modalCreateFolder}
-                      onChange={(e) => setModalCreateFolder(e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-350 text-cyan-500 focus:ring-cyan-500"
-                    />
-                    <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                  <label className="flex items-center gap-3 cursor-pointer group select-none">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={modalCreateFolder}
+                        onChange={(e) => setModalCreateFolder(e.target.checked)}
+                        className="sr-only"
+                      />
+                      <div className={cn(
+                        "w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200 shadow-sm",
+                        modalCreateFolder
+                          ? "bg-cyan-500 border-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.45)]"
+                          : "border-slate-300 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/45 text-transparent hover:border-slate-400 dark:hover:border-zinc-700"
+                      )}>
+                        <Check className={cn(
+                          "h-3.5 w-3.5 stroke-[3px] transition-transform duration-200",
+                          modalCreateFolder ? "scale-100" : "scale-0"
+                        )} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-zinc-100 transition-colors">
                       Kaynaklar için Klasör Oluştur
                     </span>
                   </label>
@@ -769,7 +860,7 @@ export const EducationHub: React.FC = () => {
                         placeholder="Klasör Adı (Örn: Dökümanlar)"
                         value={modalFolderName}
                         onChange={(e) => setModalFolderName(e.target.value)}
-                        className="h-9 text-xs font-semibold bg-white/80 dark:bg-zinc-955/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                        className="h-9 text-xs font-semibold bg-white/80 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500"
                       />
 
                       <div

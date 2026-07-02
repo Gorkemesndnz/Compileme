@@ -270,7 +270,7 @@ export const DbSchemaStudio: React.FC<DbSchemaStudioProps> = ({ project }) => {
   // ── CENTRAL NOTES STATE ────────────────────────────────────────────
   const [localNotes, setLocalNotes] = useState('')
   const [isSavingNotes, setIsSavingNotes] = useState(false)
-  const notesTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const notesTimerRef = useRef<any | null>(null)
 
   useEffect(() => {
     if (notesDoc) {
@@ -645,7 +645,7 @@ export const DbSchemaStudio: React.FC<DbSchemaStudioProps> = ({ project }) => {
               ))}
 
               {schemaData.tables.length === 0 && (
-                <div className="col-span-full border-dashed border-2 border-slate-250 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center p-12 text-center">
+                <div className="col-span-full border-dashed border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center p-12 text-center">
                   <Database className="h-10 w-10 text-zinc-300 dark:text-zinc-700 mb-3" />
                   <span className="text-xs text-zinc-400 italic font-medium">
                     Henüz veritabanı tablosu eklenmedi. Sağ üstten tablo ekleyebilirsiniz.

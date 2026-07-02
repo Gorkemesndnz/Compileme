@@ -94,7 +94,7 @@ export const ControlRoomHeader: React.FC<ControlRoomHeaderProps> = ({
         <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-900/80 rounded-full overflow-hidden">
           <div
             className="h-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.6)] transition-all duration-500 ease-out"
-            style={{ width: `${completionPercent}%` }}
+            style={{ width: `${completionPercent}%` } as any}
           />
         </div>
       </div>

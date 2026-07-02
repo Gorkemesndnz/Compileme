@@ -248,12 +248,10 @@ export const ProjectsPage: React.FC = () => {
   const { id: urlProjectId, phaseId: urlPhaseId } = useParams<{ id?: string; phaseId?: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const {
-    activeProjectId: selectedProjectId,
-    projectOnboardingOpen,
-    setActiveProjectId: setSelectedProjectId,
-    setProjectOnboardingOpen,
-  } = useUiStore()
+  const selectedProjectId = useUiStore((state) => state.activeProjectId)
+  const projectOnboardingOpen = useUiStore((state) => state.projectOnboardingOpen)
+  const setSelectedProjectId = useUiStore((state) => state.setActiveProjectId)
+  const setProjectOnboardingOpen = useUiStore((state) => state.setProjectOnboardingOpen)
   const [activeTab, setActiveTab] = useState<ProjectTab>('overview')
   const [activePhaseId, setActivePhaseId] = useState<number | null>(null)
 
@@ -1173,13 +1171,13 @@ const TaskList: React.FC<{
                 onClick={() => onToggle(task.id)}
                 className={cn(
                   'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all duration-200',
-                  task.status === 'DONE' ? 'border-emerald-500 bg-emerald-500 text-white dark:text-black' : 'border-zinc-350 dark:border-zinc-700 hover:border-cyan-550 dark:hover:border-cyan-400'
+                  task.status === 'DONE' ? 'border-emerald-500 bg-emerald-500 text-white dark:text-black' : 'border-zinc-300 dark:border-zinc-700 hover:border-cyan-500 dark:hover:border-cyan-400'
                 )}
               >
                 {task.status === 'DONE' && <Check className="h-3.5 w-3.5" />}
               </button>
               <div className="min-w-0 flex-1">
-                <div className={cn('font-bold flex items-center flex-wrap gap-1.5', dense ? 'text-xs' : 'text-sm', task.status === 'DONE' ? 'text-zinc-400 dark:text-zinc-550 line-through' : 'text-slate-800 dark:text-zinc-100')}>
+                <div className={cn('font-bold flex items-center flex-wrap gap-1.5', dense ? 'text-xs' : 'text-sm', task.status === 'DONE' ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-slate-800 dark:text-zinc-100')}>
                   <span>{cleanTaskTitle}</span>
                   {linkedDoc && onNavigateToDoc && (
                     <button

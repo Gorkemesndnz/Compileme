@@ -553,7 +553,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                 'px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                 formMode === 'document'
                   ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm border border-slate-200/50 dark:border-white/5'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-250'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               )}
             >
               Yazılı Doküman
@@ -565,7 +565,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                 'px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                 formMode === 'link'
                   ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm border border-slate-200/50 dark:border-white/5'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-250'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               )}
             >
               Dosya & Link Hub
@@ -596,7 +596,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
             {/* Document Type Dropdown (Only for Documents) */}
             {formMode === 'document' && (
               <div className="md:col-span-4">
-                <label className="block text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
                   Doküman Türü
                 </label>
                 <DocumentsSelector
@@ -876,7 +876,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                       href={selectedResourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-850 border border-slate-200/50 dark:border-slate-800 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+                      className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200/50 dark:border-slate-800 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
                       title="Dış Bağlantıyı Aç"
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -889,13 +889,13 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-zinc-900/40 p-3.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Faz İlişkisi</span>
-                  <span className="text-xs font-bold text-slate-850 dark:text-slate-200 block">
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-200 block">
                     {selectedResource.phaseId === null ? 'Global' : `Faz ${phases.findIndex(p => p.id === selectedResource.phaseId) !== -1 ? phases.findIndex(p => p.id === selectedResource.phaseId) : selectedResource.phaseId}`}
                   </span>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Alt Faz İlişkisi</span>
-                  <span className="text-xs font-bold text-slate-850 dark:text-slate-200 block">
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-200 block">
                     {selectedResource.subPhaseId === null ? 'Yok' : decodedSubPhases.find(sp => sp.id === selectedResource.subPhaseId)?.label || 'Bilinmeyen'}
                   </span>
                 </div>
@@ -904,7 +904,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
               {/* Inline Media Player (Preview Area) */}
               <div className="bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-slate-900 rounded-2xl p-4 overflow-hidden min-h-[160px] flex flex-col justify-center">
                 {selectedResource.resourceType === 'document' ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-350 font-medium text-xs whitespace-pre-wrap leading-relaxed">
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-300 font-medium text-xs whitespace-pre-wrap leading-relaxed">
                     {selectedResource.content || <span className="italic text-zinc-400">İçerik boş...</span>}
                   </div>
                 ) : selectedResource.resourceType === 'file' ? (
@@ -924,7 +924,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                     ) : (
                       <div className="flex flex-col items-center gap-3">
                         <Upload className="h-10 w-10 text-emerald-500" />
-                        <span className="text-xs font-bold text-slate-850 dark:text-slate-200">
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-200">
                           Önizleme desteklenmiyor. Dosyayı indirip görüntüleyebilirsiniz.
                         </span>
                         <a
@@ -942,7 +942,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                 ) : (
                   <div className="text-center py-6 flex flex-col items-center gap-3">
                     <Globe className="h-10 w-10 text-purple-500 animate-pulse" />
-                    <span className="text-xs font-bold text-slate-850 dark:text-slate-200">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-200">
                       Harici web veya Github deposu bağlantısı.
                     </span>
                     {selectedResource.notes && (
@@ -994,7 +994,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
                     return (
                       <div
                         key={t.id}
-                        className="flex items-center justify-between gap-3 bg-white/30 dark:bg-zinc-900/30 border border-slate-200/50 dark:border-slate-850 p-2.5 rounded-xl text-xs font-bold"
+                        className="flex items-center justify-between gap-3 bg-white/30 dark:bg-zinc-900/30 border border-slate-200/50 dark:border-slate-800 p-2.5 rounded-xl text-xs font-bold"
                       >
                         <div className="flex items-center gap-2">
                           <button
@@ -1038,7 +1038,7 @@ export const MasterResourceVault: React.FC<MasterResourceVaultProps> = ({
           ) : (
             <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-20 text-center flex flex-col items-center justify-center bg-white/30 dark:bg-black/10 backdrop-blur-sm min-h-[400px]">
               <FileText className="h-12 w-12 text-zinc-300 dark:text-zinc-700 mb-4 animate-bounce" />
-              <h4 className="text-xs font-extrabold text-slate-850 dark:text-slate-200 mb-1">Önizleme Aktif Değil</h4>
+              <h4 className="text-xs font-extrabold text-slate-900 dark:text-slate-200 mb-1">Önizleme Aktif Değil</h4>
               <span className="text-[10px] text-zinc-400 italic">
                 Lütfen sol listeden detayını veya önizlemesini görüntülemek istediğiniz bir kaynak seçin.
               </span>

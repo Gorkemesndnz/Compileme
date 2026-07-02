@@ -9,7 +9,11 @@ import {
   RefreshCw,
   Zap,
   FileText,
-  Braces
+  Braces,
+  Plus,
+  UploadCloud,
+  Link as LinkIcon,
+  ClipboardList
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getFileIcon } from './studioHelpers'
@@ -19,6 +23,7 @@ interface LeftFileTreeProps {
   folders: FolderData[]
   resources: EducationResource[]
   selectedResourceId: number | null | undefined
+  selectedFolderId: string
   activeTab: 'overview' | 'files' | 'links' | 'reinforce' | 'primary' | 'notes'
   activeFileName: string
   activeResourceNoteId: string | null
@@ -26,8 +31,15 @@ interface LeftFileTreeProps {
   resourceNoteItems: Record<string, ResourceNote[]>
   treeExpandedNodes: Record<string, boolean>
   treeLoadingNodes: Record<string, boolean>
-  handleToggleTreeNode: (nodeId: string) => Promise<void>
+  handleToggleTreeNode: (nodeId: string) => void
   handleTreeNodeClick: (type: 'file' | 'task' | 'note', targetId: string, itemId?: string | number) => void
+  handleSelectFolder: (folderId: string) => void
+  handleCreateFolderRequest: () => void
+  handleUploadFileRequest: () => void
+  handleAddLinkRequest: () => void
+  handleImportCurriculumRequest: () => void
+  handleCreateReinforcementForResource: (resId: number) => void
+  handleCreateNoteForResource: (resourceKey: string) => void
   handleRenameFolder: (folderId: string) => void
   handleDeleteFolder: (folderId: string) => void
   handleRenameResource: (resId: number) => void
@@ -38,10 +50,11 @@ interface LeftFileTreeProps {
   handleDeleteNote: (actualKey: string, noteId: string) => void
 }
 
-export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
+const LeftFileTreeComponent: React.FC<LeftFileTreeProps> = ({
   folders,
   resources,
   selectedResourceId,
+  selectedFolderId,
   activeTab,
   activeFileName,
   activeResourceNoteId,
@@ -51,6 +64,13 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
   treeLoadingNodes,
   handleToggleTreeNode,
   handleTreeNodeClick,
+  handleSelectFolder,
+  handleCreateFolderRequest,
+  handleUploadFileRequest,
+  handleAddLinkRequest,
+  handleImportCurriculumRequest,
+  handleCreateReinforcementForResource,
+  handleCreateNoteForResource,
   handleRenameFolder,
   handleDeleteFolder,
   handleRenameResource,
@@ -60,8 +80,14 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
   handleRenameNote,
   handleDeleteNote,
 }) => {
+  const [isAddMenuOpen, setIsAddMenuOpen] = React.useState(false)
   const folderResourceIds = new Set(folders.flatMap((f) => f.resourceIds))
   const uncategorizedResources = resources.filter((r) => !folderResourceIds.has(r.id))
+
+  const runAddAction = (action: () => void) => {
+    setIsAddMenuOpen(false)
+    action()
+  }
 
   const renderFolderNode = (folderId: string, folderName: string, folderResIds: number[], isUncategorized = false) => {
     const isExpanded = !!treeExpandedNodes[folderId]
@@ -75,10 +101,15 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
       <div key={folderId} className="space-y-1">
         {/* Folder row */}
         <div
-          onClick={() => handleToggleTreeNode(folderId)}
+          onClick={() => {
+            handleSelectFolder(folderId)
+            void handleToggleTreeNode(folderId)
+          }}
           className={cn(
             "group flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none",
-            isExpanded
+            selectedFolderId === folderId
+              ? "bg-cyan-500/10 text-cyan-700 ring-1 ring-cyan-500/20 dark:text-cyan-300"
+              : isExpanded
               ? "bg-slate-100/50 dark:bg-zinc-900/40 text-slate-900 dark:text-zinc-200"
               : "text-slate-700 dark:text-zinc-400 hover:bg-slate-100/20 dark:hover:bg-zinc-900/20"
           )}
@@ -125,7 +156,7 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
 
         {/* Folder Children */}
         {isExpanded && (
-          <div className="pl-4 border-l border-slate-200 dark:border-zinc-850 ml-4 space-y-1">
+          <div className="pl-4 border-l border-slate-200 dark:border-zinc-800 ml-4 space-y-1">
             {isLoading ? (
               <div className="flex items-center gap-2 py-1.5 px-3 text-[10px] text-slate-400">
                 <RefreshCw className="h-3 w-3 animate-spin text-cyan-500" />
@@ -166,7 +197,7 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
           className={cn(
             "group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer select-none",
             isResActive
-              ? "text-slate-905 bg-white dark:text-white dark:bg-zinc-900 font-bold border-l-2 border-cyan-500"
+              ? "text-slate-900 bg-white dark:text-white dark:bg-zinc-900 font-bold border-l-2 border-cyan-500"
               : "text-slate-600 dark:text-zinc-400 hover:bg-slate-100/50 dark:hover:bg-zinc-900/20"
           )}
         >
@@ -212,7 +243,7 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
 
         {/* File Children (Tasks & Notes Categories) */}
         {isExpanded && (
-          <div className="pl-3 border-l border-slate-100 dark:border-zinc-850 ml-3 space-y-1">
+          <div className="pl-3 border-l border-slate-100 dark:border-zinc-800 ml-3 space-y-1">
             {isLoading ? (
               <div className="flex items-center gap-1.5 py-1 px-2 text-[10px] text-slate-400">
                 <RefreshCw className="h-3 w-3 animate-spin text-cyan-500" />
@@ -248,7 +279,7 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
         {/* Category Header Row */}
         <div
           onClick={() => handleToggleTreeNode(catNodeId)}
-          className="flex items-center justify-between py-1 px-2 rounded hover:bg-slate-100/50 dark:hover:bg-zinc-900/10 text-[11px] font-semibold text-slate-500 dark:text-zinc-500 cursor-pointer select-none"
+          className="group flex items-center justify-between py-1 px-2 rounded hover:bg-slate-100/50 dark:hover:bg-zinc-900/10 text-[11px] font-semibold text-slate-500 dark:text-zinc-500 cursor-pointer select-none"
         >
           <div className="flex items-center gap-1.5 overflow-hidden">
             {isExpanded ? (
@@ -260,11 +291,26 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
             <span className="truncate">{label}</span>
             <span className="text-[9px] font-normal shrink-0 font-mono">({items.length})</span>
           </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              if (categoryType === 'tasks') {
+                handleCreateReinforcementForResource(resId)
+              } else {
+                handleCreateNoteForResource(actualKey)
+              }
+            }}
+            className="rounded-md p-1 text-slate-400 opacity-0 transition-all hover:bg-cyan-500/10 hover:text-cyan-600 group-hover:opacity-100 dark:hover:text-cyan-300"
+            title={categoryType === 'tasks' ? 'Pekistirme ekle' : 'Not ekle'}
+          >
+            <Plus className="h-3 w-3" />
+          </button>
         </div>
 
         {/* Category Items */}
         {isExpanded && (
-          <div className="pl-3 border-l border-slate-100 dark:border-zinc-850/50 ml-3.5 space-y-1">
+          <div className="pl-3 border-l border-slate-100 dark:border-zinc-800/50 ml-3.5 space-y-1">
             {isLoading ? (
               <div className="flex items-center gap-1.5 py-1 px-2 text-[9px] text-slate-400">
                 <RefreshCw className="h-2.5 w-2.5 animate-spin text-cyan-500" />
@@ -290,9 +336,21 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
                           : "text-slate-500 dark:text-zinc-400 hover:bg-slate-100/40 dark:hover:bg-zinc-900/15"
                       )}
                     >
-                      <div className="flex items-center gap-1 overflow-hidden">
-                        <Braces className="h-2.5 w-2.5 text-cyan-400 shrink-0" />
-                        <span className="truncate">{item.title}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1 overflow-hidden">
+                          <Zap className="h-2.5 w-2.5 text-yellow-500 shrink-0" />
+                          <span className="truncate">{item.title}</span>
+                        </div>
+                        <div
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleTreeNodeClick('task', `resource:${resId}`, item.id)
+                          }}
+                          className="mt-1 ml-3 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-mono text-cyan-600 hover:bg-cyan-500/10 dark:text-cyan-300"
+                        >
+                          <Braces className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">{item.codeFileName}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                         <button
@@ -359,10 +417,46 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-slate-50/50 dark:bg-zinc-950/20 rounded-2xl border border-slate-200 dark:border-zinc-800/60 p-4 overflow-y-auto space-y-4">
-      <div className="flex items-center justify-between shrink-0 border-b border-slate-200 dark:border-zinc-800 pb-2">
+      <div className="relative flex items-center justify-between shrink-0 border-b border-slate-200 dark:border-zinc-800 pb-2">
         <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-zinc-400">
           EĞİTİM DÖKÜMANLARI
         </span>
+        <button
+          type="button"
+          onClick={() => setIsAddMenuOpen((open) => !open)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-700 shadow-sm transition-all hover:bg-cyan-500/15 dark:text-cyan-300"
+          title="Kaynak ekle"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+        {isAddMenuOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Menuyu kapat"
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={() => setIsAddMenuOpen(false)}
+            />
+            <div className="absolute right-0 top-9 z-50 w-48 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-2xl backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/95">
+              <button type="button" onClick={() => runAddAction(handleCreateFolderRequest)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-zinc-200 dark:hover:text-cyan-300">
+                <Folder className="h-3.5 w-3.5 text-amber-500" />
+                Yeni Klasor
+              </button>
+              <button type="button" onClick={() => runAddAction(handleUploadFileRequest)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-zinc-200 dark:hover:text-cyan-300">
+                <UploadCloud className="h-3.5 w-3.5 text-cyan-500" />
+                Dosya Yukle
+              </button>
+              <button type="button" onClick={() => runAddAction(handleAddLinkRequest)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-zinc-200 dark:hover:text-cyan-300">
+                <LinkIcon className="h-3.5 w-3.5 text-violet-500" />
+                Link Ekle
+              </button>
+              <button type="button" onClick={() => runAddAction(handleImportCurriculumRequest)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-zinc-200 dark:hover:text-cyan-300">
+                <ClipboardList className="h-3.5 w-3.5 text-emerald-500" />
+                Mufredat Yapistir
+              </button>
+            </div>
+          </>
+        )}
       </div>
       <div className="space-y-3 flex-grow">
         {/* Folders */}
@@ -382,3 +476,5 @@ export const LeftFileTree: React.FC<LeftFileTreeProps> = ({
     </div>
   )
 }
+
+export const LeftFileTree = React.memo(LeftFileTreeComponent)

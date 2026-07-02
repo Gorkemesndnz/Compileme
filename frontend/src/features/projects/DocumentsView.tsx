@@ -84,7 +84,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ project }) => {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             {/* Title Input */}
             <div className="md:col-span-8">
-              <label className="block text-[10px] font-black text-slate-550 dark:text-slate-450 uppercase tracking-widest mb-1.5">
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-widest mb-1.5">
                 Doküman Başlığı
               </label>
               <Input
@@ -98,7 +98,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ project }) => {
 
             {/* Custom Dropdown Selector */}
             <div className="md:col-span-4">
-              <label className="block text-[10px] font-black text-slate-550 dark:text-slate-450 uppercase tracking-widest mb-1.5">
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-widest mb-1.5">
                 Doküman Türü
               </label>
               <DocumentsSelector
@@ -110,7 +110,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ project }) => {
 
           {/* Content Textarea */}
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-black text-slate-550 dark:text-slate-450 uppercase tracking-widest">
+            <label className="block text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-widest">
               Markdown İçerik
             </label>
             <Textarea

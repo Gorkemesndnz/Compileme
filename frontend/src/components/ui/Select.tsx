@@ -100,7 +100,7 @@ export const Select: React.FC<SelectProps> = ({
                     "w-full flex items-center justify-between px-3 py-2 text-xs text-left rounded-lg transition-colors cursor-pointer",
                     isSelected
                       ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-black"
-                      : "text-slate-850 dark:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-white/5 font-semibold"
+                      : "text-slate-900 dark:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-white/5 font-semibold"
                   )}
                 >
                   <span>

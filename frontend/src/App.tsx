@@ -44,7 +44,7 @@ const queryClient = new QueryClient({
 
 export const App: React.FC = () => {
   const [splashComplete, setSplashComplete] = useState(false)
-  const { theme } = useUiStore()
+  const theme = useUiStore((state) => state.theme)
 
   React.useEffect(() => {
     applyTheme(theme)

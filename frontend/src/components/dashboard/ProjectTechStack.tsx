@@ -288,7 +288,7 @@ export const ProjectTechStack: React.FC<ProjectTechStackProps> = ({ project }) =
                     {label}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono font-bold bg-slate-200/60 dark:bg-slate-800/50 text-slate-650 dark:text-zinc-400 px-2 py-0.5 rounded-lg">
+                <span className="text-[10px] font-mono font-bold bg-slate-200/60 dark:bg-slate-800/50 text-slate-600 dark:text-zinc-400 px-2 py-0.5 rounded-lg">
                   {items.length}
                 </span>
               </div>
@@ -369,7 +369,7 @@ export const ProjectTechStack: React.FC<ProjectTechStackProps> = ({ project }) =
                 })}
 
                 {items.length === 0 && (
-                  <div className="flex-1 border-dashed border-2 border-slate-250 dark:border-slate-800/80 rounded-2xl flex flex-col items-center justify-center p-8 text-center">
+                  <div className="flex-1 border-dashed border-2 border-slate-200 dark:border-slate-800/80 rounded-2xl flex flex-col items-center justify-center p-8 text-center">
                     <HelpCircle className="h-7 w-7 text-zinc-305 dark:text-zinc-700 mb-2" />
                     <span className="text-[11px] text-zinc-400 italic font-medium">
                       Teknoloji eklenmedi

@@ -14,7 +14,7 @@ interface CheatsheetTabProps {
   handleDeleteCheatItem: (conceptId: number) => void
 }
 
-export const CheatsheetTab: React.FC<CheatsheetTabProps> = ({
+const CheatsheetTabComponent: React.FC<CheatsheetTabProps> = ({
   cheatsheetItems,
   keyConcept,
   setKeyConcept,
@@ -69,7 +69,7 @@ export const CheatsheetTab: React.FC<CheatsheetTabProps> = ({
           >
             <button
               onClick={() => handleDeleteCheatItem(item.id)}
-              className="absolute right-3 top-3 p-1.5 rounded-lg text-slate-400 hover:text-red-500 dark:text-zinc-650 hover:bg-red-500/10 transition-all cursor-pointer"
+              className="absolute right-3 top-3 p-1.5 rounded-lg text-slate-400 hover:text-red-500 dark:text-zinc-600 hover:bg-red-500/10 transition-all cursor-pointer"
               title="Sil"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -77,7 +77,7 @@ export const CheatsheetTab: React.FC<CheatsheetTabProps> = ({
             <span className="text-xs font-black text-slate-900 dark:text-white">
               {item.keyConcept}
             </span>
-            <p className="text-[11px] font-medium text-slate-650 dark:text-zinc-350 leading-relaxed">
+            <p className="text-[11px] font-medium text-slate-600 dark:text-zinc-300 leading-relaxed">
               {item.description}
             </p>
           </div>
@@ -86,3 +86,5 @@ export const CheatsheetTab: React.FC<CheatsheetTabProps> = ({
     </div>
   )
 }
+
+export const CheatsheetTab = React.memo(CheatsheetTabComponent)

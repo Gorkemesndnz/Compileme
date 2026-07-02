@@ -43,7 +43,7 @@ export const ApiEndpointsView: React.FC<ApiEndpointsViewProps> = ({
   const [endpoints, setEndpoints] = useState<ApiEndpoint[]>([])
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimerRef = useRef<any | null>(null)
 
   // Fetch project documents
   const { data: documents = [] } = useProjectDocuments(project.id)

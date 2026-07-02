@@ -228,7 +228,7 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
                       <div className="h-1 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all duration-300"
-                          style={{ width: `${completionRate}%` }}
+                          style={{ width: `${completionRate}%` } as any}
                         />
                       </div>
                     </div>
@@ -327,7 +327,7 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
                       placeholder="Örn: Faz 1 - API Geliştirmeleri"
                       required
                       disabled={isSubmitting}
-                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
+                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-800 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)]"
                     />
                   </div>
                   
@@ -341,7 +341,7 @@ export const PhasesManagerPage: React.FC<PhasesManagerPageProps> = ({
                       placeholder="Bu faz kapsamında yapılacak teknik işleri yazın..."
                       rows={4}
                       disabled={isSubmitting}
-                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-850 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)] resize-none"
+                      className="bg-white/40 dark:bg-neutral-950/40 border-neutral-200 dark:border-neutral-800 text-neutral-950 dark:text-white rounded-xl placeholder:text-neutral-500/70 focus-visible:border-cyan-500/50 focus-visible:ring-0 focus-visible:shadow-[0_0_15px_rgba(6,182,212,0.12)] resize-none"
                     />
                   </div>
 

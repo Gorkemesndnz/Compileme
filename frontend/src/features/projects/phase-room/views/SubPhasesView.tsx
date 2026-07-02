@@ -148,7 +148,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
   const [localContent, setLocalContent] = useState('')
   const [localLabel, setLocalLabel] = useState('')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const saveTimerRef = useRef<any | null>(null)
 
   // Sync selected detail fields
   useEffect(() => {
@@ -598,7 +598,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                 value={localContent}
                 onChange={handleNotesChange}
                 placeholder="Örn: Bu alt fazda yapılacak entegrasyonun adımları, veri akış şemaları ve mimari kararlar..."
-                className="min-h-[180px] w-full bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-850 dark:text-slate-100 text-xs font-mono focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
+                className="min-h-[180px] w-full bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-slate-100 text-xs font-mono focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
               />
             </div>
 
@@ -634,7 +634,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                   {subTasks.map((t) => (
                     <div
                       key={t.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10 border border-zinc-250/30 dark:border-zinc-800/30 text-[11px] group"
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10 border border-zinc-200/30 dark:border-zinc-800/30 text-[11px] group"
                     >
                       <label className="flex items-center gap-2 cursor-pointer min-w-0">
                         <input
@@ -645,7 +645,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                         />
                         <span
                           className={cn(
-                            'font-bold text-slate-800 dark:text-slate-350 truncate',
+                            'font-bold text-slate-800 dark:text-slate-300 truncate',
                             t.status === 'DONE' && 'line-through text-zinc-400 dark:text-zinc-500'
                           )}
                         >
@@ -697,7 +697,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                           value={snippetTitle}
                           onChange={(e) => setSnippetTitle(e.target.value)}
                           placeholder="Başlık"
-                          className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-850 dark:text-slate-100 text-[10px] focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
+                          className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-900 dark:text-slate-100 text-[10px] focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
                           required
                         />
                         <div className="flex gap-2">
@@ -705,7 +705,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                             value={snippetLang}
                             onChange={(e) => setSnippetLang(e.target.value)}
                             placeholder="Dil (örn: typescript, java)"
-                            className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-850 dark:text-slate-100 text-[10px] focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all flex-1"
+                            className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-900 dark:text-slate-100 text-[10px] focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all flex-1"
                           />
                           <button
                             type="submit"
@@ -729,7 +729,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                       {subSnippets.map((s) => (
                         <div
                           key={s.id}
-                          className="flex items-center justify-between p-2 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10 border border-zinc-250/30 dark:border-zinc-800/30 text-[10px] group"
+                          className="flex items-center justify-between p-2 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10 border border-zinc-200/30 dark:border-zinc-800/30 text-[10px] group"
                         >
                           <div className="min-w-0">
                             <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
@@ -770,7 +770,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                           value={linkLabel}
                           onChange={(e) => setLinkLabel(e.target.value)}
                           placeholder="Başlık"
-                          className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-850 dark:text-slate-100 text-[10px] focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
+                          className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-900 dark:text-slate-100 text-[10px] focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
                           required
                         />
                         <div className="flex gap-2">
@@ -778,7 +778,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                             value={linkUrl}
                             onChange={(e) => setLinkUrl(e.target.value)}
                             placeholder="URL (https://...)"
-                            className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-850 dark:text-slate-100 text-[10px] focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all flex-1"
+                            className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-900 dark:text-slate-100 text-[10px] focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all flex-1"
                             required
                           />
                           <button
@@ -796,7 +796,7 @@ export const SubPhasesView: React.FC<SubPhasesViewProps> = ({
                       {subLinks.map((l) => (
                         <div
                           key={l.id}
-                          className="flex items-center justify-between p-2 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10 border border-zinc-250/30 dark:border-zinc-800/30 text-[10px] group"
+                          className="flex items-center justify-between p-2 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10 border border-zinc-200/30 dark:border-zinc-800/30 text-[10px] group"
                         >
                           <a
                             href={l.url}

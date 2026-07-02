@@ -21,7 +21,7 @@ export const DbSchemaView: React.FC<DbSchemaViewProps> = ({ project, phase }) =>
   const [subView, setSubView] = useState<'diagram' | 'notes'>('diagram')
   const [notesContent, setNotesContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimerRef = useRef<any | null>(null)
 
   // Fetch documents for the project
   const { data: documents = [] } = useProjectDocuments(project.id)

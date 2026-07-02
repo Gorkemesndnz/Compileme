@@ -190,14 +190,15 @@ export const useDeleteProject = () => {
   })
 }
 
-export const useProjectPhases = (projectId?: number) => {
+export const useProjectPhases = (projectId?: number, options?: any) => {
   return useQuery<ProjectPhase[]>({
     queryKey: ['project-phases', projectId],
-    enabled: !!projectId,
+    enabled: !!projectId && (options?.enabled ?? true),
     queryFn: async () => {
       const response = await apiClient.get<ProjectPhase[]>(`/projects/${projectId}/phases`)
       return response.data
-    }
+    },
+    ...options
   })
 }
 
@@ -339,14 +340,15 @@ export const useDeleteProjectLink = (projectId?: number) => {
   })
 }
 
-export const useProjectDocuments = (projectId?: number) => {
+export const useProjectDocuments = (projectId?: number, options?: any) => {
   return useQuery<ProjectDocument[]>({
     queryKey: ['project-documents', projectId],
-    enabled: !!projectId,
+    enabled: !!projectId && (options?.enabled ?? true),
     queryFn: async () => {
       const response = await apiClient.get<ProjectDocument[]>(`/projects/${projectId}/documents`)
       return response.data
-    }
+    },
+    ...options
   })
 }
 

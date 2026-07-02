@@ -12,7 +12,13 @@ import {
   FileText,
   Link as LinkIcon
 } from 'lucide-react'
-import { CodeFile, VocabularyCard, CheatsheetItem, EducationResource, LanguageLevel, ReinforcementTarget } from '../types'
+import { CodeFile, VocabularyCard, CheatsheetItem, Education, EducationPractice, EducationResource, FolderData, LanguageLevel, ReinforcementTarget } from '../types'
+import {
+  Education as ApiEducation,
+  EducationPractice as ApiEducationPractice,
+  EducationResource as ApiEducationResource,
+  EducationResourceType as ApiEducationResourceType,
+} from '@/api/education'
 
 export const defaultCodeFiles: CodeFile[] = [
   {
@@ -147,4 +153,55 @@ export const getNextReviewDate = (box: VocabularyCard['box']) => {
 
 export const getTargetLabel = (target: ReinforcementTarget) => {
   return target.type === 'resource' ? target.resource.name : `${target.projectName} / ${target.document.title}`
+}
+
+export const toLocalEducation = (education: ApiEducation): Education => ({
+  id: education.id,
+  title: education.title,
+  source: education.source || '',
+  description: education.description || '',
+  type: education.type,
+  progress_percent: education.progressPercent ?? 0,
+  status: education.status || 'ACTIVE',
+  next_study_date: education.nextStudyDate || null,
+  custom_category: education.customCategory || null,
+  start_date: education.startDate || null,
+  end_date: education.endDate || null,
+})
+
+export const toLocalResource = (resource: ApiEducationResource): EducationResource => ({
+  id: resource.id,
+  education_id: resource.educationId,
+  name: resource.name,
+  type: resource.type,
+  url_or_path: resource.urlOrPath,
+})
+
+export const toLocalPractice = (practice: ApiEducationPractice): EducationPractice => ({
+  id: practice.id,
+  education_id: practice.educationId,
+  resource_id: practice.resourceId,
+  title: practice.title,
+  completed: practice.completed,
+  code: practice.code || '',
+  notes: practice.notes || '',
+  order_index: practice.orderIndex,
+})
+
+export const getResourceTypeForFileName = (fileName: string): ApiEducationResourceType => {
+  const normalized = fileName.toLowerCase()
+  if (normalized.endsWith('.pdf')) return 'PDF'
+  if (normalized.endsWith('.ppt') || normalized.endsWith('.pptx')) return 'SLIDE'
+  return 'FILE'
+}
+
+export const getDefaultFolderIdForResource = (resource: Pick<EducationResource, 'type'>) =>
+  resource.type === 'LINK' ? 'folder-link' : 'folder-pdf'
+
+export const reconcileFoldersWithResources = (savedFolders: FolderData[], currentResources: EducationResource[]) => {
+  const resourceIds = new Set(currentResources.map((resource) => resource.id))
+  return savedFolders.map((folder) => ({
+    ...folder,
+    resourceIds: folder.resourceIds.filter((resourceId: number) => resourceIds.has(resourceId)),
+  }))
 }

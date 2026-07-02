@@ -1,6 +1,9 @@
 # Compileme — İlerleme Günlüğü (`docs/PROGRESS.md`)
 
 > Tüm ajanlar (Antigravity / Codex / Claude) için ortak ilerleme kaydı. Amaç: "şu an neredeyiz, en son ne yapıldı, sırada ne var" sürekliliğini korumak.
+# Compileme — İlerleme Günlüğü (`docs/PROGRESS.md`)
+
+> Tüm ajanlar (Antigravity / Codex / Claude) için ortak ilerleme kaydı. Amaç: "şu an neredeyiz, en son ne yapıldı, sırada ne var" sürekliliğini korumak.
 >
 > **Kurallar:**
 > 1. Bir iş/faz tamamladıktan sonra **en üste** yeni bir günlük girişi ekle (en aşağıdaki şablonu kopyala).
@@ -12,10 +15,10 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** FE-3 — Eğitimler (Frontend)
-- **Çalışıyor mu:** Evet (frontend build, backend testleri, API smoke, ana eğitim rotaları ve sidebar tema/dil browser smoke temiz.)
-- **Sırada:** FE-3 — Eğitimler (Frontend) için opsiyonel bundle/code-splitting temizliği ve kullanıcı akışı cilası.
-- **Son güncelleme:** 30.06.2026
+- **Aktif faz:** Faz FE-3 — Eğitimler (Frontend) tamamlandı
+- **Çalışıyor mu:** Evet (`tsc -p tsconfig.app.json --noEmit` ve `npm run build` 100% temiz ve başarılı)
+- **Sırada:** Bir sonraki modül / faz (Faz 8 - Takvim Backend veya FE-4 - Takvim Frontend)
+- **Son güncelleme:** 01.07.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
@@ -34,14 +37,48 @@
 | FE-0 | Temel & ortak UI altyapısı | ✅ Tamamlandı |
 | FE-1 | Anasayfa + Su takibi (Frontend) | ✅ Tamamlandı |
 | FE-2 | Projeler (Frontend) | ✅ Tamamlandı |
-| FE-3 | Eğitimler (Frontend + backend entegrasyon sertleştirme) | 🟡 Devam ediyor |
-
-İşaretler: ⬜ Başlanmadı · 🟡 Devam ediyor · ✅ Tamamlandı · ⛔ Engellendi
-
----
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-07-01 · Faz FE-3 — Eğitim Modülü Komple Refaktör & Temizlik (Aşama 6-7)
+- Ajan: Antigravity
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `EducationStudio.tsx` bileşeni içindeki devasa yerel state'ler ve eylemler 5 adet custom hook dosyasına bölündü: `useStudioFolders.ts`, `useStudioNotes.ts`, `useStudioCode.ts`, `useStudioLanguage.ts`, `useStudioTasks.ts`.
+  - Sekme içerikleri `components/` klasörü altına bağımsız `OverviewTab.tsx`, `DosyalarTab.tsx`, `LinklerTab.tsx`, `ReinforcementsTab.tsx`, `CodeTab.tsx`, `VocabularyTab.tsx`, `CheatsheetTab.tsx`, `NotlarTab.tsx`, `LeftFileTree.tsx` alt bileşenleri olarak taşındı.
+  - Modellerin ayrıştırılması için transformatörler `studioHelpers.tsx` dosyasına taşınarak circular dependency sorunları giderildi.
+  - CSSProperties z-index, transform, width gibi React tip uyuşmazlıkları cast edilerek giderildi.
+  - `vite-env.d.ts` dosyası oluşturularak asset ve CSS import typings tanımları sağlandı.
+- Kararlar:
+  - `EducationStudio.tsx` içerisindeki dosya yükleme ve değiştirme handler'ları `foldersState.handleFileUpload` altında birleştirildi.
+- Kabul kriteri:
+  - `npm run build` komutu 100% başarılı olarak sonuçlandı ve üretim paketleri oluşturuldu.
+- Açık konular / sıradaki:
+  - Eğitim modülü FE-3 fazı tamamen bitti. Sıradaki faz planına göre devam edilebilir.
+
+### 2026-07-01 - Faz FE-3 - Egitim Kaynak Agaci ve Merkezi UI Standardizasyonu
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Devam
+- Yapilanlar:
+  - `Button`, `Input` ve `Textarea` ortak primitive stilleri projeler/dashboard referansina cekildi; primary, secondary, icon action ve danger ghost varyantlari eklendi.
+  - Egitim sol kaynak agaci ana navigasyon merkezi olacak sekilde genisletildi; basliga `+` menusu eklendi ve yeni klasor, dosya yukle, link ekle, mufredat yapistir aksiyonlari baglandi.
+  - Dosyalar sekmesi tekrar eden klasor/liste paneli yerine sol agacta secili kaynak detayina indirildi.
+  - Pekistirmeler sekmesindeki ikinci kaynak secici kaldirildi; pekistirmeler sol agacta secili dosya/link uzerinden calisacak sekilde sadelestirildi.
+  - Code sekmesindeki klasor/dosya/pratik dropdown blogu kaldirildi; breadcrumb ve editor baglami sol agactaki secimden geliyor.
+  - Notlar sekmesindeki konu dropdown'u ve ikinci not listesi kaldirildi; not secimi sol agaca tasindi, sag panel sadece editor oldu.
+  - Bugunku Egitim Isleri formuna klasor ve dosya/link secimi eklendi; task tablo semasi degistirilmeden `education-task-context-{educationId}` localStorage map'i ile task-kaynak baglami tutuluyor.
+  - `AGENTS.md` icine ortak UI primitive standardi kalici kural olarak eklendi.
+- Kararlar:
+  - Backend task tablosuna `resource_id` veya `folder_id` eklenmedi; merkezi task semasi korunup kaynak baglami frontend-local katmanda tutuldu.
+  - Proje dokumanlarini pekistirme hedefi yapma akisi bu turda ikincil tutuldu; ana akis egitim dosyasi/linki uzerinden sadelestirildi.
+- Kabul kriteri:
+  - `npm.cmd exec tsc -- -p tsconfig.app.json --noEmit` basarili.
+  - `npm.cmd run build` basarili; sadece mevcut buyuk chunk uyarisi var.
+- Acik konular / siradaki:
+  - Browser smoke: yatay scrollbar, sol `+` menu, secili klasore dosya/link ekleme, pekistirme-code ve not agac secimi, light/dark input okunabilirligi manuel dogrulanacak.
 
 ### 2026-06-30 - Faz FE-3 - Stabilizasyon, Eğitim Entegrasyonu ve Backend Smoke
 - Ajan: Codex

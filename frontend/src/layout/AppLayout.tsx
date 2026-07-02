@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 export const AppLayout: React.FC = () => {
   const location = useLocation()
   const isFocusMode = location.pathname === '/focus'
-  const { sidebarOpen } = useUiStore()
+  const sidebarOpen = useUiStore((state) => state.sidebarOpen)
 
   if (isFocusMode) {
     return (

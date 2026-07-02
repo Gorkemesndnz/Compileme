@@ -87,6 +87,7 @@ Her backend feature paketinde tipik: `*Controller`, `*Service`, `*Repository`, `
 - Ortak `BaseEntity`: `id` + `createdAt`/`updatedAt` (`@CreationTimestamp`/`@UpdateTimestamp`).
 - Hata yönetimi: `GlobalExceptionHandler` + `ApiError` (timestamp, status, error, message, path).
 - Tailwind: shadcn token'ları (CSS değişkenleri: `--background`, `--primary`, …) + `cn()` yardımcısı. Koyu tema varsayılan (lacivert zemin, cyan vurgu). 21st.dev component'leri `src/components/` altına doğrudan yapıştırılabilir.
+- Ortak UI primitive standardı: button/input/textarea için önce `src/components/ui` altındaki ortak bileşenler kullanılacak. Projeler ve dashboard'da yerleşen cyan primary button, glass/secondary button, icon action, destructive action ve okunabilir light/dark input stilleri uygulama genelinde standarttır. Feature içinde ad-hoc button/input class yazmadan önce ortak component variant'ı genişletilir.
 - Tarih/saat: tarih `date`, saat `time`; göreceli tarihler her zaman **bugünün tarihine** göre çözülür.
 - Premium Tarih/Saat Seçimi: Arayüzlerde tarih ve saat seçimi için native tarayıcı girdileri yerine custom `DateTimePicker` bileşeni kullanılır. Bu bileşen, takvim görünümünün yanı sıra dikey kaydırma tekerleği (dikey wheel picker, 00-23 ve 00-59 scroll-snap destekli) ile premium saat seçimi sağlar. Tüm görev ekleme formları bu bileşeni kullanmalıdır.
 

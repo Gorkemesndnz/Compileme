@@ -159,7 +159,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
                       <div className="h-1 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all duration-300"
-                          style={{ width: `${percent}%` }}
+                          style={{ width: `${percent}%` } as any}
                         />
                       </div>
                     </div>

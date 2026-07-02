@@ -30,7 +30,7 @@ const LANGUAGE_LEVELS: Array<{ id: LanguageLevel; label: string; shortLabel: str
 
 const VOCABULARY_TYPES: VocabularyType[] = ['Noun', 'Verb', 'Adj']
 
-export const VocabularyTab: React.FC<VocabularyTabProps> = ({
+const VocabularyTabComponent: React.FC<VocabularyTabProps> = ({
   vocabularyCards,
   activeLevel,
   setActiveLevel,
@@ -192,3 +192,5 @@ export const VocabularyTab: React.FC<VocabularyTabProps> = ({
     </div>
   )
 }
+
+export const VocabularyTab = React.memo(VocabularyTabComponent)

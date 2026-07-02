@@ -79,7 +79,7 @@ export const TechnicalMemoryView: React.FC<TechnicalMemoryViewProps> = ({
 }) => {
   const [subTab, setSubTab] = useState<SubTab>('tech_stack')
   const [isSaving, setIsSaving] = useState(false)
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimerRef = useRef<any | null>(null)
 
   // ── DATA FETCHING ──────────────────────────────────────────────────
   const { data: documents = [] } = useProjectDocuments(project.id)
@@ -456,7 +456,7 @@ export const TechnicalMemoryView: React.FC<TechnicalMemoryViewProps> = ({
                       </span>
                       <div className="text-left">
                         <span className="block font-bold">{t.name}</span>
-                        <span className="block text-[8px] text-zinc-400 dark:text-zinc-550 group-hover:text-zinc-300">
+                        <span className="block text-[8px] text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-300">
                           {CATEGORY_LABELS[t.category] || 'Other'}
                         </span>
                       </div>
@@ -495,7 +495,7 @@ export const TechnicalMemoryView: React.FC<TechnicalMemoryViewProps> = ({
                     />
                   </div>
                 ) : (
-                  <div className="text-center py-12 border border-dashed border-zinc-250 dark:border-zinc-800 rounded-3xl flex flex-col items-center justify-center">
+                  <div className="text-center py-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl flex flex-col items-center justify-center">
                     <HelpCircle className="h-9 w-9 text-zinc-300 dark:text-zinc-700 mb-2" />
                     <p className="text-xs text-zinc-400 italic">ADR yazmak için soldan bir teknoloji seçin.</p>
                   </div>
@@ -535,7 +535,7 @@ export const TechnicalMemoryView: React.FC<TechnicalMemoryViewProps> = ({
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="https://spring.io/projects/spring-security"
-                  className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 text-slate-850 dark:text-slate-100 text-xs font-mono focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
+                  className="w-full bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 text-slate-900 dark:text-slate-100 text-xs font-mono focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
                   required
                 />
               </div>
@@ -677,7 +677,7 @@ const calculateMetrics = (data) => {
   return data.map(...);
 }
 \`\`\``}
-              className="min-h-[400px] w-full bg-white/50 dark:bg-black/35 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-slate-850 dark:text-slate-100 text-xs font-mono leading-relaxed focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
+              className="min-h-[400px] w-full bg-white/50 dark:bg-black/35 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-slate-900 dark:text-slate-100 text-xs font-mono leading-relaxed focus:ring-2 focus:ring-cyan-500/50 focus:outline-none transition-all"
             />
           </div>
         )}

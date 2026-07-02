@@ -943,8 +943,8 @@ export const DashboardPage: React.FC = () => {
             {/* List */}
             {loadingFocused ? (
               <div className="space-y-2 py-4 animate-pulse">
-                <div className="h-12 bg-neutral-200 dark:bg-neutral-850 rounded-xl" />
-                <div className="h-12 bg-neutral-200 dark:bg-neutral-850 rounded-xl" />
+                <div className="h-12 bg-neutral-200 dark:bg-neutral-800 rounded-xl" />
+                <div className="h-12 bg-neutral-200 dark:bg-neutral-800 rounded-xl" />
               </div>
             ) : focusedTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-zinc-500 space-y-2 select-none">
@@ -1071,8 +1071,8 @@ export const DashboardPage: React.FC = () => {
             {/* List */}
             {loadingTomorrow ? (
               <div className="space-y-2 py-4 animate-pulse">
-                <div className="h-12 bg-neutral-200 dark:bg-neutral-850 rounded-xl" />
-                <div className="h-12 bg-neutral-200 dark:bg-neutral-850 rounded-xl" />
+                <div className="h-12 bg-neutral-200 dark:bg-neutral-800 rounded-xl" />
+                <div className="h-12 bg-neutral-200 dark:bg-neutral-800 rounded-xl" />
               </div>
             ) : tomorrowTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-zinc-500 space-y-2 select-none">
@@ -1195,7 +1195,7 @@ export const DashboardPage: React.FC = () => {
             <div className="space-y-2">
               <span className="text-[10px] font-extrabold tracking-wider uppercase text-neutral-500 dark:text-zinc-500 block">{t('db_unscheduled_pool')}</span>
               {loadingMonthPlan ? (
-                <div className="h-10 bg-neutral-200 dark:bg-neutral-850 rounded-xl animate-pulse" />
+                <div className="h-10 bg-neutral-200 dark:bg-neutral-800 rounded-xl animate-pulse" />
               ) : monthPlanTasks.length === 0 ? (
                 <p className="text-[10px] text-neutral-500 italic py-2 text-center">{t('db_no_tasks_unscheduled')}</p>
               ) : (

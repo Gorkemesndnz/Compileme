@@ -127,7 +127,7 @@ export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => 
 
             {/* Language Girdisi */}
             <div>
-              <label className="block text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
                 Programlama Dili / Teknoloji
               </label>
               <input
@@ -142,7 +142,7 @@ export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => 
 
             {/* Başlık Girdisi */}
             <div>
-              <label className="block text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
                 Snippet Başlığı
               </label>
               <input
@@ -159,7 +159,7 @@ export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => 
           {/* Description & Reference URL Girdileri */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
                 Açıklama
               </label>
               <textarea
@@ -171,7 +171,7 @@ export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => 
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
                 Referans / Repo URL (Opsiyonel)
               </label>
               <input
@@ -186,7 +186,7 @@ export const CodeLibraryView: React.FC<CodeLibraryViewProps> = ({ project }) => 
 
           {/* IDE Textarea Simulator */}
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase tracking-widest">
+            <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
               Kod Editörü
             </label>
             <div className="bg-slate-950/90 backdrop-blur-md border border-white/10 rounded-2xl p-4 font-mono text-sm relative">

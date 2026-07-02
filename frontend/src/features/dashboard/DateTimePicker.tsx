@@ -67,7 +67,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
     const popoverWidth = popoverRef.current ? popoverRef.current.offsetWidth : 320
     const popoverHeight = popoverRef.current ? popoverRef.current.offsetHeight : 380
 
-    const style: React.CSSProperties = {
+    const style: any = {
       position: 'fixed',
       zIndex: 9999,
     }
@@ -307,7 +307,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                   ref={hourScrollRef}
                   onScroll={handleHourScroll}
                   className="h-24 flex-grow overflow-y-auto pt-8 pb-8 scroll-snap-y-mandatory scrollbar-none select-none text-center"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as any}
                 >
                   {HOURS.map((h, i) => {
                     const isSelected = h === selectedHour
@@ -336,7 +336,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                   ref={minuteScrollRef}
                   onScroll={handleMinuteScroll}
                   className="h-24 flex-grow overflow-y-auto pt-8 pb-8 scroll-snap-y-mandatory scrollbar-none select-none text-center"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as any}
                 >
                   {MINUTES.map((m, i) => {
                     const isSelected = m === selectedMinute
