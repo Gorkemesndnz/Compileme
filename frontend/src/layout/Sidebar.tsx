@@ -29,7 +29,7 @@ import { useTranslation } from '@/store/translations'
 import { ProjectStatus, useProjects, useProjectPhases, useProjectDocuments, Project } from '@/api/projects'
 import { Avatar, AvatarFallback } from '@/components/ui/Avatar'
 import { useEducations } from '@/api/education'
-import { groupEducationsByType } from '@/features/education/mockEducationData'
+import { groupEducationsByType } from '@/features/education/educationHelpers'
 import { EducationType } from '@/features/education/types'
 import {
   DropdownMenu,

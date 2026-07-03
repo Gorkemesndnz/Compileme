@@ -30,6 +30,8 @@ interface UseStudioFoldersProps {
   setResourceNoteItems: React.Dispatch<React.SetStateAction<Record<string, any[]>>>
   createResourceMutation: any
   deleteResourceMutation: any
+  updateResourceMutation: any
+  reorderResourcesMutation: any
   uploadFileMutation: any
   activeResourceNoteId: string | null
   setActiveResourceNoteId: React.Dispatch<React.SetStateAction<string | null>>
@@ -56,6 +58,8 @@ export const useStudioFolders = ({
   setResourceNoteItems,
   createResourceMutation,
   deleteResourceMutation,
+  updateResourceMutation,
+  reorderResourcesMutation,
   uploadFileMutation,
   activeResourceNoteId,
   setActiveResourceNoteId,
@@ -266,7 +270,7 @@ export const useStudioFolders = ({
     }
   }, [resources, reinforcements, resourceNoteItems, executeDeleteResource])
 
-  const handleRenameResource = React.useCallback((resId: number) => {
+  const handleRenameResourceLocal = React.useCallback((resId: number) => {
     const res = resources.find(r => r.id === resId)
     if (!res) return
     const newName = window.prompt('Dosya için yeni bir isim girin:', res.name)
@@ -276,6 +280,26 @@ export const useStudioFolders = ({
       toast.success('Dosya adı güncellendi.')
     }
   }, [resources, saveResources])
+
+  const handleRenameResource = React.useCallback((resId: number) => {
+    const resource = resources.find((item) => item.id === resId)
+    if (!resource) return
+    const newName = window.prompt('Dosya icin yeni bir isim girin:', resource.name)
+    const trimmedName = newName?.trim()
+    if (!trimmedName || trimmedName === resource.name) return
+
+    const updated = resources.map((item) => item.id === resId ? { ...item, name: trimmedName } : item)
+    saveResources(updated)
+    if (isPersistedEducation) {
+      void updateResourceMutation.mutateAsync({
+        id: resId,
+        request: { name: trimmedName },
+      }).catch(() => {
+        toast.error('Dosya adi kaydedilemedi.')
+      })
+    }
+    toast.success('Dosya adi guncellendi.')
+  }, [isPersistedEducation, resources, saveResources, updateResourceMutation])
 
   const addResourcesToFolder = React.useCallback((resourceItems: EducationResource[]) => {
     if (resourceItems.length === 0) return
@@ -300,7 +324,82 @@ export const useStudioFolders = ({
     saveFolders(updatedFolders)
   }, [folders, selectedFolderId, saveFolders])
 
-  const handleFileUpload = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const getPersistedResourceOrder = React.useCallback((nextFolders: FolderData[], nextResources: EducationResource[]) => {
+    const resourceById = new Map(nextResources.map((resource) => [resource.id, resource]))
+    const orderedIds = nextFolders.flatMap((folder) => folder.resourceIds)
+    const orderedSet = new Set(orderedIds)
+    const uncategorizedIds = nextResources
+      .filter((resource) => !orderedSet.has(resource.id))
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+      .map((resource) => resource.id)
+
+    return [...orderedIds, ...uncategorizedIds]
+      .filter((id) => resourceById.has(id))
+      .map((id, index) => ({ id, orderIndex: index }))
+  }, [])
+
+  const persistResourceOrder = React.useCallback((nextFolders: FolderData[], nextResources: EducationResource[]) => {
+    const orderItems = getPersistedResourceOrder(nextFolders, nextResources)
+    const orderMap = new Map(orderItems.map((item) => [item.id, item.orderIndex]))
+    const orderedResources = nextResources
+      .map((resource) => ({
+        ...resource,
+        order_index: orderMap.get(resource.id) ?? resource.order_index,
+      }))
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+
+    saveResources(orderedResources)
+    if (isPersistedEducation) {
+      void reorderResourcesMutation.mutateAsync(orderItems).catch(() => {
+        toast.error('Kaynak siralamasi kaydedilemedi.')
+      })
+    }
+    return orderedResources
+  }, [getPersistedResourceOrder, isPersistedEducation, reorderResourcesMutation, saveResources])
+
+  const toggleResourceCompleted = React.useCallback((resourceId: number) => {
+    const resource = resources.find((item) => item.id === resourceId)
+    if (!resource) return
+
+    const nextCompleted = !completedResources[resourceId]
+    const nextCompletedMap = { ...completedResources, [resourceId]: nextCompleted }
+    const nextResources = resources.map((item) =>
+      item.id === resourceId ? { ...item, completed: nextCompleted } : item
+    )
+
+    saveCompletedResources(nextCompletedMap)
+    saveResources(nextResources)
+    if (isPersistedEducation) {
+      void updateResourceMutation.mutateAsync({
+        id: resourceId,
+        request: { completed: nextCompleted },
+      }).catch(() => {
+        toast.error('Tamamlanma durumu kaydedilemedi.')
+      })
+    }
+  }, [completedResources, isPersistedEducation, resources, saveCompletedResources, saveResources, updateResourceMutation])
+
+  const moveResourceWithinFolder = React.useCallback((folderId: string, resourceId: number, direction: 'up' | 'down') => {
+    const folder = folders.find((item) => item.id === folderId)
+    if (!folder) return
+
+    const currentIndex = folder.resourceIds.indexOf(resourceId)
+    if (currentIndex < 0) return
+    const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (nextIndex < 0 || nextIndex >= folder.resourceIds.length) return
+
+    const nextResourceIds = [...folder.resourceIds]
+    const [moved] = nextResourceIds.splice(currentIndex, 1)
+    nextResourceIds.splice(nextIndex, 0, moved)
+
+    const nextFolders = folders.map((item) =>
+      item.id === folderId ? { ...item, resourceIds: nextResourceIds } : item
+    )
+    saveFolders(nextFolders)
+    persistResourceOrder(nextFolders, resources)
+  }, [folders, persistResourceOrder, resources, saveFolders])
+
+  const handleSingleFileUpload = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -323,6 +422,12 @@ export const useStudioFolders = ({
             : r
         )
         saveResources(updated)
+        if (isPersistedEducation) {
+          await updateResourceMutation.mutateAsync({
+            id: replacingResourceId,
+            request: { name: file.name, urlOrPath },
+          })
+        }
         setReplacingResourceId(null)
         toast.success('Dosya başarıyla değiştirildi.')
       } else {
@@ -360,7 +465,67 @@ export const useStudioFolders = ({
     } finally {
       if (e.target) e.target.value = ''
     }
-  }, [isPersistedEducation, replacingResourceId, resources, educationId, uploadFileMutation, createResourceMutation, saveResources, addResourcesToFolder])
+  }, [isPersistedEducation, replacingResourceId, resources, educationId, uploadFileMutation, createResourceMutation, updateResourceMutation, saveResources, addResourcesToFolder])
+
+  const handleFileUpload = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    if (replacingResourceId !== null) {
+      await handleSingleFileUpload(e)
+      return
+    }
+
+    try {
+      const newResourcesList: EducationResource[] = []
+
+      for (const [index, file] of files.entries()) {
+        let urlOrPath = ''
+        if (isPersistedEducation) {
+          const formData = new FormData()
+          formData.append('file', file)
+          const response = await uploadFileMutation.mutateAsync(formData)
+          urlOrPath = `/api/files/${response.id}`
+        } else {
+          urlOrPath = URL.createObjectURL(file)
+        }
+
+        const lowerName = file.name.toLowerCase()
+        const type = lowerName.endsWith('.pdf') ? 'PDF' : lowerName.match(/\.(ppt|pptx)$/) ? 'SLIDE' : 'FILE'
+        const request = {
+          name: file.name,
+          type,
+          urlOrPath,
+          orderIndex: resources.length + index,
+          completed: false,
+        }
+
+        if (isPersistedEducation) {
+          const apiRes = await createResourceMutation.mutateAsync(request)
+          newResourcesList.push(toLocalResource(apiRes))
+        } else {
+          newResourcesList.push({
+            id: Date.now() + index,
+            education_id: educationId,
+            name: file.name,
+            type,
+            url_or_path: urlOrPath,
+            order_index: resources.length + index,
+            completed: false,
+          })
+        }
+      }
+
+      const updated = [...resources, ...newResourcesList]
+      saveResources(updated)
+      addResourcesToFolder(newResourcesList)
+      toast.success(`${newResourcesList.length} dosya basariyla yuklendi.`)
+    } catch {
+      toast.error('Dosya yuklenirken hata olustu.')
+    } finally {
+      if (e.target) e.target.value = ''
+    }
+  }, [addResourcesToFolder, createResourceMutation, educationId, handleSingleFileUpload, isPersistedEducation, replacingResourceId, resources, saveResources, uploadFileMutation])
 
   const handleAddLink = React.useCallback(async () => {
     const name = newLinkName.trim()
@@ -377,6 +542,7 @@ export const useStudioFolders = ({
         type: 'LINK' as const,
         urlOrPath: url,
         orderIndex: resources.length,
+        completed: false,
       }
 
       let newRes: EducationResource
@@ -391,6 +557,7 @@ export const useStudioFolders = ({
           type: 'LINK',
           url_or_path: url,
           order_index: resources.length,
+          completed: false,
         }
       }
 
@@ -423,6 +590,7 @@ export const useStudioFolders = ({
               type: 'FILE',
               urlOrPath: '#',
               orderIndex: resources.length + index,
+              completed: false,
             })
             newResourcesList.push(toLocalResource(apiRes))
           })
@@ -436,6 +604,7 @@ export const useStudioFolders = ({
             type: 'FILE',
             url_or_path: '#',
             order_index: resources.length + index,
+            completed: false,
           })
         })
       }
@@ -508,5 +677,8 @@ export const useStudioFolders = ({
     handleImportCurriculum,
     handleConfirmDelete,
     addResourcesToFolder,
+    toggleResourceCompleted,
+    moveResourceWithinFolder,
+    persistResourceOrder,
   }
 }

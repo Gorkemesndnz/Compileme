@@ -175,6 +175,8 @@ export const toLocalResource = (resource: ApiEducationResource): EducationResour
   name: resource.name,
   type: resource.type,
   url_or_path: resource.urlOrPath,
+  order_index: resource.orderIndex,
+  completed: resource.completed,
 })
 
 export const toLocalPractice = (practice: ApiEducationPractice): EducationPractice => ({

@@ -52,6 +52,7 @@ export interface EducationResource {
   url_or_path: string
   level?: LanguageLevel
   order_index?: number
+  completed?: boolean
 }
 
 export interface EducationPractice {

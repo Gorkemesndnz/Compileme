@@ -105,7 +105,7 @@ class EducationServiceTest {
         when(educationResourceRepository.save(any(EducationResource.class))).thenReturn(resource);
         when(fileService.getMetadata(5L)).thenReturn(mock(StoredFile.class));
 
-        EducationResourceRequest request = new EducationResourceRequest("Slides", ResourceType.PDF, "/api/files/5", 0);
+        EducationResourceRequest request = new EducationResourceRequest("Slides", ResourceType.PDF, "/api/files/5", 0, false);
         EducationResourceResponse response = educationService.addResource(10L, request);
 
         assertNotNull(response);

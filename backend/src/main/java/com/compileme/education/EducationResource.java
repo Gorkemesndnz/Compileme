@@ -32,4 +32,8 @@ public class EducationResource {
 
     @Column(name = "order_index", nullable = false)
     private Integer orderIndex;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean completed = false;
 }

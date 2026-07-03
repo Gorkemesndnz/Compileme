@@ -81,6 +81,24 @@ public class EducationController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @PatchMapping("/resources/{resourceId}")
+    public ResponseEntity<EducationResourceResponse> updateResource(
+            @PathVariable Long resourceId,
+            @RequestBody EducationResourceUpdateRequest request
+    ) {
+        EducationResourceResponse response = educationService.updateResource(resourceId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/resources/reorder")
+    public ResponseEntity<Void> reorderResources(
+            @PathVariable Long id,
+            @Valid @RequestBody List<EducationResourceReorderItem> items
+    ) {
+        educationService.reorderResources(id, items);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/resources/{resourceId}")
     public ResponseEntity<Void> deleteResource(@PathVariable Long resourceId) {
         educationService.deleteResource(resourceId);

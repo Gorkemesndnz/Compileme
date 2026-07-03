@@ -47,6 +47,7 @@ export interface EducationResource {
   type: EducationResourceType
   urlOrPath: string
   orderIndex: number
+  completed: boolean
 }
 
 export interface EducationResourceRequest {
@@ -54,6 +55,20 @@ export interface EducationResourceRequest {
   type: EducationResourceType
   urlOrPath: string
   orderIndex?: number
+  completed?: boolean
+}
+
+export interface EducationResourceUpdateRequest {
+  name?: string
+  type?: EducationResourceType
+  urlOrPath?: string
+  orderIndex?: number
+  completed?: boolean
+}
+
+export interface EducationResourceReorderItem {
+  id: number
+  orderIndex: number
 }
 
 export interface EducationPractice {
@@ -141,6 +156,31 @@ export const useDeleteEducationResource = (educationId: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['educations', educationId, 'resources'] })
       queryClient.invalidateQueries({ queryKey: ['educations', educationId, 'practices'] })
+    }
+  })
+}
+
+export const useUpdateEducationResource = (educationId: number) => {
+  const queryClient = useQueryClient()
+  return useMutation<EducationResource, Error, { id: number; request: EducationResourceUpdateRequest }>({
+    mutationFn: async ({ id, request }) => {
+      const response = await apiClient.patch<EducationResource>(`/educations/resources/${id}`, request)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['educations', educationId, 'resources'] })
+    }
+  })
+}
+
+export const useReorderEducationResources = (educationId: number) => {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, EducationResourceReorderItem[]>({
+    mutationFn: async (items) => {
+      await apiClient.patch(`/educations/${educationId}/resources/reorder`, items)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['educations', educationId, 'resources'] })
     }
   })
 }

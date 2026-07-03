@@ -87,7 +87,7 @@ public class EducationService {
     // =========================================================================
 
     public List<EducationResourceResponse> listResources(Long eduId) {
-        getEducationForCurrentUser(eduId); // Sahiplik kontrolü
+        getEducationForCurrentUser(eduId);
         return educationResourceRepository.findAllByEducationIdOrderByOrderIndexAsc(eduId)
                 .stream()
                 .map(EducationMapper::toResponse)
@@ -97,20 +97,7 @@ public class EducationService {
     @Transactional
     public EducationResourceResponse addResource(Long eduId, EducationResourceRequest request) {
         Education education = getEducationForCurrentUser(eduId);
-
-        // Faz 6 Entegrasyonu: Kaynak dosya tipindeyse dosya varlığı ve sahipliği kontrol edilir
-        if (request.type() != ResourceType.LINK) {
-            String urlOrPath = request.urlOrPath();
-            if (urlOrPath.startsWith("/api/files/")) {
-                try {
-                    Long fileId = Long.parseLong(urlOrPath.substring("/api/files/".length()));
-                    // FileService dosya bulunamazsa veya kullanıcıya ait değilse NotFoundException fırlatır
-                    fileService.getMetadata(fileId);
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Geçersiz dosya URL biçimi: " + urlOrPath);
-                }
-            }
-        }
+        validateResourceFileReference(request.type(), request.urlOrPath());
 
         int orderIndex;
         if (request.orderIndex() == null) {
@@ -130,11 +117,52 @@ public class EducationService {
     }
 
     @Transactional
+    public EducationResourceResponse updateResource(Long resourceId, EducationResourceUpdateRequest request) {
+        EducationResource resource = educationResourceRepository.findById(resourceId)
+                .orElseThrow(() -> new NotFoundException("Kaynak bulunamadi: " + resourceId));
+        checkEducationOwnership(resource.getEducation());
+
+        ResourceType nextType = request.type() != null ? request.type() : resource.getType();
+        String nextUrlOrPath = request.urlOrPath() != null ? request.urlOrPath() : resource.getUrlOrPath();
+        validateResourceFileReference(nextType, nextUrlOrPath);
+
+        EducationMapper.apply(resource, request);
+        return EducationMapper.toResponse(resource);
+    }
+
+    @Transactional
+    public void reorderResources(Long eduId, List<EducationResourceReorderItem> items) {
+        Education education = getEducationForCurrentUser(eduId);
+
+        for (EducationResourceReorderItem item : items) {
+            EducationResource resource = educationResourceRepository.findById(item.id())
+                    .orElseThrow(() -> new NotFoundException("Kaynak bulunamadi: " + item.id()));
+            if (!resource.getEducation().getId().equals(education.getId())) {
+                throw new NotFoundException("Kaynak bu egitime ait degil: " + item.id());
+            }
+            resource.setOrderIndex(item.orderIndex());
+        }
+    }
+
+    @Transactional
     public void deleteResource(Long resourceId) {
         EducationResource resource = educationResourceRepository.findById(resourceId)
-                .orElseThrow(() -> new NotFoundException("Kaynak bulunamadı: " + resourceId));
+                .orElseThrow(() -> new NotFoundException("Kaynak bulunamadi: " + resourceId));
         checkEducationOwnership(resource.getEducation());
         educationResourceRepository.delete(resource);
+    }
+
+    private void validateResourceFileReference(ResourceType type, String urlOrPath) {
+        if (type == ResourceType.LINK || urlOrPath == null || !urlOrPath.startsWith("/api/files/")) {
+            return;
+        }
+
+        try {
+            Long fileId = Long.parseLong(urlOrPath.substring("/api/files/".length()));
+            fileService.getMetadata(fileId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Gecersiz dosya URL bicimi: " + urlOrPath);
+        }
     }
 
     // =========================================================================
@@ -142,7 +170,7 @@ public class EducationService {
     // =========================================================================
 
     public List<EducationPracticeResponse> listPractices(Long eduId) {
-        getEducationForCurrentUser(eduId); // Sahiplik kontrolü
+        getEducationForCurrentUser(eduId);
         return educationPracticeRepository.findAllByEducationIdOrderByOrderIndexAsc(eduId)
                 .stream()
                 .map(EducationMapper::toResponse)
@@ -174,7 +202,7 @@ public class EducationService {
     @Transactional
     public EducationPracticeResponse updatePractice(Long practiceId, EducationPracticeRequest request) {
         EducationPractice practice = educationPracticeRepository.findById(practiceId)
-                .orElseThrow(() -> new NotFoundException("Pratik bulunamadı: " + practiceId));
+                .orElseThrow(() -> new NotFoundException("Pratik bulunamadi: " + practiceId));
         checkEducationOwnership(practice.getEducation());
         EducationResource resource = resolvePracticeResource(practice.getEducation(), request.resourceId());
 
@@ -186,7 +214,7 @@ public class EducationService {
     @Transactional
     public void deletePractice(Long practiceId) {
         EducationPractice practice = educationPracticeRepository.findById(practiceId)
-                .orElseThrow(() -> new NotFoundException("Pratik bulunamadı: " + practiceId));
+                .orElseThrow(() -> new NotFoundException("Pratik bulunamadi: " + practiceId));
         checkEducationOwnership(practice.getEducation());
         educationPracticeRepository.delete(practice);
     }
@@ -197,7 +225,7 @@ public class EducationService {
 
     private Education getEducationForCurrentUser(Long id) {
         Education education = educationRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Eğitim bulunamadı: " + id));
+                .orElseThrow(() -> new NotFoundException("Egitim bulunamadi: " + id));
         checkEducationOwnership(education);
         return education;
     }
@@ -205,7 +233,7 @@ public class EducationService {
     private void checkEducationOwnership(Education education) {
         Long currentUserId = currentUserProvider.getCurrentUserId();
         if (!education.getUserId().equals(currentUserId)) {
-            throw new NotFoundException("Eğitim bulunamadı: " + education.getId());
+            throw new NotFoundException("Egitim bulunamadi: " + education.getId());
         }
     }
 

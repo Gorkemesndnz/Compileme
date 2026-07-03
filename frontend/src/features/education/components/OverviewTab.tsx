@@ -1,5 +1,5 @@
 import React from 'react'
-import { Sparkles, Clock, Plus, Pencil, Trash2, Calendar, FileText } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Circle, Clock, FileText, Folder, Link as LinkIcon, Pencil, Plus, Sparkles, Trash2, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -23,6 +23,9 @@ interface OverviewTabProps {
   setTaskFolderId: (val: string) => void
   taskResourceId: number | undefined
   setTaskResourceId: (val: number | undefined) => void
+  completedResources: Record<number, boolean>
+  toggleResourceCompleted: (resourceId: number) => void
+  moveResourceWithinFolder: (folderId: string, resourceId: number, direction: 'up' | 'down') => void
   taskContexts: Record<string, EducationTaskContext>
   getTaskContextLabel: (context?: EducationTaskContext) => string
   taskDate: string
@@ -52,6 +55,9 @@ const OverviewTabComponent: React.FC<OverviewTabProps> = ({
   setTaskFolderId,
   taskResourceId,
   setTaskResourceId,
+  completedResources,
+  toggleResourceCompleted,
+  moveResourceWithinFolder,
   taskContexts,
   getTaskContextLabel,
   taskDate,

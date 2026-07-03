@@ -53,7 +53,9 @@ import {
   useEducation,
   useEducationPractices,
   useEducationResources,
+  useReorderEducationResources,
   useUpdateEducation,
+  useUpdateEducationResource,
   type Education as ApiEducation,
   type EducationPractice as ApiEducationPractice,
   type EducationResource as ApiEducationResource,
@@ -63,7 +65,7 @@ import {
 import { useUploadFile } from '@/api/files'
 import { useCreateTask, useTasks, useToggleTaskComplete, useDeleteTask } from '@/api/tasks'
 import { cn } from '@/lib/utils'
-import { mockEducationPractices, mockEducationResources, mockEducations } from './mockEducationData'
+
 import { StudioModePanel } from './studio/modes'
 import { useEducationPersistenceGuard } from './studio/useEducationPersistenceGuard'
 import {
@@ -117,6 +119,8 @@ import {
   getTargetLabel,
 } from './components/studioHelpers'
 
+type EducationStudioTab = 'overview' | 'files' | 'links' | 'reinforce' | 'primary' | 'notes'
+
 const toLocalEducation = (education: ApiEducation): Education => ({
   id: education.id,
   title: education.title,
@@ -137,6 +141,8 @@ const toLocalResource = (resource: ApiEducationResource): EducationResource => (
   name: resource.name,
   type: resource.type,
   url_or_path: resource.urlOrPath,
+  order_index: resource.orderIndex,
+  completed: resource.completed,
 })
 
 const toLocalPractice = (practice: ApiEducationPractice): EducationPractice => ({
@@ -220,16 +226,14 @@ export const EducationStudio: React.FC = () => {
   const uploadFileMutation = useUploadFile()
   const createResourceMutation = useCreateEducationResource(educationId)
   const deleteResourceMutation = useDeleteEducationResource(educationId)
+  const updateResourceMutation = useUpdateEducationResource(educationId)
+  const reorderResourcesMutation = useReorderEducationResources(educationId)
   const createPracticeMutation = useCreateEducationPractice(educationId)
 
   // Eğitimi bul
-  const fallbackEducation = React.useMemo(
-    () => mockEducations.find((item) => item.id === educationId),
-    [educationId]
-  )
   const education = React.useMemo(
-    () => persistedEducation ? toLocalEducation(persistedEducation) : fallbackEducation,
-    [fallbackEducation, persistedEducation]
+    () => persistedEducation ? toLocalEducation(persistedEducation) : undefined,
+    [persistedEducation]
   )
 const { data: dbTasks = [] } = useTasks({ educationId })
   const { isPersistedEducation, persistedTaskIds } = useEducationPersistenceGuard(educationId, dbTasks)
@@ -237,12 +241,12 @@ const { data: dbTasks = [] } = useTasks({ educationId })
   // Shared source-of-truth states
   const [resources, setResources] = React.useState<EducationResource[]>([])
   const [selectedResourceId, setSelectedResourceId] = React.useState<number | null | undefined>(null)
-  const [activeTab, setActiveTab] = React.useState<'overview' | 'files' | 'links' | 'reinforce' | 'primary' | 'notes'>('overview')
+  const [activeTab, setActiveTab] = React.useState<EducationStudioTab>('overview')
 
   // UI state
   const [isImporterOpen, setIsImporterOpen] = React.useState(false)
   const [importText, setImportText] = React.useState('')
-  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false)
+
 
   // ── Inline Edit State (title, description, source) ──
   const updateEducationMutation = useUpdateEducation()
@@ -386,6 +390,8 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     setResourceNoteItems: notesState.setResourceNoteItems,
     createResourceMutation,
     deleteResourceMutation,
+    updateResourceMutation,
+    reorderResourcesMutation,
     uploadFileMutation,
     activeResourceNoteId: notesState.activeResourceNoteId,
     setActiveResourceNoteId: notesState.setActiveResourceNoteId,
@@ -473,23 +479,23 @@ const { data: dbTasks = [] } = useTasks({ educationId })
   }, [notesState.practices])
 
   const tabOptions = React.useMemo(() => {
-    const base = [
-      { id: 'overview', label: 'Plan & Müfredat' },
-      { id: 'files', label: 'Dosyalar' },
-      { id: 'links', label: 'Bağlantılar' },
-      { id: 'reinforce', label: 'Pekiştirme' },
+    const base: Array<{ id: EducationStudioTab; label: string; icon: React.ElementType }> = [
+      { id: 'overview', label: 'Plan & Müfredat', icon: FolderOpen },
+      { id: 'files', label: 'Dosyalar', icon: FileText },
+      { id: 'links', label: 'Bağlantılar', icon: LinkIcon },
+      { id: 'reinforce', label: 'Pekiştirme', icon: CheckSquare },
     ]
     if (education?.type === 'PROGRAMMING') {
-      base.push({ id: 'primary', label: 'Kod Yaz' })
+      base.push({ id: 'primary', label: 'Kod Yaz', icon: Code2 })
     } else if (education?.type === 'LANGUAGE') {
-      base.push({ id: 'primary', label: 'Kelime Pratiği' })
+      base.push({ id: 'primary', label: 'Kelime Pratiği', icon: BookOpen })
     } else {
-      base.push({ id: 'primary', label: 'Hap Bilgiler' })
+      base.push({ id: 'primary', label: 'Hap Bilgiler', icon: Lightbulb })
     }
     return base
   }, [education?.type])
 
-  const handleTabChange = React.useCallback((tabId: any) => {
+  const handleTabChange = React.useCallback((tabId: EducationStudioTab) => {
     if (!confirmNavigation()) return
     setActiveTab(tabId)
   }, [confirmNavigation])
@@ -523,8 +529,7 @@ const { data: dbTasks = [] } = useTasks({ educationId })
 
       const completedMap: Record<number, boolean> = {}
       initialResources.forEach(res => {
-        const resPractices = initialPractices.filter(p => p.resource_id === res.id)
-        completedMap[res.id] = resPractices.length > 0 && resPractices.every(p => p.completed)
+        completedMap[res.id] = !!res.completed
       })
       foldersState.setCompletedResources(completedMap)
 
@@ -552,7 +557,7 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     if (savedResources) {
       initialResources = JSON.parse(savedResources)
     } else {
-      initialResources = mockEducationResources.filter((r) => r.education_id === educationId)
+      initialResources = []
       localStorage.setItem(`resources-${educationId}`, JSON.stringify(initialResources))
     }
     setResources(initialResources)
@@ -562,7 +567,7 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     if (savedPractices) {
       initialPractices = JSON.parse(savedPractices)
     } else {
-      initialPractices = mockEducationPractices.filter((p) => p.education_id === educationId)
+      initialPractices = []
       localStorage.setItem(`practices-${educationId}`, JSON.stringify(initialPractices))
     }
     notesState.setPractices(initialPractices)
@@ -723,10 +728,11 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     foldersState.setIsLinkAdderOpen(true)
   }, [foldersState])
 
-  const handleImportCurriculumRequest = React.useCallback(() => {
+  const handleImportCurriculumRequest = React.useCallback((folderId?: string) => {
+    foldersState.setSelectedFolderId(folderId || 'uncategorized')
     setImportText('')
     setIsImporterOpen(true)
-  }, [])
+  }, [foldersState])
 
   const handleImportCurriculumSubmit = React.useCallback(() => {
     void foldersState.handleImportCurriculum(importText)
@@ -788,25 +794,7 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     toast.success('Dosya klasöre taşındı.')
   }, [foldersState])
 
-  const cycleStatus = React.useCallback(() => {
-    if (!education) return
-    const statusCycle: Record<string, 'ACTIVE' | 'PAUSED' | 'DONE'> = {
-      PAUSED: 'ACTIVE',
-      ACTIVE: 'DONE',
-      DONE: 'PAUSED',
-    }
-    const next = statusCycle[education.status] || 'ACTIVE'
-    education.status = next
-    toast.success(`Eğitim durumu "${next === 'PAUSED' ? 'Duraklatıldı' : next === 'ACTIVE' ? 'Çalışılıyor' : 'Tamamlandı'}" olarak güncellendi!`)
-    setResources([...resources])
-  }, [education, resources])
 
-  const getStatusLabel = React.useCallback((status: string) => {
-    if (status === 'PAUSED') return 'Duraklatildi'
-    if (status === 'ACTIVE') return 'Çalışılıyor'
-    if (status === 'DONE') return 'Tamamlandı'
-    return 'Çalışılıyor'
-  }, [])
 
   const handleDeleteEducation = React.useCallback(() => {
     if (!education) return
@@ -897,6 +885,9 @@ const { data: dbTasks = [] } = useTasks({ educationId })
             setTaskFolderId={tasksState.setTaskFolderId}
             taskResourceId={tasksState.taskResourceId}
             setTaskResourceId={tasksState.setTaskResourceId}
+            completedResources={foldersState.completedResources}
+            toggleResourceCompleted={foldersState.toggleResourceCompleted}
+            moveResourceWithinFolder={foldersState.moveResourceWithinFolder}
             taskContexts={tasksState.taskContexts}
             getTaskContextLabel={tasksState.getTaskContextLabel}
             taskDate={tasksState.taskDate}
@@ -1037,15 +1028,6 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     }
   }
 
-  const getMovieButtonClass = (isActive: boolean) => {
-    return cn(
-      "relative px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 backdrop-blur-xl border select-none cursor-pointer outline-none",
-      isActive
-        ? "bg-cyan-500/20 border-cyan-500 text-slate-950 dark:text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] ring-1 ring-cyan-500/30"
-        : "bg-white/40 border-slate-200/60 text-slate-800 dark:bg-zinc-950/20 dark:border-zinc-800/40 dark:text-zinc-400 hover:bg-white/60 dark:hover:bg-zinc-900/35 hover:text-slate-950 dark:hover:text-white"
-    )
-  }
-
   if (!education) {
     return (
       <div className="flex items-center justify-center h-screen text-slate-500">
@@ -1062,6 +1044,7 @@ const { data: dbTasks = [] } = useTasks({ educationId })
         onChange={foldersState.handleFileUpload}
         className="hidden"
         accept=".pdf,.ppt,.pptx,.png,.jpg,.jpeg,.gif"
+        multiple
       />
       <input
         type="file"
@@ -1339,22 +1322,44 @@ const { data: dbTasks = [] } = useTasks({ educationId })
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────
-          ALT GRUP (SUB-NAV & BODY PANEL)
+          PROJECT-STYLE SUB NAVIGATION
+          ────────────────────────────────────────────────────────────────── */}
+      <section className="glass-panel rounded-2xl p-2 border border-zinc-200/60 dark:border-zinc-800/40 backdrop-blur-xl">
+        <div className="flex gap-2 overflow-x-auto p-1 scrollbar-hide">
+          {tabOptions.map((option) => {
+            const Icon = option.icon
+            const isActive = activeTab === option.id
+
+            return isActive ? (
+              <MovingBorderButton
+                key={option.id}
+                onClick={() => handleTabChange(option.id)}
+                borderRadius="0.75rem"
+                containerClassName="h-9 shrink-0"
+                className="px-3.5 font-bold text-xs flex items-center gap-2 !border-zinc-200/80 !bg-white text-neutral-900 dark:!border-zinc-800 dark:!bg-[#141414] dark:text-neutral-100"
+              >
+                <Icon className="h-4 w-4 text-neutral-700 dark:text-neutral-300" />
+                {option.label}
+              </MovingBorderButton>
+            ) : (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => handleTabChange(option.id)}
+                className="h-9 inline-flex shrink-0 items-center gap-2 rounded-xl border border-zinc-200/40 bg-zinc-100/50 px-3.5 text-xs font-bold text-zinc-500 transition-all hover:bg-zinc-200/70 hover:text-zinc-900 dark:border-zinc-800/40 dark:bg-zinc-900/30 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-100"
+              >
+                <Icon className="h-4 w-4 text-zinc-400 dark:text-zinc-500" />
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────────────
+          BODY PANEL
           ────────────────────────────────────────────────────────────────── */}
       <div className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/20 backdrop-blur-xl shadow-2xl flex flex-col gap-6 flex-grow overflow-hidden">
-        {/* Sub-Navigation Pills (MovieButton stili) */}
-        <div className="flex border-b border-slate-200 dark:border-zinc-800 pb-3 gap-2 shrink-0 overflow-x-auto">
-          {tabOptions.map((option) => (
-            <button
-              key={option.id}
-              onClick={() => handleTabChange(option.id)}
-              className={getMovieButtonClass(activeTab === option.id)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
         {/* Ana Gövde (Body) */}
         <div className="flex-grow overflow-hidden relative flex gap-6">
           {/* Sol Panel: File Tree */}

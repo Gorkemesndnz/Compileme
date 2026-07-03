@@ -16,5 +16,7 @@ public record EducationResourceRequest(
         @NotBlank(message = "URL veya dosya yolu boş olamaz")
         String urlOrPath,
 
-        Integer orderIndex
+        Integer orderIndex,
+
+        Boolean completed
 ) {}

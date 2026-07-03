@@ -72,7 +72,8 @@ public class EducationMapper {
                 entity.getName(),
                 entity.getType(),
                 entity.getUrlOrPath(),
-                entity.getOrderIndex()
+                entity.getOrderIndex(),
+                entity.getCompleted()
         );
     }
 
@@ -85,7 +86,26 @@ public class EducationMapper {
                 .type(request.type())
                 .urlOrPath(request.urlOrPath())
                 .orderIndex(orderIndex)
+                .completed(request.completed() != null ? request.completed() : false)
                 .build();
+    }
+
+    public static void apply(EducationResource entity, EducationResourceRequest request) {
+        if (request == null) return;
+        if (request.name() != null) entity.setName(request.name());
+        if (request.type() != null) entity.setType(request.type());
+        if (request.urlOrPath() != null) entity.setUrlOrPath(request.urlOrPath());
+        if (request.orderIndex() != null) entity.setOrderIndex(request.orderIndex());
+        if (request.completed() != null) entity.setCompleted(request.completed());
+    }
+
+    public static void apply(EducationResource entity, EducationResourceUpdateRequest request) {
+        if (request == null) return;
+        if (request.name() != null) entity.setName(request.name());
+        if (request.type() != null) entity.setType(request.type());
+        if (request.urlOrPath() != null) entity.setUrlOrPath(request.urlOrPath());
+        if (request.orderIndex() != null) entity.setOrderIndex(request.orderIndex());
+        if (request.completed() != null) entity.setCompleted(request.completed());
     }
 
     // EducationPractice

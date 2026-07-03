@@ -1,0 +1,2 @@
+ALTER TABLE education_resource
+    ADD COLUMN completed BOOLEAN NOT NULL DEFAULT FALSE;
