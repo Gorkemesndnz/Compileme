@@ -134,6 +134,50 @@ export const useEducationPractices = (educationId?: number) => {
   })
 }
 
+export interface EducationResourceTreeDto {
+  id: number
+  name: string
+  type: EducationResourceType
+  urlOrPath: string
+  completed: boolean
+  orderIndex: number
+}
+
+export interface EducationPracticeTreeDto {
+  id: number
+  resourceId: number | null
+  title: string
+  completed: boolean
+  orderIndex: number
+}
+
+export interface EducationTreeResponse {
+  resources: EducationResourceTreeDto[]
+  practices: EducationPracticeTreeDto[]
+}
+
+export const useEducationTree = (educationId?: number) => {
+  return useQuery<EducationTreeResponse>({
+    queryKey: ['educations', educationId, 'tree'],
+    enabled: Number.isFinite(educationId),
+    queryFn: async () => {
+      const response = await apiClient.get<EducationTreeResponse>(`/educations/${educationId}/tree`)
+      return response.data
+    }
+  })
+}
+
+export const useLazyPractice = (practiceId?: number) => {
+  return useQuery<EducationPractice>({
+    queryKey: ['educations', 'practices', practiceId],
+    enabled: Number.isFinite(practiceId),
+    queryFn: async () => {
+      const response = await apiClient.get<EducationPractice>(`/educations/practices/${practiceId}`)
+      return response.data
+    }
+  })
+}
+
 export const useCreateEducationResource = (educationId: number) => {
   const queryClient = useQueryClient()
   return useMutation<EducationResource, Error, EducationResourceRequest>({

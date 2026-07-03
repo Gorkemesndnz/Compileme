@@ -133,6 +133,18 @@ public class EducationController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{id}/tree")
+    public ResponseEntity<EducationTreeResponse> getEducationTree(@PathVariable Long id) {
+        EducationTreeResponse response = educationService.getEducationTree(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/practices/{practiceId}")
+    public ResponseEntity<EducationPracticeResponse> getPracticeById(@PathVariable Long practiceId) {
+        EducationPracticeResponse response = educationService.getPracticeById(practiceId);
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/practices/{practiceId}")
     public ResponseEntity<Void> deletePractice(@PathVariable Long practiceId) {
         educationService.deletePractice(practiceId);

@@ -53,6 +53,8 @@ import {
   useEducation,
   useEducationPractices,
   useEducationResources,
+  useEducationTree,
+  useLazyPractice,
   useReorderEducationResources,
   useUpdateEducation,
   useUpdateEducationResource,
@@ -97,7 +99,7 @@ import {
 import { LeftFileTree } from './components/LeftFileTree'
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal'
 import { OverviewTab } from './components/OverviewTab'
-import { DosyalarTab } from './components/DosyalarTab'
+
 import { LinklerTab } from './components/LinklerTab'
 import { ReinforcementsTab } from './components/ReinforcementsTab'
 import { CodeTab } from './components/CodeTab'
@@ -221,8 +223,11 @@ export const EducationStudio: React.FC = () => {
   const deleteTaskMutation = useDeleteTask()
   const deleteEducationMutation = useDeleteEducation()
   const { data: persistedEducation } = useEducation(Number.isFinite(educationId) ? educationId : undefined)
-  const { data: persistedResources = [], isSuccess: resourcesLoaded } = useEducationResources(educationId)
-  const { data: persistedPractices = [], isSuccess: practicesLoaded } = useEducationPractices(educationId)
+  const { data: treeData, isSuccess: treeLoaded } = useEducationTree(educationId)
+  const persistedResources = React.useMemo(() => treeData?.resources || [], [treeData])
+  const persistedPractices = React.useMemo(() => treeData?.practices || [], [treeData])
+  const resourcesLoaded = treeLoaded
+  const practicesLoaded = treeLoaded
   const uploadFileMutation = useUploadFile()
   const createResourceMutation = useCreateEducationResource(educationId)
   const deleteResourceMutation = useDeleteEducationResource(educationId)
@@ -481,7 +486,6 @@ const { data: dbTasks = [] } = useTasks({ educationId })
   const tabOptions = React.useMemo(() => {
     const base: Array<{ id: EducationStudioTab; label: string; icon: React.ElementType }> = [
       { id: 'overview', label: 'Plan & Müfredat', icon: FolderOpen },
-      { id: 'files', label: 'Dosyalar', icon: FileText },
       { id: 'links', label: 'Bağlantılar', icon: LinkIcon },
       { id: 'reinforce', label: 'Pekiştirme', icon: CheckSquare },
     ]
@@ -492,6 +496,7 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     } else {
       base.push({ id: 'primary', label: 'Hap Bilgiler', icon: Lightbulb })
     }
+    base.push({ id: 'notes', label: 'Notlar', icon: FileText })
     return base
   }, [education?.type])
 
@@ -510,8 +515,25 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     if (!education) return
 
     if (isPersistedEducation && resourcesLoaded && practicesLoaded) {
-      const initialResources = persistedResources.map(toLocalResource)
-      const initialPractices = persistedPractices.map(toLocalPractice)
+      const initialResources = persistedResources.map(r => ({
+        id: r.id,
+        education_id: educationId,
+        name: r.name,
+        type: r.type,
+        url_or_path: r.urlOrPath,
+        order_index: r.orderIndex,
+        completed: r.completed,
+      }))
+      const initialPractices = persistedPractices.map(p => ({
+        id: p.id,
+        education_id: educationId,
+        resource_id: p.resourceId,
+        title: p.title,
+        completed: p.completed,
+        code: '',
+        notes: '',
+        order_index: p.orderIndex,
+      }))
       setResources(initialResources)
       notesState.setPractices(initialPractices)
 
@@ -677,35 +699,53 @@ const { data: dbTasks = [] } = useTasks({ educationId })
     }
   }, [dbTasks, educationId, education?.title])
 
-  const handleTreeNodeClick = React.useCallback((nodeId: string) => {
+  const handleTreeNodeClick = React.useCallback((
+    type: 'file' | 'task' | 'note',
+    targetId: string,
+    itemId?: string | number
+  ) => {
     if (!confirmNavigation()) return
 
-    if (nodeId === 'study-plan' || nodeId === 'study-cheatsheet') {
-      setSelectedResourceId(null)
-      notesState.setSelectedPracticeId(null)
-      setActiveTab(nodeId === 'study-plan' ? 'overview' : 'primary')
+    if (type === 'file') {
+      const resourceId = Number(targetId)
+      const res = resources.find(r => r.id === resourceId)
+      if (res) {
+        window.open(res.url_or_path, '_blank')
+      }
       return
     }
 
-    if (nodeId.startsWith('folder-')) {
+    if (type === 'task') {
+      const resId = Number(targetId.replace('resource:', ''))
+      const res = resources.find(r => r.id === resId)
+      if (!res) return
+
+      const taskList = notesState.reinforcements[targetId] || notesState.reinforcements[String(resId)] || []
+      const task = taskList.find(t => t.id === itemId)
+      if (!task) return
+
+      void notesState.handleWriteCodeForTarget(
+        { id: targetId, type: 'resource', label: res.name, resource: res },
+        task
+      )
       return
     }
 
-    const resourceId = Number(nodeId)
-    const resource = resources.find((r) => r.id === resourceId)
-    if (!resource) return
+    if (type === 'note') {
+      const resId = targetId.replace('resource:', '')
+      setSelectedResourceId(resId === 'general' ? null : Number(resId))
 
-    setSelectedResourceId(resourceId)
-
-    if (resource.type === 'LINK') {
-      setActiveTab('links')
+      const noteList = notesState.resourceNoteItems[targetId] || notesState.resourceNoteItems[resId] || []
+      const note = noteList.find(n => n.id === itemId)
+      if (note) {
+        notesState.setActiveResourceNoteId(note.id)
+        notesState.setNoteTitleDraft(note.title)
+        notesState.setNotesDraft(note.content)
+        setActiveTab('notes')
+      }
       return
     }
-
-    if (resource.type === 'PDF' || resource.type === 'SLIDE' || resource.type === 'FILE') {
-      setActiveTab('files')
-    }
-  }, [confirmNavigation, resources, notesState.setSelectedPracticeId])
+  }, [confirmNavigation, resources, notesState, setSelectedResourceId, setActiveTab])
 
   const handleCreateFolderRequest = React.useCallback(() => {
     foldersState.setIsFolderCreatorOpen(true)
@@ -905,21 +945,7 @@ const { data: dbTasks = [] } = useTasks({ educationId })
           />
         )
       case 'files':
-        return (
-          <DosyalarTab
-            {...commonProps}
-            folders={foldersState.folders}
-            selectedResourceId={selectedResourceId}
-            completedResources={foldersState.completedResources}
-            saveCompletedResources={foldersState.saveCompletedResources}
-            handleRenameResource={foldersState.handleRenameResource}
-            handleDeleteResource={foldersState.handleDeleteResource}
-            handleOpenNotesForResource={notesState.handleOpenNotesForResource}
-            handleOpenCodeForResource={notesState.handleOpenCodeForResource}
-            triggerReplaceFile={handleReplaceFileRequest}
-            setActiveReinforceResourceId={notesState.setActiveReinforceResourceId}
-          />
-        )
+        return null
       case 'links':
         return (
           <LinklerTab

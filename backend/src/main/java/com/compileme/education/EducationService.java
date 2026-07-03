@@ -219,6 +219,20 @@ public class EducationService {
         educationPracticeRepository.delete(practice);
     }
 
+    public EducationTreeResponse getEducationTree(Long id) {
+        getEducationForCurrentUser(id);
+        List<EducationResourceTreeDto> resources = educationResourceRepository.findTreeDtoByEducationId(id);
+        List<EducationPracticeTreeDto> practices = educationPracticeRepository.findTreeDtoByEducationId(id);
+        return new EducationTreeResponse(resources, practices);
+    }
+
+    public EducationPracticeResponse getPracticeById(Long practiceId) {
+        EducationPractice practice = educationPracticeRepository.findById(practiceId)
+                .orElseThrow(() -> new NotFoundException("Pratik bulunamadi: " + practiceId));
+        checkEducationOwnership(practice.getEducation());
+        return EducationMapper.toResponse(practice);
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================

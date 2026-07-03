@@ -42,6 +42,29 @@ export const useStudioNotes = ({
   const [practices, setPractices] = React.useState<EducationPractice[]>([])
   const [selectedPracticeId, setSelectedPracticeId] = React.useState<number | null>(null)
 
+  React.useEffect(() => {
+    if (!selectedPracticeId || !isPersistedEducation) return
+    
+    const existing = practices.find(p => p.id === selectedPracticeId)
+    if (existing && (existing.code !== undefined || existing.notes !== undefined)) {
+      return
+    }
+
+    setSaveState('saving')
+    apiClient.get<any>(`/educations/practices/${selectedPracticeId}`)
+      .then(res => {
+        setPractices(prev => prev.map(p => p.id === selectedPracticeId ? {
+          ...p,
+          code: res.data.code || '',
+          notes: res.data.notes || ''
+        } : p))
+        setSaveState('idle')
+      })
+      .catch(() => {
+        setSaveState('idle')
+      })
+  }, [selectedPracticeId, isPersistedEducation, practices])
+
   const [notesDraft, setNotesDraft] = React.useState('')
   const [noteTitleDraft, setNoteTitleDraft] = React.useState('')
   const [activeResourceNoteId, setActiveResourceNoteId] = React.useState<string | null>(null)

@@ -1,5 +1,6 @@
 import React from 'react'
 import { toast } from 'sonner'
+import { useEducationTreeStore } from '@/store/useEducationTreeStore'
 import {
   EducationResource,
   FolderData,
@@ -92,12 +93,9 @@ export const useStudioFolders = ({
     warningText: string
   } | null>(null)
 
-  const [treeExpandedNodes, setTreeExpandedNodes] = React.useState<Record<string, boolean>>({})
+  const treeExpandedNodes = useEducationTreeStore((state) => state.expandedNodes)
+  const handleToggleTreeNode = useEducationTreeStore((state) => state.toggleNode)
   const [treeLoadingNodes, setTreeLoadingNodes] = React.useState<Record<string, boolean>>({})
-
-  const handleToggleTreeNode = React.useCallback((nodeId: string) => {
-    setTreeExpandedNodes((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }))
-  }, [])
 
   const saveResources = React.useCallback((newResources: EducationResource[]) => {
     setResources(newResources)
@@ -657,7 +655,6 @@ export const useStudioFolders = ({
     deleteConfirmation,
     setDeleteConfirmation,
     treeExpandedNodes,
-    setTreeExpandedNodes,
     treeLoadingNodes,
     setTreeLoadingNodes,
     handleToggleTreeNode,
