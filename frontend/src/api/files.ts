@@ -11,15 +11,13 @@ export interface StoredFileResponse {
 }
 
 export const useUploadFile = () => {
-  return useMutation<StoredFileResponse, Error, File>({
+  return useMutation<StoredFileResponse, Error, File | FormData>({
     mutationFn: async (file) => {
-      const formData = new FormData()
-      formData.append('file', file)
-      const response = await apiClient.post<StoredFileResponse>('/files', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
+      const formData = file instanceof FormData ? file : new FormData()
+      if (!(file instanceof FormData)) {
+        formData.append('file', file)
+      }
+      const response = await apiClient.post<StoredFileResponse>('/files', formData)
       return response.data
     },
   })

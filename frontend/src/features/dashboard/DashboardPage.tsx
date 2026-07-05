@@ -265,7 +265,7 @@ export const DashboardPage: React.FC = () => {
 
     if (quickAddType === 'idea') {
       createIdeaMutation.mutate({
-        title: quickAddText,
+        content: quickAddText,
         status: 'RAW'
       }, {
         onSuccess: () => {

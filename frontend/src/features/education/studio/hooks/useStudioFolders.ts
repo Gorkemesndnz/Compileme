@@ -404,9 +404,7 @@ export const useStudioFolders = ({
     try {
       let urlOrPath = ''
       if (isPersistedEducation) {
-        const formData = new FormData()
-        formData.append('file', file)
-        const response = await uploadFileMutation.mutateAsync(formData)
+        const response = await uploadFileMutation.mutateAsync(file)
         urlOrPath = `/api/files/${response.id}`
       } else {
         urlOrPath = URL.createObjectURL(file)
@@ -480,9 +478,7 @@ export const useStudioFolders = ({
       for (const [index, file] of files.entries()) {
         let urlOrPath = ''
         if (isPersistedEducation) {
-          const formData = new FormData()
-          formData.append('file', file)
-          const response = await uploadFileMutation.mutateAsync(formData)
+          const response = await uploadFileMutation.mutateAsync(file)
           urlOrPath = `/api/files/${response.id}`
         } else {
           urlOrPath = URL.createObjectURL(file)

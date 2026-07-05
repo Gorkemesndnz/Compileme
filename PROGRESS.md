@@ -15,10 +15,10 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Faz FE-3 — Eğitimler (Frontend) tamamlandı
-- **Çalışıyor mu:** Evet (`tsc -p tsconfig.app.json --noEmit` ve `npm run build` 100% temiz ve başarılı)
-- **Sırada:** Bir sonraki modül / faz (Faz 8 - Takvim Backend veya FE-4 - Takvim Frontend)
-- **Son güncelleme:** 01.07.2026
+- **Aktif faz:** Fikir Havuzu tam model + frontend studio stabilize edildi
+- **Çalışıyor mu:** Evet; backend container yeni image ile recreate edildi, Flyway V10 uygulandı, API smoke ve frontend build başarılı
+- **Sırada:** Takvim ve Odak tarafının frontend/entegrasyon tamamlama çalışmaları
+- **Son güncelleme:** 05.07.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
@@ -37,9 +37,56 @@
 | FE-0 | Temel & ortak UI altyapısı | ✅ Tamamlandı |
 | FE-1 | Anasayfa + Su takibi (Frontend) | ✅ Tamamlandı |
 | FE-2 | Projeler (Frontend) | ✅ Tamamlandı |
+| FE-Fikir | Fikir Havuzu tam model + studio | ✅ Tamamlandı |
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-07-05 - 400/405 ve Dosya Upload Stabilizasyonu
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - Eski çalışan backend container'ı yeni `compileme-backend:latest` image ile recreate edildi.
+  - Flyway logunda V10 migration'ın gerçek PostgreSQL veritabanına uygulandığı doğrulandı.
+  - Dosya upload hook'u `File | FormData` kabul edecek şekilde normalize edildi ve manuel multipart `Content-Type` header'ı kaldırıldı.
+  - Eğitim studio dosya yükleme akışındaki gereksiz `FormData` sarmalama kaldırıldı; proje vault akışı aynı hook üzerinden korunuyor.
+- Kararlar:
+  - `/api/files` için genel liste endpoint'i eklenmedi; dosyalar ilgili proje linkleri ve eğitim resource kayıtları üzerinden gösterilmeye devam ediyor.
+  - `docker-compose.yml` mevcut dirty haliyle korunmaya devam edildi.
+- Kabul kriteri:
+  - `docker compose up -d --force-recreate backend` başarılı.
+  - Backend logunda `Successfully applied 1 migration ... now at version v10` görüldü.
+  - `GET /api/health` 200 döndü.
+  - `GET /api/ideas/1` artık 405 dönmüyor; mevcut olmayan kayıt için 404 döndü.
+  - Başlıksız/content-only fikir oluşturma başarılı oldu; detay endpoint'i 200 döndü.
+  - Küçük dosya upload 201/metadata döndürdü ve `GET /api/files/{id}` 200 ile açıldı.
+  - Smoke test kayıtları API üzerinden silindi.
+  - `npm.cmd run build` başarılı; mevcut büyük chunk uyarısı devam ediyor.
+- Açık konular / sıradaki:
+  - Tarayıcıda manuel smoke: Dashboard hızlı fikir, `/ideas/:id`, Project Resource Vault ve Eğitim dosya yükleme akışları UI üzerinden kontrol edilmeli.
+
+### 2026-07-05 - Fikir Havuzu Tam Model ve Studio
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandı
+- Yapılanlar:
+  - `idea_entry`, `idea_research`, `idea_task_link` tabloları için Flyway V10 migration eklendi.
+  - Fikir backend'i otomatik başlık, ilk timeline girdisi, detay endpoint'i, entry/research CRUD, fikirden görev üretme ve tam hafızayla projeye dönüştürme akışlarıyla genişletildi.
+  - Domain event akışı korunarak fikir gelişim günlüğü ProjectDocument, araştırma linkleri ProjectLink olarak yeni projeye taşınır hale getirildi; `convertedProjectId` geri bağlantısı tamamlandı.
+  - `/ideas` hub ve `/ideas/:id` studio rotaları eklendi; fikir composer, kart, timeline, research, task ve convert panelleri modüler dosyalara ayrıldı.
+  - Sidebar Fikirler ağacı `+`, chevron, aktif fikir ve durum noktası davranışlarıyla Projeler/Eğitimler yapısına yaklaştırıldı.
+  - Dashboard hızlı fikir girişi artık backend'de ilk timeline girdisi oluşturacak şekilde `content` payload'u gönderiyor.
+- Kararlar:
+  - `TaskKind` enum'una `IDEA` eklenmedi; fikirden çıkan görevler merkezi task tablosunda `GENERAL`, kaynak izleme `idea_task_link` ile yapılıyor.
+  - `docker-compose.yml` mevcut dirty haliyle bırakıldı ve bu iş kapsamında dokunulmadı.
+- Kabul kriteri:
+  - `npm.cmd run build` başarılı; mevcut büyük chunk uyarısı devam ediyor.
+  - `git diff --check` whitespace hatası vermedi; sadece CRLF uyarıları var.
+  - Backend testleri çalıştırılamadı: yerel ortamda `mvn` ve Maven wrapper bulunmuyor.
+- Açık konular / sıradaki:
+  - Maven bulunan ortamda backend testleri çalıştırılmalı.
+  - Manual smoke: fikir ekleme, detay timeline, research, görev üretme, sidebar ağacı, projeye dönüşüm ve light/dark kontrolü.
 
 ### 2026-07-01 · Faz FE-3 — Eğitim Modülü Komple Refaktör & Temizlik (Aşama 6-7)
 - Ajan: Antigravity

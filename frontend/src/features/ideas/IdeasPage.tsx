@@ -1,25 +1,15 @@
 import React from 'react'
-import { PageHeader } from '../../components/PageHeader'
-import { Lightbulb } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import { IdeasHub } from './IdeasHub'
+import { IdeaStudio } from './IdeaStudio'
 
 export const IdeasPage: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="Fikir Havuzu" 
-        subtitle="Anlık fikirler ve projeye dönüştürme."
-      />
-      <div className="bg-card border border-border rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-4">
-        <div className="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center">
-          <Lightbulb className="h-6 w-6" />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-xl font-bold">Fikir Havuzu Boş</h2>
-          <p className="text-muted-foreground text-sm max-w-sm">
-            Faz 4 kapsamında fikir havuzu modülü aktif edildiğinde fikirlerinizi kaydedebileceksiniz.
-          </p>
-        </div>
-      </div>
-    </div>
-  )
+  const { id } = useParams<{ id?: string }>()
+  const ideaId = id ? Number(id) : undefined
+
+  if (ideaId && !Number.isNaN(ideaId)) {
+    return <IdeaStudio ideaId={ideaId} />
+  }
+
+  return <IdeasHub />
 }

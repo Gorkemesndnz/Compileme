@@ -43,6 +43,10 @@ public class TaskService {
                 .toList();
     }
 
+    public TaskResponse getById(Long id) {
+        return TaskMapper.toResponse(getTaskForCurrentUser(id));
+    }
+
     @Transactional
     public TaskResponse create(TaskRequest request) {
         Long userId = currentUserProvider.getCurrentUserId();

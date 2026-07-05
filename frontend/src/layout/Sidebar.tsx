@@ -27,6 +27,7 @@ import {
 import { useUiStore } from '@/store/useUiStore'
 import { useTranslation } from '@/store/translations'
 import { ProjectStatus, useProjects, useProjectPhases, useProjectDocuments, Project } from '@/api/projects'
+import { IdeaStatus, useIdeas } from '@/api/ideas'
 import { Avatar, AvatarFallback } from '@/components/ui/Avatar'
 import { useEducations } from '@/api/education'
 import { groupEducationsByType } from '@/features/education/educationHelpers'
@@ -44,6 +45,12 @@ const PROJECT_STATUS_DOT: Record<ProjectStatus, string> = {
   ACTIVE: 'bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,0.65)]',
   PAUSED: 'bg-neutral-400 shadow-[0_0_6px_rgba(163,163,163,0.45)]',
   DONE: 'bg-cyan-400 shadow-[0_0_7px_rgba(34,211,238,0.6)]',
+}
+
+const IDEA_STATUS_DOT: Record<IdeaStatus, string> = {
+  RAW: 'bg-amber-400 shadow-[0_0_7px_rgba(251,191,36,0.65)]',
+  DEVELOPING: 'bg-cyan-400 shadow-[0_0_7px_rgba(34,211,238,0.65)]',
+  CONVERTED: 'bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,0.65)]',
 }
 
 const sidebarVariants = {
@@ -335,6 +342,7 @@ export const Sidebar: React.FC = () => {
 
   const [isProjectListOpen, setIsProjectListOpen] = useState(false)
   const [isEducationTreeOpen, setIsEducationTreeOpen] = useState(false)
+  const [isIdeaListOpen, setIsIdeaListOpen] = useState(false)
   const [expandedEducationCategories, setExpandedEducationCategories] = useState<Record<EducationType, boolean>>({
     PROGRAMMING: true,
     LANGUAGE: false,
@@ -350,6 +358,7 @@ export const Sidebar: React.FC = () => {
   const searchParams = React.useMemo(() => new URLSearchParams(location.search), [location.search])
 
   const { data: projects = [] } = useProjects()
+  const { data: ideas = [] } = useIdeas()
   const { data: rawEducations = [] } = useEducations()
 
   const educations = React.useMemo(() => {
@@ -370,6 +379,10 @@ export const Sidebar: React.FC = () => {
     const match = pathname.match(/^\/education\/(\d+)/)
     return match ? Number(match[1]) : undefined
   }, [pathname])
+  const activeIdeaId = React.useMemo(() => {
+    const match = pathname.match(/^\/ideas\/(\d+)/)
+    return match ? Number(match[1]) : undefined
+  }, [pathname])
 
   React.useEffect(() => {
     if (!pathname.startsWith('/education')) {
@@ -382,6 +395,12 @@ export const Sidebar: React.FC = () => {
       setExpandedEducationCategories((prev) => ({ ...prev, [activeEducation.type]: true }))
     }
   }, [activeEducationId, pathname, educations])
+
+  React.useEffect(() => {
+    if (pathname.startsWith('/ideas') && ideas.length > 0) {
+      setIsIdeaListOpen(true)
+    }
+  }, [pathname, ideas.length])
 
   const openProject = (projectId: number) => {
     setActiveProjectId(projectId)
@@ -678,6 +697,90 @@ export const Sidebar: React.FC = () => {
                                             )}
                                           </AnimatePresence>
                                         </div>
+                                      )
+                                    })}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )
+                      }
+
+                      if (item.to === '/ideas') {
+                        return (
+                          <div key={item.to}>
+                            <div className="relative">
+                              <Link
+                                to={item.to}
+                                className={cn(
+                                  "flex h-9 w-full flex-row items-center rounded-md px-2 py-1.5 text-slate-700 transition-all duration-200 hover:bg-secondary/60 hover:text-slate-950 dark:text-muted-foreground dark:hover:bg-secondary/40 dark:hover:text-foreground",
+                                  isActive && "border-l-2 border-primary bg-primary/10 font-semibold text-primary shadow-[0_0_15px_rgba(0,255,255,0.05)]",
+                                )}
+                              >
+                                <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
+                                {!isCollapsed && (
+                                  <motion.span variants={variants} className="ml-3.5 truncate text-sm">
+                                    {item.label}
+                                  </motion.span>
+                                )}
+                              </Link>
+
+                              {!isCollapsed && (
+                                <motion.div variants={variants} className="absolute inset-y-0 right-1.5 my-auto flex h-7 items-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.preventDefault()
+                                      navigate('/ideas')
+                                    }}
+                                    aria-label="Yeni fikir ekle"
+                                    title="Yeni fikir"
+                                    className="flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-slate-500 transition-all hover:border-cyan-500/25 hover:bg-cyan-500/10 hover:text-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:text-neutral-400 dark:hover:text-cyan-300"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                  {ideas.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsIdeaListOpen((open) => !open)}
+                                      aria-label={isIdeaListOpen ? 'Fikir listesini kapat' : 'Fikir listesini ac'}
+                                      aria-expanded={isIdeaListOpen}
+                                      title={isIdeaListOpen ? 'Fikirleri gizle' : 'Fikirleri goster'}
+                                      className="flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-slate-500 transition-all hover:border-zinc-500/20 hover:bg-zinc-500/10 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:text-neutral-400 dark:hover:bg-zinc-800/50 dark:hover:text-white"
+                                    >
+                                      <ChevronDown className={cn('h-3.5 w-3.5 transition-transform duration-200', !isIdeaListOpen && '-rotate-90')} />
+                                    </button>
+                                  )}
+                                </motion.div>
+                              )}
+                            </div>
+
+                            <AnimatePresence initial={false}>
+                              {!isCollapsed && isIdeaListOpen && ideas.length > 0 && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="mt-2 overflow-hidden pl-4 font-mono text-xs md:text-sm"
+                                >
+                                  <div className="ml-2 flex flex-col gap-1 border-l border-slate-200 py-1 dark:border-slate-800">
+                                    {ideas.map((idea) => {
+                                      const isIdeaActive = activeIdeaId === idea.id
+                                      return (
+                                        <button
+                                          key={idea.id}
+                                          type="button"
+                                          onClick={() => navigate(`/ideas/${idea.id}`)}
+                                          className={cn(
+                                            'flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] text-slate-700 transition-all hover:bg-white/70 hover:text-slate-950 hover:shadow-sm dark:text-neutral-400 dark:hover:bg-white/[0.06] dark:hover:text-white',
+                                            isIdeaActive && 'bg-white/80 font-bold text-cyan-700 shadow-[0_0_18px_rgba(6,182,212,0.14)] backdrop-blur-xl dark:bg-white/[0.08] dark:text-cyan-200'
+                                          )}
+                                        >
+                                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', IDEA_STATUS_DOT[idea.status])} />
+                                          <span className="truncate">{idea.title}</span>
+                                        </button>
                                       )
                                     })}
                                   </div>

@@ -76,6 +76,7 @@ export const App: React.FC = () => {
             <Route path="/education" element={<EducationHub />} />
             <Route path="/education/:id" element={<EducationStudio />} />
             <Route path="/ideas" element={<IdeasPage />} />
+            <Route path="/ideas/:id" element={<IdeasPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/focus" element={<FocusPage />} />
           </Route>

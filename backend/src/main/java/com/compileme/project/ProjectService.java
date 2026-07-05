@@ -2,6 +2,8 @@ package com.compileme.project;
 
 import com.compileme.common.exception.NotFoundException;
 import com.compileme.common.security.CurrentUserProvider;
+import com.compileme.idea.event.IdeaEntrySnapshot;
+import com.compileme.idea.event.IdeaResearchSnapshot;
 import com.compileme.project.dto.*;
 import com.compileme.project.event.ProjectCreatedFromIdeaEvent;
 import com.compileme.project.mapper.ProjectMapper;
@@ -11,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -67,7 +72,14 @@ public class ProjectService {
     }
 
     @Transactional
-    public void createFromIdea(Long ideaId, Long userId, String title, String content) {
+    public void createFromIdea(
+            Long ideaId,
+            Long userId,
+            String title,
+            String content,
+            List<IdeaEntrySnapshot> entries,
+            List<IdeaResearchSnapshot> research
+    ) {
         Project project = Project.builder()
                 .userId(userId)
                 .name(title)
@@ -75,6 +87,31 @@ public class ProjectService {
                 .status(ProjectStatus.PLANNING)
                 .build();
         Project savedProject = projectRepository.save(project);
+
+        projectDocumentRepository.save(ProjectDocument.builder()
+                .project(savedProject)
+                .type(DocumentType.TECH_DOC)
+                .title("Fikir Hafizasi")
+                .content(buildIdeaMemoryMarkdown(title, content, entries, research))
+                .contentFormat(DocumentFormat.MARKDOWN)
+                .orderIndex(0)
+                .build());
+
+        int linkOrder = 0;
+        for (IdeaResearchSnapshot item : research.stream()
+                .filter(item -> item.url() != null && !item.url().isBlank())
+                .sorted(Comparator.comparing(IdeaResearchSnapshot::createdAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList()) {
+            projectLinkRepository.save(ProjectLink.builder()
+                    .project(savedProject)
+                    .title(truncate("Fikir: " + item.title(), 200))
+                    .url(item.url())
+                    .type(LinkType.REFERENCE)
+                    .category(LinkCategory.OTHER)
+                    .notes(item.notes())
+                    .orderIndex(linkOrder++)
+                    .build());
+        }
 
         // Fikir modülüne projenin oluşturulduğunu bildir
         eventPublisher.publishEvent(new ProjectCreatedFromIdeaEvent(ideaId, savedProject.getId()));
@@ -316,6 +353,70 @@ public class ProjectService {
                 .orElseThrow(() -> new NotFoundException("Doküman bulunamadı: " + docId));
         checkProjectOwnership(doc.getProject());
         return doc;
+    }
+
+    private String buildIdeaMemoryMarkdown(
+            String title,
+            String content,
+            List<IdeaEntrySnapshot> entries,
+            List<IdeaResearchSnapshot> research
+    ) {
+        StringBuilder markdown = new StringBuilder();
+        markdown.append("# ").append(title).append("\n\n");
+        if (content != null && !content.isBlank()) {
+            markdown.append("## Ilk Fikir\n\n").append(content.trim()).append("\n\n");
+        }
+
+        markdown.append("## Gelisim Gunlugu\n\n");
+        List<IdeaEntrySnapshot> orderedEntries = entries.stream()
+                .sorted(Comparator.comparing(IdeaEntrySnapshot::createdAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        if (orderedEntries.isEmpty()) {
+            markdown.append("_Gelisim girdisi yok._\n\n");
+        } else {
+            for (IdeaEntrySnapshot entry : orderedEntries) {
+                markdown.append("### ")
+                        .append(formatDate(entry.createdAt()))
+                        .append("\n\n")
+                        .append(entry.content())
+                        .append("\n\n");
+            }
+        }
+
+        markdown.append("## Arastirmalar\n\n");
+        List<IdeaResearchSnapshot> orderedResearch = research.stream()
+                .sorted(Comparator.comparing(IdeaResearchSnapshot::createdAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        if (orderedResearch.isEmpty()) {
+            markdown.append("_Arastirma kaydi yok._\n");
+        } else {
+            for (IdeaResearchSnapshot item : orderedResearch) {
+                markdown.append("- **").append(item.title()).append("**");
+                if (item.url() != null && !item.url().isBlank()) {
+                    markdown.append(" - ").append(item.url());
+                }
+                if (item.notes() != null && !item.notes().isBlank()) {
+                    markdown.append("\n  - ").append(item.notes().trim());
+                }
+                markdown.append("\n");
+            }
+        }
+
+        return markdown.toString();
+    }
+
+    private String formatDate(OffsetDateTime value) {
+        if (value == null) {
+            return "Tarih yok";
+        }
+        return value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength).trim();
     }
 
     private void checkProjectOwnership(Project project) {

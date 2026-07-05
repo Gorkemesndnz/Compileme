@@ -33,7 +33,7 @@ class IdeaControllerTest {
 
     @Test
     void getIdeas_ShouldReturnJsonArray() throws Exception {
-        IdeaResponse response = new IdeaResponse(1L, 1L, "Test Idea", "Content", IdeaStatus.RAW, "tags", null, OffsetDateTime.now(), OffsetDateTime.now());
+        IdeaResponse response = new IdeaResponse(1L, 1L, "Test Idea", "Content", IdeaStatus.RAW, "tags", null, 1, 0, 0, OffsetDateTime.now(), OffsetDateTime.now());
         when(ideaService.list()).thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/ideas"))
@@ -44,7 +44,7 @@ class IdeaControllerTest {
 
     @Test
     void createIdea_ShouldReturnCreatedStatus() throws Exception {
-        IdeaResponse response = new IdeaResponse(1L, 1L, "New Idea", "Content", IdeaStatus.RAW, "tags", null, OffsetDateTime.now(), OffsetDateTime.now());
+        IdeaResponse response = new IdeaResponse(1L, 1L, "New Idea", "Content", IdeaStatus.RAW, "tags", null, 1, 0, 0, OffsetDateTime.now(), OffsetDateTime.now());
         when(ideaService.create(any(IdeaRequest.class))).thenReturn(response);
 
         IdeaRequest request = new IdeaRequest("New Idea", "Content", IdeaStatus.RAW, "tags");

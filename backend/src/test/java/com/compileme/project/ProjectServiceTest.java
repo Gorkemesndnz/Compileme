@@ -85,9 +85,10 @@ class ProjectServiceTest {
     void createFromIdea_ShouldSaveProjectAndPublishEvent() {
         when(projectRepository.save(any(Project.class))).thenReturn(project);
 
-        projectService.createFromIdea(10L, userId, "Compileme", "Productivity tool");
+        projectService.createFromIdea(10L, userId, "Compileme", "Productivity tool", List.of(), List.of());
 
         verify(projectRepository, times(1)).save(any(Project.class));
+        verify(projectDocumentRepository, times(1)).save(any(ProjectDocument.class));
         verify(eventPublisher, times(1)).publishEvent(any(ProjectCreatedFromIdeaEvent.class));
     }
 
@@ -101,4 +102,3 @@ class ProjectServiceTest {
         verify(projectRepository, times(1)).delete(project);
     }
 }
-

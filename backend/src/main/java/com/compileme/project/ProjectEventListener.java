@@ -17,6 +17,13 @@ public class ProjectEventListener {
     public void handleIdeaConverted(IdeaConvertedEvent event) {
         log.info("ProjectEventListener: IdeaConvertedEvent received for Idea ID: {}, Title: '{}'",
                 event.ideaId(), event.title());
-        projectService.createFromIdea(event.ideaId(), event.userId(), event.title(), event.content());
+        projectService.createFromIdea(
+                event.ideaId(),
+                event.userId(),
+                event.title(),
+                event.content(),
+                event.entries(),
+                event.research()
+        );
     }
 }

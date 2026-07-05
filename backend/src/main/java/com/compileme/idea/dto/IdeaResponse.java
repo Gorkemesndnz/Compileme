@@ -12,6 +12,9 @@ public record IdeaResponse(
         IdeaStatus status,
         String tags,
         Long convertedProjectId,
+        long entryCount,
+        long researchCount,
+        long taskCount,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

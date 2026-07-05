@@ -26,10 +26,22 @@ class IdeaServiceTest {
     private IdeaRepository ideaRepository;
 
     @Mock
+    private IdeaEntryRepository ideaEntryRepository;
+
+    @Mock
+    private IdeaResearchRepository ideaResearchRepository;
+
+    @Mock
+    private IdeaTaskLinkRepository ideaTaskLinkRepository;
+
+    @Mock
     private CurrentUserProvider currentUserProvider;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private com.compileme.task.TaskService taskService;
 
     @InjectMocks
     private IdeaService ideaService;
@@ -79,6 +91,8 @@ class IdeaServiceTest {
         when(ideaRepository.findById(1L)).thenReturn(Optional.of(idea));
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
         when(ideaRepository.save(any(Idea.class))).thenReturn(idea);
+        when(ideaEntryRepository.findAllByIdeaIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());
+        when(ideaResearchRepository.findAllByIdeaIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());
 
         IdeaResponse response = ideaService.convert(1L);
 
