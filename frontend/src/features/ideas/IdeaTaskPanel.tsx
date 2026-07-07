@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react'
 import { CheckSquare, Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '../../components/ui/Button'
+import { Button as MovingBorderButton } from '../../components/ui/moving-border'
 import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
 import { Select } from '../../components/ui/Select'
 import { DateTimePicker } from '../dashboard/DateTimePicker'
 import { IdeaEntry, IdeaTaskLink, useCreateIdeaTask } from '../../api/ideas'
+import { IDEA_FIELD_CLASS, IDEA_TEXTAREA_CLASS } from './ideaStyles'
 
 export const IdeaTaskPanel: React.FC<{ ideaId: number; entries: IdeaEntry[]; tasks: IdeaTaskLink[] }> = ({ ideaId, entries, tasks }) => {
   const [title, setTitle] = useState('')
@@ -58,14 +59,21 @@ export const IdeaTaskPanel: React.FC<{ ideaId: number; entries: IdeaEntry[]; tas
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Gorev basligi" />
+        <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Gorev basligi" className={IDEA_FIELD_CLASS} />
         <Select value={entryId} onChange={setEntryId} options={entryOptions} />
         <DateTimePicker date={date} time={time} onDateChange={setDate} onTimeChange={setTime} />
-        <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Gorev notu opsiyonel" />
-        <Button type="submit" disabled={createTask.isPending || !title.trim()} className="w-full gap-2">
+        <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Gorev notu" className={IDEA_TEXTAREA_CLASS} />
+        <MovingBorderButton
+          type="submit"
+          disabled={createTask.isPending || !title.trim()}
+          borderRadius="0.875rem"
+          duration={2600}
+          containerClassName="h-10 w-full disabled:cursor-not-allowed disabled:opacity-50"
+          className="gap-2 px-4 font-bold text-slate-950 dark:text-white"
+        >
           {createTask.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Gorev olustur
-        </Button>
+        </MovingBorderButton>
       </form>
 
       <div className="mt-5 space-y-2">

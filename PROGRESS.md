@@ -15,10 +15,10 @@
 ---
 
 ## Şu Anki Durum
-- **Aktif faz:** Fikir Havuzu tam model + frontend studio stabilize edildi
-- **Çalışıyor mu:** Evet; backend container yeni image ile recreate edildi, Flyway V10 uygulandı, API smoke ve frontend build başarılı
+- **Aktif faz:** Fikir Havuzu UI buton/input ve CRUD cilasi tamamlandi
+- **Çalışıyor mu:** Evet; frontend build, /ideas UI smoke ve basliksiz fikir create/delete smoke basarili
 - **Sırada:** Takvim ve Odak tarafının frontend/entegrasyon tamamlama çalışmaları
-- **Son güncelleme:** 05.07.2026
+- **Son güncelleme:** 07.07.2026
 
 ## Faz Durumu
 | Faz | Konu | Durum |
@@ -41,6 +41,26 @@
 
 ## Günlük
 > En yeni giriş en üstte. Yeni girişi buraya, bu satırın hemen altına ekle.
+
+### 2026-07-07 - Fikir Havuzu Buton, Input ve CRUD Cilasi
+- Ajan: Codex
+- Branch / commit: master / (commit bekliyor)
+- Durum: Tamamlandi
+- Yapilanlar:
+  - Fikirler feature'indaki standart `Button` kullanimi kaldirildi; gorunur aksiyonlar `moving-border` ve `SketchButton` standardina tasindi.
+  - Fikir yakalama formundaki opsiyonel metinler kaldirildi; `Fikir basligi *` label'i ve tutarli input/textarea focus siniflari eklendi.
+  - Fikir detayinda status secimi solda dropdown radio olarak calisir hale getirildi; silme ve Markdown export uc nokta menusune tasindi.
+  - Gelisim gunlugu girdileri icin frontend `PATCH` hook'u ve inline duzenle/kaydet/vazgec/sil CRUD akisi eklendi.
+- Kararlar:
+  - Backend degisikligi yapilmadi; mevcut `PATCH /api/ideas/{id}` ve `PATCH /api/ideas/{id}/entries/{entryId}` endpoint'leri kullanildi.
+  - `docker-compose.yml` mevcut dirty haliyle korunmaya devam edildi.
+- Kabul kriteri:
+  - `npm.cmd run build` basarili; mevcut buyuk chunk uyarisi devam ediyor.
+  - `/ideas` UI smoke: `Fikir basligi *` gorundu, opsiyonel/optional metni kalmadi, kartlar link yuzeyi olarak render edildi.
+  - `/ideas/:id` UI smoke: status radio menusu, uc nokta aksiyon menusu ve form focus siniflari dogrulandi.
+  - Basliksiz fikir create/detail/delete smoke basarili; otomatik baslik ve ilk entry olustu.
+- Acik konular / siradaki:
+  - Kullanici tarafindan light/dark gorsel kontrol ve gercek veriyle Markdown indirme akisi denenebilir.
 
 ### 2026-07-05 - 400/405 ve Dosya Upload Stabilizasyonu
 - Ajan: Codex

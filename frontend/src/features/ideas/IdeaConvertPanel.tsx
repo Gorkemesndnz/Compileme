@@ -2,7 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '../../components/ui/Button'
+import { Button as MovingBorderButton } from '../../components/ui/moving-border'
 import { IdeaResponse, useConvertIdea } from '../../api/ideas'
 
 export const IdeaConvertPanel: React.FC<{ idea: IdeaResponse }> = ({ idea }) => {
@@ -35,15 +35,18 @@ export const IdeaConvertPanel: React.FC<{ idea: IdeaResponse }> = ({ idea }) => 
         </div>
       </div>
 
-      <Button
+      <MovingBorderButton
         type="button"
         onClick={handleConvert}
         disabled={idea.status === 'CONVERTED' || convertIdea.isPending}
-        className="w-full gap-2"
+        borderRadius="0.875rem"
+        duration={2600}
+        containerClassName="h-10 w-full disabled:cursor-not-allowed disabled:opacity-50"
+        className="gap-2 px-4 font-bold text-slate-950 dark:text-white"
       >
         {convertIdea.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-        {idea.status === 'CONVERTED' ? 'Projeye donustu' : 'Projeye donustur'}
-      </Button>
+        {idea.status === 'CONVERTED' ? 'Projeye aktarildi' : 'Projeye donustur'}
+      </MovingBorderButton>
     </section>
   )
 }

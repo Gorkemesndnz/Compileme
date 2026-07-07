@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { ExternalLink, Loader2, Plus, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '../../components/ui/Button'
+import { Button as MovingBorderButton } from '../../components/ui/moving-border'
 import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
 import { Select } from '../../components/ui/Select'
 import { IdeaResearch, IdeaResearchType, useAddIdeaResearch, useDeleteIdeaResearch } from '../../api/ideas'
+import { IDEA_FIELD_CLASS, IDEA_TEXTAREA_CLASS } from './ideaStyles'
 
 const researchTypeOptions: Array<{ label: string; value: IdeaResearchType }> = [
   { label: 'Referans', value: 'REFERENCE' },
@@ -54,14 +55,21 @@ export const IdeaResearchPanel: React.FC<{ ideaId: number; research: IdeaResearc
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Kaynak basligi" />
-        <Input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="URL opsiyonel" />
+        <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Kaynak basligi" className={IDEA_FIELD_CLASS} />
+        <Input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="URL" className={IDEA_FIELD_CLASS} />
         <Select value={type} onChange={setType} options={researchTypeOptions} />
-        <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Bu kaynak fikre ne anlatiyor?" />
-        <Button type="submit" disabled={addResearch.isPending || !title.trim()} className="w-full gap-2">
+        <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Bu kaynak fikre ne anlatiyor?" className={IDEA_TEXTAREA_CLASS} />
+        <MovingBorderButton
+          type="submit"
+          disabled={addResearch.isPending || !title.trim()}
+          borderRadius="0.875rem"
+          duration={2600}
+          containerClassName="h-10 w-full disabled:cursor-not-allowed disabled:opacity-50"
+          className="gap-2 px-4 font-bold text-slate-950 dark:text-white"
+        >
           {addResearch.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Kaynak ekle
-        </Button>
+        </MovingBorderButton>
       </form>
 
       <div className="mt-5 space-y-3">
@@ -77,9 +85,18 @@ export const IdeaResearchPanel: React.FC<{ ideaId: number; research: IdeaResearc
                   <p className="truncate text-sm font-black text-slate-950 dark:text-white">{item.title}</p>
                   <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-300">{item.type}</p>
                 </div>
-                <Button type="button" variant="dangerGhost" size="icon" onClick={() => deleteResearch.mutate(item.id)}>
+                <MovingBorderButton
+                  type="button"
+                  onClick={() => deleteResearch.mutate(item.id)}
+                  borderRadius="0.625rem"
+                  duration={2200}
+                  containerClassName="h-8 w-8 shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="p-0"
+                  disabled={deleteResearch.isPending}
+                  title="Kaynagi sil"
+                >
                   <Trash2 className="h-4 w-4" />
-                </Button>
+                </MovingBorderButton>
               </div>
               {item.notes && <p className="mt-2 line-clamp-3 text-xs font-medium leading-5 text-zinc-500 dark:text-zinc-400">{item.notes}</p>}
               {item.url && (

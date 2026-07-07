@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { ArrowRight, Lightbulb, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
+import { Button as MovingBorderButton } from '../../components/ui/moving-border'
 import { cn } from '../../lib/utils'
 import { IdeaResponse, useCreateIdea } from '../../api/ideas'
+import { IDEA_FIELD_CLASS, IDEA_TEXTAREA_CLASS } from './ideaStyles'
 
 interface IdeaComposerProps {
   compact?: boolean
@@ -54,34 +55,41 @@ export const IdeaComposer: React.FC<IdeaComposerProps> = ({ compact = false, onC
           <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300">
             Fikir yakala
           </p>
-          <p className="text-xs font-semibold text-slate-500 dark:text-zinc-500">
-            Baslik opsiyonel; bos kalirsa ilk cumleden olusur.
-          </p>
         </div>
       </div>
 
-      <div className={cn('grid gap-3', compact ? 'lg:grid-cols-[240px_1fr_auto]' : 'grid-cols-1')}>
-        <Input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="Opsiyonel fikir basligi"
-          className="h-11"
-        />
-        <Textarea
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          placeholder="Aklina gelen fikri, problemi, hedef kitleyi veya ilk notu yaz..."
-          className={cn('min-h-[96px]', compact && 'lg:min-h-[44px]')}
-        />
-        <Button
+      <div className={cn('grid gap-3', compact ? 'lg:grid-cols-[240px_minmax(0,1fr)_auto] lg:items-end' : 'grid-cols-1')}>
+        <label className="space-y-2">
+          <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+            Fikir basligi <span className="text-cyan-600 dark:text-cyan-300">*</span>
+          </span>
+          <Input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Fikir basligi"
+            className={cn('h-11', IDEA_FIELD_CLASS)}
+          />
+        </label>
+        <label className="space-y-2">
+          <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Ilk not</span>
+          <Textarea
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            placeholder="Aklina gelen fikri, problemi, hedef kitleyi veya ilk notu yaz..."
+            className={cn('min-h-[96px]', IDEA_TEXTAREA_CLASS, compact && 'lg:min-h-[44px]')}
+          />
+        </label>
+        <MovingBorderButton
           type="submit"
-          variant="primary"
           disabled={createIdea.isPending || (!title.trim() && !content.trim())}
-          className={cn('gap-2', compact && 'self-start')}
+          borderRadius="0.875rem"
+          duration={2600}
+          containerClassName={cn('h-11 disabled:cursor-not-allowed disabled:opacity-50', compact ? 'lg:w-[132px]' : 'w-full')}
+          className="gap-2 px-4 font-bold text-slate-950 dark:text-white"
         >
           {createIdea.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
           Kaydet
-        </Button>
+        </MovingBorderButton>
       </div>
     </form>
   )

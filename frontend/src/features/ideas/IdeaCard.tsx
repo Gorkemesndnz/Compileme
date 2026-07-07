@@ -1,33 +1,19 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ArrowRight, CheckSquare, Clock, FileText, Search } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { cn } from '../../lib/utils'
-import { IdeaResponse, IdeaStatus } from '../../api/ideas'
-
-const STATUS_LABELS: Record<IdeaStatus, string> = {
-  RAW: 'Ham fikir',
-  DEVELOPING: 'Gelistiriliyor',
-  CONVERTED: 'Projeye donustu',
-}
-
-const STATUS_CLASSES: Record<IdeaStatus, string> = {
-  RAW: 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.65)]',
-  DEVELOPING: 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.65)]',
-  CONVERTED: 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.65)]',
-}
+import { IdeaResponse } from '../../api/ideas'
+import { IDEA_STATUS_DOT, IDEA_STATUS_LABELS, ideaBadgeVariant } from './ideaStyles'
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
 }
 
 export const IdeaCard: React.FC<{ idea: IdeaResponse }> = ({ idea }) => {
-  const navigate = useNavigate()
-
   return (
-    <button
-      type="button"
-      onClick={() => navigate(`/ideas/${idea.id}`)}
+    <Link
+      to={`/ideas/${idea.id}`}
       className="group flex min-h-[230px] flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white/70 text-left shadow-md backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/35 hover:bg-white/85 dark:border-zinc-800/50 dark:bg-black/45 dark:hover:border-cyan-500/30"
     >
       <div className="flex items-center justify-between border-b border-zinc-200/60 bg-zinc-50/80 px-4 py-2.5 dark:border-zinc-800/60 dark:bg-zinc-950/60">
@@ -43,9 +29,9 @@ export const IdeaCard: React.FC<{ idea: IdeaResponse }> = ({ idea }) => {
 
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-3 flex items-center gap-2">
-          <span className={cn('h-2.5 w-2.5 rounded-full', STATUS_CLASSES[idea.status])} />
-          <Badge variant={idea.status === 'CONVERTED' ? 'success' : idea.status === 'RAW' ? 'warning' : 'default'}>
-            {STATUS_LABELS[idea.status]}
+          <span className={cn('h-2.5 w-2.5 rounded-full', IDEA_STATUS_DOT[idea.status])} />
+          <Badge variant={ideaBadgeVariant(idea.status)}>
+            {IDEA_STATUS_LABELS[idea.status]}
           </Badge>
         </div>
 
@@ -70,7 +56,7 @@ export const IdeaCard: React.FC<{ idea: IdeaResponse }> = ({ idea }) => {
           </span>
         </div>
       </div>
-    </button>
+    </Link>
   )
 }
 

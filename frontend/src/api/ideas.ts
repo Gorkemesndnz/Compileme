@@ -153,6 +153,17 @@ export const useDeleteIdeaEntry = (ideaId?: number) => {
   })
 }
 
+export const useUpdateIdeaEntry = (ideaId?: number) => {
+  const queryClient = useQueryClient()
+  return useMutation<IdeaEntry, Error, { entryId: number; request: IdeaEntryRequest }>({
+    mutationFn: async ({ entryId, request }) => {
+      const response = await apiClient.patch<IdeaEntry>(`/ideas/${ideaId}/entries/${entryId}`, request)
+      return response.data
+    },
+    onSuccess: () => invalidateIdeas(queryClient, ideaId)
+  })
+}
+
 export const useAddIdeaResearch = (ideaId?: number) => {
   const queryClient = useQueryClient()
   return useMutation<IdeaResearch, Error, IdeaResearchRequest>({
