@@ -89,7 +89,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
       {/* A) Sol Geniş Alan (2 Kutu Kaplayacak): Roadmap & Task Creation */}
       <div className="lg:col-span-2 space-y-6">
         {/* Proje Yol Haritası */}
-        <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-border/40 backdrop-blur-xl">
+        <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/60 backdrop-blur-xl shadow-sm">
           <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-6">
             <div className="flex items-center gap-2.5">
               <GitBranch className="h-5 w-5 text-cyan-500" />
